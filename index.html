@@ -560,6 +560,47 @@
       margin-top: 2px;
       overflow-wrap: anywhere;
     }
+    .csv-mapping-list {
+      display: grid;
+      gap: 10px;
+      max-height: 58vh;
+      overflow: auto;
+      padding-right: 4px;
+    }
+    .csv-mapping-row {
+      display: grid;
+      grid-template-columns: minmax(170px, 1.1fr) minmax(230px, 1.6fr) minmax(180px, 1fr);
+      gap: 12px;
+      align-items: start;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.7);
+    }
+    .csv-mapping-header {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--gray-900);
+      word-break: break-word;
+    }
+    .csv-mapping-samples {
+      font-size: 12px;
+      color: var(--gray-500);
+      display: grid;
+      gap: 4px;
+    }
+    .csv-mapping-samples code {
+      display: block;
+      padding: 5px 7px;
+      border-radius: 8px;
+      background: rgba(112,101,82,0.08);
+      color: var(--gray-700);
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .csv-mapping-select select {
+      width: 100%;
+    }
     .user-role-badge {
       display: inline-flex;
       align-items: center;
@@ -900,7 +941,7 @@
   </div>
 
   <!-- ══ URL Copy Modal (for about:blank#blocked environments) ══ -->
-  <div class="modal-overlay" id="urlModal">
+  <div class="modal-overlay" id="urlModal" data-backdrop-close="true">
     <div class="modal">
       <h2>Open Link</h2>
       <p class="modal-sub">Click the link or copy it to your browser.</p>
@@ -996,6 +1037,19 @@
     </div>
   </div>
 
+  <!-- ══ CSV Mapping Modal ══ -->
+  <div class="modal-overlay" id="csvMappingModal">
+    <div class="modal modal-wide" style="max-width:860px;">
+      <h2>Map CSV Columns</h2>
+      <p class="modal-sub" id="csvMappingSub">Review the sample values and confirm where each CSV column should go.</p>
+      <div id="csvMappingList"></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="cancelCsvMapping()">Cancel</button>
+        <button class="btn btn-primary" onclick="confirmCsvMapping()">Import CSV</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ══ User Login Modal ══ -->
   <div class="modal-overlay active" id="userModal">
     <div class="modal">
@@ -1067,6 +1121,7 @@
     let selectedRep   = null;
     let activeView    = "admin";
     let bulkImportInProgress = false;
+    let pendingCsvImport = null;
     let currentUserProfile = null;
     let currentUserId = "";
     let usersCache = {};
@@ -2105,7 +2160,28 @@
       employeeRange: ["employee","employees","emprange","headcount","companysize","employeerange","staffsize"],
       assignedTo: ["assignedto","assigned","salesrep","rep","owner","agent","accountowner"]
     };
+    const FIXED_IMPORT_FIELDS = [
+      { value: "__ignore__", label: "Ignore this column" },
+      { value: "name", label: "Full Name" },
+      { value: "firstName", label: "First Name" },
+      { value: "lastName", label: "Last Name" },
+      { value: "company", label: "Company" },
+      { value: "email", label: "Email" },
+      { value: "phone", label: "Phone" },
+      { value: "website", label: "Website" },
+      { value: "linkedin", label: "LinkedIn" },
+      { value: "title", label: "Title" },
+      { value: "industry", label: "Industry" },
+      { value: "address", label: "Address" },
+      { value: "city", label: "City" },
+      { value: "state", label: "State / Province" },
+      { value: "country", label: "Country" },
+      { value: "employeeRange", label: "Employees" },
+      { value: "assignedTo", label: "Assigned To" },
+      { value: "__extra__", label: "Keep as extra field" }
+    ];
     const CONTENT_DRIVEN_FIELDS = new Set(["email","phone","linkedin","website"]);
+    const CSV_MAPPING_PRESETS_KEY = "leadtracker.csvMappingPresets.v1";
 
     function normalizeHeader(h) {
       return String(h || "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
@@ -2120,9 +2196,22 @@
       const s = cleanEmail(val);
       return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s);
     }
+    function looksLikeDateTimeString(val) {
+      const s = String(val || "").trim();
+      if (!s) return false;
+      if (/^\d{4}-\d{2}-\d{2}t\d{2}:\d{2}:\d{2}(?:\.\d+)?z$/i.test(s)) return true;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return true;
+      return /\d{4}-\d{2}-\d{2}/.test(s) && /[t:]/i.test(s);
+    }
     function looksLikePhone(val) {
-      const s = cleanPhone(val).replace(/[^\d+]/g, "");
-      return s.length >= 7 && /\d/.test(s);
+      if (looksLikeDateTimeString(val)) return false;
+      const raw = String(val || "").trim();
+      const compact = cleanPhone(val).replace(/[^\d+]/g, "");
+      if (!compact || compact.length < 7 || compact.length > 15) return false;
+      if (!/\d/.test(compact)) return false;
+      if (/[A-Za-z]/.test(raw.replace(/^ext\b/i, ""))) return false;
+      if (!/[+\d(]/.test(raw)) return false;
+      return true;
     }
     function looksLikeLinkedIn(val) {
       const s = extractUrl(val).toLowerCase();
@@ -2203,6 +2292,217 @@
       const threshold = CONTENT_DRIVEN_FIELDS.has(best) ? 8 : 10;
       return scores[best] >= threshold ? best : null;
     }
+    function getCsvHeaderSignature(headers = []) {
+      return headers.map(h => compactHeader(h)).join("|");
+    }
+    function loadCsvMappingPresets() {
+      try { return JSON.parse(localStorage.getItem(CSV_MAPPING_PRESETS_KEY) || "{}"); }
+      catch { return {}; }
+    }
+    function saveCsvMappingPreset(signature, mapping) {
+      if (!signature) return;
+      const presets = loadCsvMappingPresets();
+      presets[signature] = mapping;
+      try { localStorage.setItem(CSV_MAPPING_PRESETS_KEY, JSON.stringify(presets)); }
+      catch (e) { console.warn("Could not save CSV mapping preset:", e); }
+    }
+    function validateCsvMapping(columns = []) {
+      const used = new Map();
+      for (const col of columns) {
+        const field = col.field;
+        if (!field || field === "__ignore__" || field === "__extra__") continue;
+        if (used.has(field)) {
+          const firstHeader = used.get(field);
+          const fieldLabel = FIXED_IMPORT_FIELDS.find(option => option.value === field)?.label || field;
+          throw new Error(`"${fieldLabel}" is mapped more than once (${firstHeader} and ${col.raw}).`);
+        }
+        used.set(field, col.raw || "Unnamed column");
+      }
+      if (!used.has("name") && !used.has("email") && !(used.has("firstName") && used.has("lastName"))) {
+        throw new Error("Map at least Full Name, Email, or both First Name and Last Name before importing.");
+      }
+    }
+    function renderCsvMappingModal() {
+      const wrap = document.getElementById("csvMappingList");
+      if (!wrap || !pendingCsvImport) return;
+      document.getElementById("csvMappingSub").textContent =
+        `${pendingCsvImport.fileName} — review the suggested field mapping and sample values before importing.`;
+      wrap.innerHTML = `<div class="csv-mapping-list">${pendingCsvImport.columns.map((col, idx) => `
+        <div class="csv-mapping-row">
+          <div>
+            <div class="csv-mapping-header">${esc(col.raw || `Column ${idx + 1}`)}</div>
+            <div class="user-row-sub">CSV column</div>
+          </div>
+          <div class="csv-mapping-samples">
+            ${(col.samples.length ? col.samples : ["No sample values"]).map(sample => `<code>${esc(sample)}</code>`).join("")}
+          </div>
+          <div class="csv-mapping-select">
+            <select id="csvMap_${idx}">
+              ${FIXED_IMPORT_FIELDS.map(option => `
+                <option value="${esc(option.value)}"${option.value === col.field ? " selected" : ""}>${esc(option.label)}</option>
+              `).join("")}
+            </select>
+          </div>
+        </div>
+      `).join("")}</div>`;
+      document.getElementById("csvMappingModal").classList.add("active");
+    }
+    function buildLeadsFromMapping(dataRows, columns) {
+      return dataRows.map(row => {
+        const lead = {
+          status: "New",
+          contactCount: 0,
+          lastContacted: null,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+          source: "csv"
+        };
+        let _first = "", _last = "";
+        columns.forEach(col => {
+          if (col.field === "__ignore__") return;
+          const val = (row[col.idx] || "").trim();
+          if (!val) return;
+          switch (col.field) {
+            case "name":          if (!lead.name) lead.name = val; break;
+            case "firstName":     if (!_first) _first = val; break;
+            case "lastName":      if (!_last) _last = val; break;
+            case "company":       if (!lead.company) lead.company = val; break;
+            case "email":         if (!lead.email) lead.email = cleanEmail(val); break;
+            case "phone":         if (!lead.phone) lead.phone = cleanPhone(val); break;
+            case "website":       if (!lead.website) lead.website = val; break;
+            case "linkedin":      if (!lead.linkedin) lead.linkedin = val; break;
+            case "title":         if (!lead.title) lead.title = val; break;
+            case "industry":      if (!lead.industry) lead.industry = val; break;
+            case "address":       if (!lead.address) lead.address = val; break;
+            case "city":          if (!lead.city) lead.city = val; break;
+            case "country":       if (!lead.country) lead.country = val; break;
+            case "state":         if (!lead.state) lead.state = val; break;
+            case "employeeRange": if (!lead.employeeRange) lead.employeeRange = val; break;
+            case "assignedTo":    if (!lead.assignedTo) lead.assignedTo = val; break;
+            case "__extra__":     if (!(col.raw in lead)) lead[col.raw] = val; break;
+          }
+        });
+        if (!lead.name && (_first || _last)) lead.name = `${_first} ${_last}`.trim();
+        if (!lead.company) lead.company = lead.name || "";
+        return lead;
+      }).filter(l => l.name || l.email);
+    }
+    async function runCsvImport({ fileName, leads }) {
+      if (!leads.length) return showToast("No rows with name or email after mapping","error");
+      const emailIdx = {}, nameIdx = {};
+      Object.values(allLeads).forEach(l => {
+        if (l.email) emailIdx[norm(l.email)] = l.id;
+        if (l.name)  nameIdx[norm(l.name)]   = l.id;
+      });
+
+      const toAdd = [], toUpdate = [];
+      const NEVER_OW = new Set(["status","contactCount","lastContacted","createdAt","assignedTo","source"]);
+      leads.forEach(lead => {
+        const existId = (lead.email && emailIdx[norm(lead.email)]) ||
+                        (lead.name  && nameIdx[norm(lead.name)])   || null;
+        if (existId) {
+          if (existId === "__p__") return;
+          const existing = allLeads[existId];
+          if (!existing) return;
+          const updates = {};
+          Object.entries(lead).forEach(([k, v]) => {
+            if (NEVER_OW.has(k) || !v) return;
+            if (!existing[k]) updates[k] = v;
+          });
+          if (Object.keys(updates).length) {
+            updates.updatedAt = serverTimestamp();
+            toUpdate.push({ id: existId, fields: updates });
+          }
+        } else {
+          toAdd.push(lead);
+          if (lead.email) emailIdx[norm(lead.email)] = "__p__";
+          if (lead.name)  nameIdx[norm(lead.name)]   = "__p__";
+        }
+      });
+
+      showToast(`Importing ${toAdd.length} new, ${toUpdate.length} updates…`);
+      const CHUNK = 100;
+      const totalOps = toAdd.length + toUpdate.length;
+      if (!totalOps) return showToast("No changes — all leads already exist","success");
+      let completedOps = 0;
+      const importBatchRef = doc(collection(db, "importBatches"));
+      const importBatchId = importBatchRef.id;
+      const importFileName = fileName || "CSV Import";
+
+      bulkImportInProgress = true;
+      try {
+        await setDoc(importBatchRef, {
+          fileName: importFileName,
+          addedCount: toAdd.length,
+          updatedCount: toUpdate.length,
+          createdAt: serverTimestamp(),
+          createdBy: currentUserId,
+          createdByName: currentUser || ""
+        });
+        for (let i = 0; i < toAdd.length; i += CHUNK) {
+          const b = writeBatch(db);
+          const batchItems = toAdd.slice(i, i + CHUNK);
+          batchItems.forEach(l => b.set(doc(collection(db, "leads")), {
+            ...l,
+            importBatchId,
+            importFileName,
+            importedBy: currentUser || "",
+            importedAt: serverTimestamp()
+          }));
+          await b.commit();
+          completedOps += batchItems.length;
+          showToast(`Importing… ${completedOps}/${totalOps}`,"");
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
+        for (let i = 0; i < toUpdate.length; i += CHUNK) {
+          const b = writeBatch(db);
+          const batchItems = toUpdate.slice(i, i + CHUNK);
+          batchItems.forEach(({id,fields}) => b.update(doc(db,"leads",id),fields));
+          await b.commit();
+          completedOps += batchItems.length;
+          showToast(`Importing… ${completedOps}/${totalOps}`,"");
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
+      } finally {
+        bulkImportInProgress = false;
+        refreshLeadViews();
+      }
+
+      const parts = [];
+      if (toAdd.length)    parts.push(`${toAdd.length} added`);
+      if (toUpdate.length) parts.push(`${toUpdate.length} updated`);
+      if (!parts.length)   parts.push("No changes — all leads already exist");
+      showToast(parts.join(", "),"success");
+    }
+    window.confirmCsvMapping = async function () {
+      if (!pendingCsvImport) return showToast("No CSV is waiting to be imported","error");
+      pendingCsvImport.columns.forEach((col, idx) => {
+        const sel = document.getElementById(`csvMap_${idx}`);
+        col.field = sel ? sel.value : "__ignore__";
+      });
+      try {
+        validateCsvMapping(pendingCsvImport.columns);
+      } catch (e) {
+        return showToast(e?.message || "Fix the CSV mapping before importing","error");
+      }
+      const mappingPreset = {};
+      pendingCsvImport.columns.forEach(col => { mappingPreset[col.raw] = col.field; });
+      saveCsvMappingPreset(pendingCsvImport.signature, mappingPreset);
+      closeModal("csvMappingModal");
+      const leads = buildLeadsFromMapping(pendingCsvImport.dataRows, pendingCsvImport.columns);
+      const fileName = pendingCsvImport.fileName;
+      pendingCsvImport = null;
+      try {
+        await runCsvImport({ fileName, leads });
+      } catch (e) {
+        console.error("CSV import failed:", e);
+        showToast(`Import failed${e?.message ? `: ${e.message}` : ""}`,"error");
+      }
+    };
+    window.cancelCsvMapping = function () {
+      pendingCsvImport = null;
+      closeModal("csvMappingModal");
+    };
 
     window.handleCSV = async function (event) {
       if (!isAdminUser()) return showToast("Admin access only","error");
@@ -2219,154 +2519,63 @@
 
         const dataRows = rows.slice(1).filter(r => r.some(c=>c.trim()));
         const rawHeaders = rows[0].map(h => h.trim());
-        const colPlan    = rawHeaders.map((h,i) => ({
+        const signature = getCsvHeaderSignature(rawHeaders);
+        const savedPreset = loadCsvMappingPresets()[signature] || {};
+        const columns = rawHeaders.map((h,i) => ({
           idx: i,
           raw: h,
-          field: shouldSkip(h) ? "__skip__" : detectField(h, dataRows.map(r => r[i]))
+          samples: dataRows.map(r => String(r[i] || "").trim()).filter(Boolean).slice(0, 3),
+          field: savedPreset[h] || (shouldSkip(h) ? "__ignore__" : (detectField(h, dataRows.map(r => r[i])) || "__extra__"))
         }));
-        console.log("CSV columns:", colPlan.map(c=>`"${c.raw}" → ${c.field||"extra"}`));
-
-        const leads = dataRows.map(row => {
-          const lead = { status:"New", contactCount:0, lastContacted:null,
-            createdAt:serverTimestamp(), updatedAt:serverTimestamp(), source:"csv" };
-          let _first = "", _last = "";
-          colPlan.forEach(cp => {
-            if (cp.field==="__skip__") return;
-            const val = (row[cp.idx]||"").trim();
-            if (!val) return;
-            switch(cp.field) {
-              case "name":          if (!lead.name) lead.name = val; break;
-              case "firstName":     if (!_first) _first = val; break;
-              case "lastName":      if (!_last) _last = val; break;
-              case "company":       if (!lead.company) lead.company = val; break;
-              case "email":         if (!lead.email) lead.email = cleanEmail(val); break;
-              case "phone":         if (!lead.phone) lead.phone = cleanPhone(val); break;
-              case "website":       if (!lead.website) lead.website = val; break;
-              case "linkedin":      if (!lead.linkedin) lead.linkedin = val; break;
-              case "title":         if (!lead.title) lead.title = val; break;
-              case "industry":      if (!lead.industry) lead.industry = val; break;
-              case "address":       if (!lead.address) lead.address = val; break;
-              case "city":          if (!lead.city) lead.city = val; break;
-              case "country":       if (!lead.country) lead.country = val; break;
-              case "state":         if (!lead.state) lead.state = val; break;
-              case "employeeRange": if (!lead.employeeRange) lead.employeeRange = val; break;
-              case "assignedTo":    if (!lead.assignedTo) lead.assignedTo = val; break;
-              default:              if (!(cp.raw in lead)) lead[cp.raw] = val; break;
-            }
-          });
-          if (!lead.name && (_first||_last)) lead.name = `${_first} ${_last}`.trim();
-          if (!lead.company) lead.company = lead.name || "";
-          return lead;
-        }).filter(l => l.name || l.email);
-
-        if (!leads.length) {
-          const mapped = colPlan.filter(c=>c.field&&c.field!=="__skip__").map(c=>c.raw).join(", ");
-          console.error("No valid rows. Columns detected:", mapped||"none");
-          return showToast(`No rows with name or email. Detected: ${rawHeaders.slice(0,5).join(", ")}`, "error");
-        }
-
-        const emailIdx = {}, nameIdx = {};
-        Object.values(allLeads).forEach(l => {
-          if (l.email) emailIdx[norm(l.email)] = l.id;
-          if (l.name)  nameIdx[norm(l.name)]   = l.id;
-        });
-
-        const toAdd = [], toUpdate = [];
-        const NEVER_OW = new Set(["status","contactCount","lastContacted","createdAt","assignedTo","source"]);
-
-      leads.forEach(lead => {
-        const existId = (lead.email && emailIdx[norm(lead.email)]) ||
-                        (lead.name  && nameIdx[norm(lead.name)])   || null;
-        if (existId) {
-          if (existId === "__p__") return;
-          const existing = allLeads[existId];
-          if (!existing) return;
-          const updates  = {};
-          Object.entries(lead).forEach(([k,v]) => {
-            if (NEVER_OW.has(k)||!v) return;
-            if (!existing[k]) updates[k] = v;
-          });
-            if (Object.keys(updates).length) { updates.updatedAt = serverTimestamp(); toUpdate.push({id:existId, fields:updates}); }
-          } else {
-            toAdd.push(lead);
-            if (lead.email) emailIdx[norm(lead.email)] = "__p__";
-            if (lead.name)  nameIdx[norm(lead.name)]   = "__p__";
-          }
-        });
-
-        showToast(`Importing ${toAdd.length} new, ${toUpdate.length} updates…`);
-        const CHUNK = 100;
-        const totalOps = toAdd.length + toUpdate.length;
-        if (!totalOps) return showToast("No changes — all leads already exist","success");
-        let completedOps = 0;
-        const importBatchRef = doc(collection(db, "importBatches"));
-        const importBatchId = importBatchRef.id;
-        const importFileName = file.name || "CSV Import";
-
-        bulkImportInProgress = true;
-        try {
-          await setDoc(importBatchRef, {
-            fileName: importFileName,
-            addedCount: toAdd.length,
-            updatedCount: toUpdate.length,
-            createdAt: serverTimestamp(),
-            createdBy: currentUserId,
-            createdByName: currentUser || ""
-          });
-          for (let i=0;i<toAdd.length;i+=CHUNK) {
-            const b = writeBatch(db);
-            const batchItems = toAdd.slice(i,i+CHUNK);
-            batchItems.forEach(l => b.set(doc(collection(db,"leads")), {
-              ...l,
-              importBatchId,
-              importFileName,
-              importedBy: currentUser || "",
-              importedAt: serverTimestamp()
-            }));
-            await b.commit();
-            completedOps += batchItems.length;
-            showToast(`Importing… ${completedOps}/${totalOps}`,"");
-            await new Promise(resolve => setTimeout(resolve, 0));
-          }
-          for (let i=0;i<toUpdate.length;i+=CHUNK) {
-            const b = writeBatch(db);
-            const batchItems = toUpdate.slice(i,i+CHUNK);
-            batchItems.forEach(({id,fields}) => b.update(doc(db,"leads",id),fields));
-            await b.commit();
-            completedOps += batchItems.length;
-            showToast(`Importing… ${completedOps}/${totalOps}`,"");
-            await new Promise(resolve => setTimeout(resolve, 0));
-          }
-        } finally {
-          bulkImportInProgress = false;
-          refreshLeadViews();
-        }
-
-        const parts = [];
-        if (toAdd.length)    parts.push(`${toAdd.length} added`);
-        if (toUpdate.length) parts.push(`${toUpdate.length} updated`);
-        if (!parts.length)   parts.push("No changes — all leads already exist");
-        showToast(parts.join(", "),"success");
+        pendingCsvImport = {
+          fileName: file.name || "CSV Import",
+          signature,
+          rawHeaders,
+          dataRows,
+          columns
+        };
+        renderCsvMappingModal();
       } catch (e) {
-        bulkImportInProgress = false;
-        console.error("CSV import failed:", e);
-        showToast(`Import failed${e?.message ? `: ${e.message}` : ""}`,"error");
+        pendingCsvImport = null;
+        console.error("CSV import prep failed:", e);
+        showToast(`Could not prepare CSV mapping${e?.message ? `: ${e.message}` : ""}`,"error");
       }
     };
 
     function parseCSV(text) {
       const rows = [];
-      for (const line of text.split(/\r?\n/)) {
-        if (!line.trim()) continue;
-        const row = []; let inQ=false, cell="";
-        for (let i=0;i<line.length;i++) {
-          const ch=line[i];
-          if (ch==='"'){if(inQ&&line[i+1]==='"'){cell+='"';i++;}else inQ=!inQ;}
-          else if(ch===','&&!inQ){row.push(cell);cell="";}
-          else cell+=ch;
+      let row = [];
+      let cell = "";
+      let inQ = false;
+      for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        if (ch === '"') {
+          if (inQ && text[i + 1] === '"') {
+            cell += '"';
+            i++;
+          } else {
+            inQ = !inQ;
+          }
+          continue;
         }
-        row.push(cell); rows.push(row);
+        if (ch === "," && !inQ) {
+          row.push(cell);
+          cell = "";
+          continue;
+        }
+        if ((ch === "\n" || ch === "\r") && !inQ) {
+          if (ch === "\r" && text[i + 1] === "\n") i++;
+          row.push(cell);
+          const hasValue = row.some(value => String(value || "").trim());
+          if (hasValue) rows.push(row);
+          row = [];
+          cell = "";
+          continue;
+        }
+        cell += ch;
       }
+      row.push(cell);
+      if (row.some(value => String(value || "").trim())) rows.push(row);
       return rows;
     }
 
@@ -2421,7 +2630,9 @@
     // closeModal defined earlier
     document.querySelectorAll(".modal-overlay").forEach(o => {
       o.addEventListener("click", e => {
-        if (e.target===o && o.id!=="userModal") o.classList.remove("active");
+        if (e.target !== o) return;
+        if (o.id === "userModal") return;
+        if (o.dataset.backdropClose === "true") o.classList.remove("active");
       });
     });
 
@@ -2440,10 +2651,12 @@
     function cleanPhone(val) {
       if (!val) return "";
       const s = String(val).trim();
+      if (looksLikeDateTimeString(s)) return "";
       if (!s.startsWith("[")&&!s.startsWith("{")) return s;
       try {
         const list = [].concat(JSON.parse(s));
-        return list[0]?.phone_number||list[0]?.number||list[0]?.value||"";
+        const extracted = list[0]?.phone_number||list[0]?.number||list[0]?.value||"";
+        return looksLikeDateTimeString(extracted) ? "" : extracted;
       } catch { return s; }
     }
     function titleCaseWord(word) {

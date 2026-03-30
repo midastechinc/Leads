@@ -989,14 +989,12 @@
     } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
     import {
       getAuth, onAuthStateChanged, signInWithEmailAndPassword,
-      signOut, createUserWithEmailAndPassword, setPersistence, browserLocalPersistence
+      signOut, setPersistence, browserLocalPersistence
     } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
     const app = initializeApp(firebaseConfig);
     const db  = getFirestore(app);
     const auth = getAuth(app);
-    const secondaryApp = initializeApp(firebaseConfig, "userCreator");
-    const secondaryAuth = getAuth(secondaryApp);
 
     let allLeads      = {};
     let currentLeadId = null;
@@ -1045,6 +1043,27 @@
     }
     function isAdminUser() { return currentUserProfile?.role === "admin"; }
     function getBootstrapAdminRef() { return doc(db, "appMeta", "adminBootstrap"); }
+    async function createAuthUserAccount(email, password) {
+      const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${firebaseConfig.apiKey}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          password,
+          returnSecureToken: false
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        const code = data?.error?.message || "";
+        if (code === "EMAIL_EXISTS") throw new Error("That email is already in use.");
+        if (code === "WEAK_PASSWORD : Password should be at least 6 characters") {
+          throw new Error("Password must be at least 6 characters.");
+        }
+        throw new Error(code || "Failed to create auth user.");
+      }
+      return data;
+    }
     function setBootstrapAdminMessage(message = "") {
       const el = document.getElementById("bootstrapAdminMessage");
       if (el) el.textContent = message;
@@ -1265,14 +1284,14 @@
       const password = document.getElementById("adminNewUserPassword").value;
       const role = document.getElementById("adminNewUserRole").value;
       if (!name || !email || !password) return showToast("Name, email, and password are required","error");
+      if (password.length < 6) return showToast("Password must be at least 6 characters","error");
       try {
-        const cred = await createUserWithEmailAndPassword(secondaryAuth, email, password);
-        await setDoc(doc(db, "users", cred.user.uid), {
+        const createdUser = await createAuthUserAccount(email, password);
+        await setDoc(doc(db, "users", createdUser.localId), {
           name, email, role,
           createdAt: serverTimestamp(),
           createdBy: currentUserId
         });
-        await signOut(secondaryAuth);
         showToast(`User created: ${name}`,"success");
         ["adminNewUserName","adminNewUserEmail","adminNewUserPassword"].forEach(id => {
           const el = document.getElementById(id);

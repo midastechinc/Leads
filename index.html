@@ -952,6 +952,18 @@
     </div>
   </div>
 
+  <!-- ══ First Admin Bootstrap Modal ══ -->
+  <div class="modal-overlay" id="bootstrapAdminModal">
+    <div class="modal">
+      <h2>Set up the first admin</h2>
+      <p class="modal-sub" id="bootstrapAdminMessage">No admin account exists yet. You can claim admin access for this signed-in account to finish setup.</p>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="dismissBootstrapAdmin()">Not now</button>
+        <button class="btn btn-primary" onclick="claimBootstrapAdmin()">Claim Admin Access</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 
   <!-- ════════════════════════════════════════════════════════
@@ -972,12 +984,12 @@
     import { initializeApp }
       from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import {
-      getFirestore, collection, addDoc, updateDoc, doc, getDoc, setDoc,
-      onSnapshot, writeBatch, serverTimestamp, increment, query, orderBy
+      getFirestore, collection, addDoc, updateDoc, doc, getDoc, getDocs, setDoc,
+      onSnapshot, writeBatch, serverTimestamp, increment, query, orderBy, where, limit, runTransaction
     } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
     import {
       getAuth, onAuthStateChanged, signInWithEmailAndPassword,
-      signOut, createUserWithEmailAndPassword
+      signOut, createUserWithEmailAndPassword, setPersistence, browserLocalPersistence
     } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
     const app = initializeApp(firebaseConfig);
@@ -998,6 +1010,7 @@
     let usersCache = {};
     let unsubscribeLeads = null;
     let unsubscribeUsers = null;
+    let bootstrapAdminDismissed = false;
 
     // ── CLOSE MODAL (defined early so initUser can call it) ────────
     function closeModal(id) { document.getElementById(id)?.classList.remove("active"); }
@@ -1010,7 +1023,70 @@
       el.textContent = message;
       el.style.display = message ? "block" : "none";
     }
+    function formatAuthError(error) {
+      const code = error?.code || "";
+      if (window.location.protocol === "file:" &&
+          (code === "auth/network-request-failed" || code === "auth/operation-not-supported-in-this-environment")) {
+        return "This app is being opened directly from a file. Run it from a local web server or add the hosting domain in Firebase Authorized Domains before signing in.";
+      }
+      if (code === "auth/invalid-credential" || code === "auth/invalid-login-credentials") {
+        return "Email or password is incorrect.";
+      }
+      if (code === "auth/user-disabled") {
+        return "This account has been disabled.";
+      }
+      if (code === "auth/too-many-requests") {
+        return "Too many login attempts. Wait a moment and try again.";
+      }
+      if (code === "auth/network-request-failed") {
+        return "Could not reach Firebase. Check your internet connection and browser privacy settings.";
+      }
+      return error?.message || "Could not sign in.";
+    }
     function isAdminUser() { return currentUserProfile?.role === "admin"; }
+    function getBootstrapAdminRef() { return doc(db, "appMeta", "adminBootstrap"); }
+    function setBootstrapAdminMessage(message = "") {
+      const el = document.getElementById("bootstrapAdminMessage");
+      if (el) el.textContent = message;
+    }
+    function openBootstrapAdminModal(message = "") {
+      if (message) setBootstrapAdminMessage(message);
+      document.getElementById("bootstrapAdminModal")?.classList.add("active");
+    }
+    function closeBootstrapAdminModal() {
+      document.getElementById("bootstrapAdminModal")?.classList.remove("active");
+    }
+    async function refreshBootstrapAdminState(firebaseUser) {
+      if (!firebaseUser || isAdminUser() || bootstrapAdminDismissed) {
+        closeBootstrapAdminModal();
+        return;
+      }
+      try {
+        const [adminSnapshot, bootstrapSnapshot] = await Promise.all([
+          getDocs(query(collection(db, "users"), where("role", "==", "admin"), limit(1))),
+          getDoc(getBootstrapAdminRef())
+        ]);
+        const hasAdmin = !adminSnapshot.empty;
+        const bootstrapData = bootstrapSnapshot.exists() ? bootstrapSnapshot.data() : null;
+        const lockedByAnotherUser = bootstrapData?.claimedBy && bootstrapData.claimedBy !== firebaseUser.uid;
+        if (!hasAdmin && !lockedByAnotherUser) {
+          const label = currentUserProfile?.email || firebaseUser.email || "this account";
+          openBootstrapAdminModal(`No admin account exists yet. You can claim admin access for ${label} to finish setup.`);
+        } else {
+          closeBootstrapAdminModal();
+        }
+      } catch (e) {
+        console.error("refreshBootstrapAdminState error:", e);
+      }
+    }
+    function inferNameFromEmail(email = "") {
+      const localPart = String(email).split("@")[0] || "User";
+      return localPart
+        .replace(/[._-]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .replace(/\b\w/g, ch => ch.toUpperCase()) || "User";
+    }
     function applyUserDisplay() {
       document.getElementById("userDisplay").textContent = currentUser || "—";
       const assignEl = document.getElementById("newAssigned");
@@ -1027,8 +1103,20 @@
       currentUserProfile = null;
       currentUser = "";
       if (!firebaseUser) return;
-      const snap = await getDoc(doc(db, "users", firebaseUser.uid));
-      if (!snap.exists()) throw new Error("No user profile found. Ask an admin to create your account.");
+      const userRef = doc(db, "users", firebaseUser.uid);
+      let snap = await getDoc(userRef);
+      if (!snap.exists()) {
+        const email = (firebaseUser.email || "").trim().toLowerCase();
+        const fallbackProfile = {
+          name: firebaseUser.displayName || inferNameFromEmail(email),
+          email,
+          role: "rep",
+          createdAt: serverTimestamp(),
+          autoCreated: true
+        };
+        await setDoc(userRef, fallbackProfile);
+        snap = await getDoc(userRef);
+      }
       currentUserProfile = { id: snap.id, ...snap.data() };
       currentUser = currentUserProfile.name || firebaseUser.email || "User";
     }
@@ -1065,14 +1153,15 @@
     }
     window.loginUser = async function () {
       try {
-        const email = document.getElementById("userEmailInput").value.trim();
+        const email = document.getElementById("userEmailInput").value.trim().toLowerCase();
         const password = document.getElementById("userPasswordInput").value;
         if (!email || !password) return setUserModalError("Enter your email and password.");
+        document.getElementById("userEmailInput").value = email;
         setUserModalError("");
         await signInWithEmailAndPassword(auth, email, password);
       } catch(e) {
         console.error("loginUser error:", e);
-        setUserModalError(e?.message || "Could not sign in.");
+        setUserModalError(formatAuthError(e));
       }
     };
     window.changeUser = function () {
@@ -1084,6 +1173,62 @@
     };
     window.logoutUser = async function () {
       try { await signOut(auth); } catch (e) { console.error("logoutUser error:", e); }
+    };
+    window.dismissBootstrapAdmin = function () {
+      bootstrapAdminDismissed = true;
+      closeBootstrapAdminModal();
+    };
+    window.claimBootstrapAdmin = async function () {
+      if (!auth.currentUser || !currentUserId) return showToast("Sign in first","error");
+      try {
+        const user = auth.currentUser;
+        const userRef = doc(db, "users", currentUserId);
+        await runTransaction(db, async tx => {
+          const bootstrapRef = getBootstrapAdminRef();
+          const [bootstrapSnap, userSnap] = await Promise.all([
+            tx.get(bootstrapRef),
+            tx.get(userRef)
+          ]);
+          const bootstrapData = bootstrapSnap.exists() ? bootstrapSnap.data() : null;
+          if (bootstrapData?.claimedBy && bootstrapData.claimedBy !== user.uid) {
+            throw new Error("First admin access has already been claimed by another account.");
+          }
+          tx.set(bootstrapRef, {
+            claimedBy: user.uid,
+            email: (user.email || "").trim().toLowerCase(),
+            createdAt: serverTimestamp()
+          }, { merge: true });
+          tx.set(userRef, {
+            ...(userSnap.exists() ? {} : {
+              name: user.displayName || inferNameFromEmail(user.email || ""),
+              email: (user.email || "").trim().toLowerCase(),
+              createdAt: serverTimestamp(),
+              autoCreated: true
+            }),
+            role: "admin",
+            adminGrantedAt: serverTimestamp(),
+            adminGrantedBy: "bootstrap"
+          }, { merge: true });
+        });
+        currentUserProfile = {
+          ...(currentUserProfile || {}),
+          id: currentUserId,
+          name: currentUserProfile?.name || user.displayName || inferNameFromEmail(user.email || ""),
+          email: currentUserProfile?.email || (user.email || "").trim().toLowerCase(),
+          role: "admin",
+          adminGrantedBy: "bootstrap"
+        };
+        currentUser = currentUserProfile.name || user.email || "User";
+        bootstrapAdminDismissed = false;
+        applyUserDisplay();
+        bindUsersListener();
+        closeBootstrapAdminModal();
+        showToast("Admin access granted","success");
+      } catch (e) {
+        console.error("claimBootstrapAdmin error:", e);
+        showToast(e?.message || "Could not grant admin access","error");
+        await refreshBootstrapAdminState(auth.currentUser);
+      }
     };
     window.openAdminUsers = function () {
       if (!isAdminUser()) return showToast("Admin access only","error");
@@ -1139,9 +1284,16 @@
         showToast(e?.message || "Failed to create user","error");
       }
     };
+    try {
+      await setPersistence(auth, browserLocalPersistence);
+    } catch (e) {
+      console.warn("auth persistence setup failed:", e);
+    }
+
     onAuthStateChanged(auth, async firebaseUser => {
       try {
         if (!firebaseUser) {
+          bootstrapAdminDismissed = false;
           currentUserProfile = null;
           currentUserId = "";
           currentUser = "";
@@ -1154,6 +1306,7 @@
             `<tr class="state-row"><td colspan="9"><strong>Sign in required</strong><p>Use your email and password to access leads.</p></td></tr>`;
           document.getElementById("leadQueue").innerHTML =
             `<div class="empty-workspace"><div class="big">🔐</div><strong>Sign in to view your workspace</strong><p>Your assigned leads will appear here after login.</p></div>`;
+          closeBootstrapAdminModal();
           document.getElementById("userModal").classList.add("active");
           return;
         }
@@ -1163,9 +1316,14 @@
         bindLeadListener();
         if (isAdminUser()) bindUsersListener();
         else if (unsubscribeUsers) { unsubscribeUsers(); unsubscribeUsers = null; usersCache = {}; }
+        await refreshBootstrapAdminState(firebaseUser);
       } catch (e) {
         console.error("auth init error:", e);
-        setUserModalError(e?.message || "Could not load your account.");
+        if (e?.message === "No user profile found. Ask an admin to create your account.") {
+          try { await signOut(auth); } catch (signOutError) { console.error("profile cleanup signOut error:", signOutError); }
+        }
+        setUserModalError(formatAuthError(e));
+        closeBootstrapAdminModal();
         document.getElementById("userModal").classList.add("active");
       }
     });

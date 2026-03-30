@@ -843,7 +843,58 @@
       <div class="detail-grid" id="detailGrid"></div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="closeModal('detailModal')">Close</button>
+        <button class="btn btn-secondary" id="detailEditBtn" onclick="openEditLead()">Edit Lead</button>
         <button class="btn btn-primary" id="detailLogBtn">Log Activity</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ Edit Lead Modal ══ -->
+  <div class="modal-overlay" id="editLeadModal">
+    <div class="modal modal-wide">
+      <h2>Edit Lead</h2>
+      <p class="modal-sub">Update lead information and save changes instantly.</p>
+      <div class="form-row">
+        <div class="form-group"><label>Full Name</label><input type="text" id="editLeadName"></div>
+        <div class="form-group"><label>Company</label><input type="text" id="editLeadCompany"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Email</label><input type="email" id="editLeadEmail"></div>
+        <div class="form-group"><label>Phone</label><input type="text" id="editLeadPhone"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Website</label><input type="text" id="editLeadWebsite"></div>
+        <div class="form-group"><label>LinkedIn</label><input type="text" id="editLeadLinkedin"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Title</label><input type="text" id="editLeadTitle"></div>
+        <div class="form-group"><label>Industry</label><input type="text" id="editLeadIndustry"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Status</label>
+          <select id="editLeadStatus">
+            <option>New</option><option>Contacted</option><option>Qualified</option>
+            <option>Proposal</option><option>Closed</option><option>Dead</option>
+          </select>
+        </div>
+        <div class="form-group"><label>Assigned To</label><input type="text" id="editLeadAssignedTo"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Country</label><input type="text" id="editLeadCountry"></div>
+        <div class="form-group"><label>City</label><input type="text" id="editLeadCity"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>State / Province</label><input type="text" id="editLeadState"></div>
+        <div class="form-group"><label>Employees</label><input type="text" id="editLeadEmployeeRange"></div>
+      </div>
+      <div class="form-group">
+        <label>Address</label>
+        <textarea id="editLeadAddress" rows="2" style="width:100%;padding:10px 12px;border:1px solid var(--gray-200);border-radius:10px;font:inherit;resize:vertical;"></textarea>
+      </div>
+      <div id="editLeadExtraFields"></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal('editLeadModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="saveEditedLead()">Save Changes</button>
       </div>
     </div>
   </div>
@@ -1072,6 +1123,23 @@
       if (isAdminUser()) return true;
       const assignedTo = getAssignedRepName(lead);
       return !assignedTo || assignedTo === currentUser;
+    }
+    function getLeadEditableExtraKeys(lead) {
+      if (!lead) return [];
+      const coreKeys = new Set([
+        "id","name","company","email","phone","website","linkedin","industry","title","status","assignedTo",
+        "contactCount","lastContacted","createdAt","updatedAt","source","country","city","employeeRange",
+        "address","state","importBatchId","importFileName","importedBy","importedAt","adminGrantedAt",
+        "adminGrantedBy","createdBy","createdByName","autoCreated"
+      ]);
+      return Object.keys(lead).filter(key =>
+        !coreKeys.has(key) &&
+        !shouldHideDetailField(key)
+      ).sort((a,b) => a.localeCompare(b));
+    }
+    function setInputValue(id, value) {
+      const el = document.getElementById(id);
+      if (el) el.value = value ?? "";
     }
     function getBootstrapAdminRef() { return doc(db, "appMeta", "adminBootstrap"); }
     async function createAuthUserAccount(email, password) {
@@ -1819,6 +1887,7 @@
       document.getElementById("detailName").textContent = l.name || "Lead Details";
       document.getElementById("detailSub").textContent  = [l.title, l.company].filter(Boolean).join(" — ");
       document.getElementById("detailLogBtn").onclick   = ()=>{ closeModal("detailModal"); openActivity(id); };
+      document.getElementById("detailEditBtn").style.display = "inline-flex";
 
       const email = cleanEmail(l.email);
       const phone = cleanPhone(l.phone);
@@ -1868,6 +1937,91 @@
 
       document.getElementById("detailGrid").innerHTML = html;
       document.getElementById("detailModal").classList.add("active");
+    };
+    window.openEditLead = function () {
+      const lead = allLeads[currentLeadId];
+      if (!lead) return;
+      if (!isLeadVisibleToCurrentUser(lead)) return showToast("This lead is assigned to another rep","error");
+      setInputValue("editLeadName", lead.name);
+      setInputValue("editLeadCompany", lead.company);
+      setInputValue("editLeadEmail", cleanEmail(lead.email));
+      setInputValue("editLeadPhone", cleanPhone(lead.phone));
+      setInputValue("editLeadWebsite", lead.website);
+      setInputValue("editLeadLinkedin", lead.linkedin);
+      setInputValue("editLeadTitle", lead.title);
+      setInputValue("editLeadIndustry", lead.industry);
+      setInputValue("editLeadStatus", lead.status || "New");
+      setInputValue("editLeadAssignedTo", lead.assignedTo);
+      setInputValue("editLeadCountry", lead.country);
+      setInputValue("editLeadCity", lead.city);
+      setInputValue("editLeadState", lead.state);
+      setInputValue("editLeadEmployeeRange", lead.employeeRange);
+      setInputValue("editLeadAddress", lead.address);
+
+      const assignedInput = document.getElementById("editLeadAssignedTo");
+      if (assignedInput) {
+        assignedInput.readOnly = !isAdminUser();
+        assignedInput.placeholder = isAdminUser() ? "Rep name or blank for unassigned" : `Only blank or ${currentUser}`;
+      }
+
+      const extraKeys = getLeadEditableExtraKeys(lead);
+      const extraWrap = document.getElementById("editLeadExtraFields");
+      extraWrap.innerHTML = extraKeys.length ? `
+        <div class="extras-heading" style="margin-top:8px;">Additional CSV Data</div>
+        ${extraKeys.map(key => `
+          <div class="form-group">
+            <label>${esc(formatFieldLabel(key))}</label>
+            <textarea data-extra-key="${esc(key)}" rows="2" style="width:100%;padding:10px 12px;border:1px solid var(--gray-200);border-radius:10px;font:inherit;resize:vertical;">${esc(String(lead[key] ?? ""))}</textarea>
+          </div>
+        `).join("")}
+      ` : "";
+
+      closeModal("detailModal");
+      document.getElementById("editLeadModal").classList.add("active");
+    };
+    window.saveEditedLead = async function () {
+      const lead = allLeads[currentLeadId];
+      if (!lead) return showToast("Lead not found","error");
+      if (!isLeadVisibleToCurrentUser(lead)) return showToast("This lead is assigned to another rep","error");
+
+      const assignedToRaw = (document.getElementById("editLeadAssignedTo").value || "").trim();
+      if (!isAdminUser() && assignedToRaw && assignedToRaw !== currentUser) {
+        return showToast("Reps can only keep the lead assigned to themselves or leave it unassigned","error");
+      }
+
+      const updates = {
+        name: document.getElementById("editLeadName").value.trim(),
+        company: document.getElementById("editLeadCompany").value.trim(),
+        email: cleanEmail(document.getElementById("editLeadEmail").value),
+        phone: cleanPhone(document.getElementById("editLeadPhone").value),
+        website: document.getElementById("editLeadWebsite").value.trim(),
+        linkedin: document.getElementById("editLeadLinkedin").value.trim(),
+        title: document.getElementById("editLeadTitle").value.trim(),
+        industry: document.getElementById("editLeadIndustry").value.trim(),
+        status: document.getElementById("editLeadStatus").value,
+        assignedTo: assignedToRaw,
+        country: document.getElementById("editLeadCountry").value.trim(),
+        city: document.getElementById("editLeadCity").value.trim(),
+        state: document.getElementById("editLeadState").value.trim(),
+        employeeRange: document.getElementById("editLeadEmployeeRange").value.trim(),
+        address: document.getElementById("editLeadAddress").value.trim(),
+        updatedAt: serverTimestamp()
+      };
+      document.querySelectorAll("#editLeadExtraFields [data-extra-key]").forEach(el => {
+        const key = el.getAttribute("data-extra-key");
+        if (key) updates[key] = el.value.trim();
+      });
+
+      if (!updates.name) return showToast("Name is required","error");
+      try {
+        await updateDoc(doc(db, "leads", currentLeadId), updates);
+        closeModal("editLeadModal");
+        showToast("Lead updated","success");
+        openDetail(currentLeadId);
+      } catch (e) {
+        console.error("saveEditedLead error:", e);
+        showToast("Failed to save lead changes","error");
+      }
     };
 
     // ── ADD LEAD ───────────────────────────────────────────────────

@@ -531,6 +531,58 @@
     .rep-avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg, var(--blue), var(--purple)); color: white; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; flex-shrink: 0; }
     .rep-name { font-weight: 500; font-size: 13px; }
     .rep-count { font-size: 11px; color: var(--gray-400); margin-top: 1px; }
+    .user-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .user-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: rgba(255,255,255,0.64);
+    }
+    .user-row-main {
+      min-width: 0;
+    }
+    .user-row-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--gray-900);
+    }
+    .user-row-sub {
+      font-size: 12px;
+      color: var(--gray-500);
+      margin-top: 2px;
+      overflow-wrap: anywhere;
+    }
+    .user-role-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 78px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      border: 1px solid transparent;
+    }
+    .user-role-admin {
+      background: var(--gold-soft);
+      color: #88580f;
+      border-color: rgba(198,138,47,0.18);
+    }
+    .user-role-rep {
+      background: var(--blue-light);
+      color: var(--blue);
+      border-color: rgba(29,78,216,0.14);
+    }
 
     /* URL copy dialog */
     .url-copy-box { display: flex; gap: 6px; margin-top: 10px; }
@@ -640,6 +692,7 @@
       </div>
       <div class="user-badge">
         <strong id="userDisplay">—</strong>
+        <button id="adminUsersBtn" style="display:none" onclick="openAdminUsers()">Users</button>
         <button onclick="changeUser()">Switch</button>
       </div>
     </div>
@@ -673,7 +726,7 @@
       <input type="file" id="csvInput" accept=".csv" onchange="handleCSV(event)">
       <button class="btn btn-secondary" onclick="document.getElementById('csvInput').click()">Import CSV</button>
       <button class="btn btn-primary"   onclick="openAddLead()">+ Add Lead</button>
-      <button class="btn btn-danger"    onclick="clearAllLeads()">Clear All</button>
+      <button class="btn btn-danger" id="clearAllBtn" style="display:none" onclick="clearAllLeads()">Clear All</button>
     </div>
 
     <div class="table-wrap">
@@ -841,17 +894,60 @@
     </div>
   </div>
 
-  <!-- ══ User Setup Modal ══ -->
+  <!-- ══ Admin Users Modal ══ -->
+  <div class="modal-overlay" id="adminUsersModal">
+    <div class="modal modal-wide">
+      <h2>User Management</h2>
+      <p class="modal-sub">Create app users and control which users have admin access.</p>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Full Name</label>
+          <input type="text" id="adminNewUserName" placeholder="e.g. Ali Jaffar">
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="adminNewUserEmail" placeholder="name@company.com">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="adminNewUserPassword" placeholder="Minimum 6 characters">
+        </div>
+        <div class="form-group">
+          <label>Role</label>
+          <select id="adminNewUserRole">
+            <option value="rep">Rep</option>
+            <option value="admin">Admin</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-actions" style="margin-top:0; margin-bottom:16px;">
+        <button class="btn btn-primary" onclick="createManagedUser()">Create User</button>
+      </div>
+      <div id="adminUsersList"></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal('adminUsersModal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ User Login Modal ══ -->
   <div class="modal-overlay active" id="userModal">
     <div class="modal">
       <h2>Welcome to Lead Tracker</h2>
-      <p class="modal-sub">Enter your name — this tracks your activity and filters your workspace.</p>
+      <p class="modal-sub">Sign in with your email and password to access the live lead database.</p>
       <div class="form-group">
-        <label>Your Name</label>
-        <input type="text" id="userNameInput" placeholder="e.g. Ali Jaffar" onkeydown="if(event.key==='Enter')setUser()">
+        <label>Email</label>
+        <input type="email" id="userEmailInput" placeholder="name@company.com" onkeydown="if(event.key==='Enter')loginUser()">
       </div>
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="userPasswordInput" placeholder="Enter your password" onkeydown="if(event.key==='Enter')loginUser()">
+      </div>
+      <p class="modal-sub" id="userModalError" style="display:none; margin-bottom:0; color:var(--red);"></p>
       <div class="modal-actions">
-        <button class="btn btn-primary" onclick="setUser()">Continue</button>
+        <button class="btn btn-primary" onclick="loginUser()">Sign In</button>
       </div>
     </div>
   </div>
@@ -876,12 +972,19 @@
     import { initializeApp }
       from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import {
-      getFirestore, collection, addDoc, updateDoc, doc,
+      getFirestore, collection, addDoc, updateDoc, doc, getDoc, setDoc,
       onSnapshot, writeBatch, serverTimestamp, increment, query, orderBy
     } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+    import {
+      getAuth, onAuthStateChanged, signInWithEmailAndPassword,
+      signOut, createUserWithEmailAndPassword
+    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
     const app = initializeApp(firebaseConfig);
     const db  = getFirestore(app);
+    const auth = getAuth(app);
+    const secondaryApp = initializeApp(firebaseConfig, "userCreator");
+    const secondaryAuth = getAuth(secondaryApp);
 
     let allLeads      = {};
     let currentLeadId = null;
@@ -890,43 +993,182 @@
     let selectedRep   = null;
     let activeView    = "admin";
     let bulkImportInProgress = false;
+    let currentUserProfile = null;
+    let currentUserId = "";
+    let usersCache = {};
+    let unsubscribeLeads = null;
+    let unsubscribeUsers = null;
 
     // ── CLOSE MODAL (defined early so initUser can call it) ────────
     function closeModal(id) { document.getElementById(id)?.classList.remove("active"); }
     window.closeModal = closeModal;
 
-    // ── USER ───────────────────────────────────────────────────────
-    function initUser() {
-      const saved = localStorage.getItem("midasRepName");
-      if (saved) { currentUser = saved; applyUserDisplay(); closeModal("userModal"); }
+    // ── USER / AUTH ────────────────────────────────────────────────
+    function setUserModalError(message = "") {
+      const el = document.getElementById("userModalError");
+      if (!el) return;
+      el.textContent = message;
+      el.style.display = message ? "block" : "none";
     }
+    function isAdminUser() { return currentUserProfile?.role === "admin"; }
     function applyUserDisplay() {
-      document.getElementById("userDisplay").textContent = currentUser;
+      document.getElementById("userDisplay").textContent = currentUser || "—";
       const assignEl = document.getElementById("newAssigned");
       if (assignEl) assignEl.value = currentUser;
       const wsTitleEl = document.getElementById("wsTitle");
       if (wsTitleEl) wsTitleEl.textContent = `${currentUser}'s Workspace`;
+      const clearBtn = document.getElementById("clearAllBtn");
+      const adminBtn = document.getElementById("adminUsersBtn");
+      if (clearBtn) clearBtn.style.display = isAdminUser() ? "inline-flex" : "none";
+      if (adminBtn) adminBtn.style.display = isAdminUser() ? "inline-flex" : "none";
     }
-    window.setUser = function () {
+    async function loadCurrentUserProfile(firebaseUser) {
+      currentUserId = firebaseUser?.uid || "";
+      currentUserProfile = null;
+      currentUser = "";
+      if (!firebaseUser) return;
+      const snap = await getDoc(doc(db, "users", firebaseUser.uid));
+      if (!snap.exists()) throw new Error("No user profile found. Ask an admin to create your account.");
+      currentUserProfile = { id: snap.id, ...snap.data() };
+      currentUser = currentUserProfile.name || firebaseUser.email || "User";
+    }
+    function bindLeadListener() {
+      if (unsubscribeLeads) unsubscribeLeads();
+      unsubscribeLeads = onSnapshot(
+        query(collection(db,"leads"), orderBy("createdAt","desc")),
+        snapshot => {
+          snapshot.docChanges().forEach(ch => {
+            const d = { id: ch.doc.id, ...ch.doc.data() };
+            if (ch.type === "added" || ch.type === "modified") allLeads[d.id] = d;
+            if (ch.type === "removed") delete allLeads[d.id];
+          });
+          if (!bulkImportInProgress) refreshLeadViews();
+        },
+        err => {
+          console.error(err);
+          document.getElementById("leadTableBody").innerHTML =
+            `<tr class="state-row"><td colspan="9"><strong>Could not connect</strong><p>Check Firebase config and Firestore rules.</p></td></tr>`;
+        }
+      );
+    }
+    function bindUsersListener() {
+      if (unsubscribeUsers) unsubscribeUsers();
+      unsubscribeUsers = onSnapshot(
+        query(collection(db, "users"), orderBy("name")),
+        snapshot => {
+          usersCache = {};
+          snapshot.forEach(docSnap => { usersCache[docSnap.id] = { id: docSnap.id, ...docSnap.data() }; });
+          if (document.getElementById("adminUsersModal")?.classList.contains("active")) renderAdminUsersList();
+        },
+        err => console.error("Users listener error:", err)
+      );
+    }
+    window.loginUser = async function () {
       try {
-        const val = document.getElementById("userNameInput").value.trim();
-        if (!val) return showToast("Enter your name","error");
-        currentUser = val;
-        localStorage.setItem("midasRepName", val);
-        applyUserDisplay();
-        closeModal("userModal");
-        if (activeView === "workspace") renderWorkspace();
+        const email = document.getElementById("userEmailInput").value.trim();
+        const password = document.getElementById("userPasswordInput").value;
+        if (!email || !password) return setUserModalError("Enter your email and password.");
+        setUserModalError("");
+        await signInWithEmailAndPassword(auth, email, password);
       } catch(e) {
-        console.error("setUser error:", e);
-        showToast("Error saving name — check console","error");
+        console.error("loginUser error:", e);
+        setUserModalError(e?.message || "Could not sign in.");
       }
     };
     window.changeUser = function () {
-      document.getElementById("userNameInput").value = currentUser;
+      document.getElementById("userPasswordInput").value = "";
+      document.getElementById("userEmailInput").value = currentUserProfile?.email || auth.currentUser?.email || "";
+      setUserModalError("");
       document.getElementById("userModal").classList.add("active");
-      setTimeout(() => document.getElementById("userNameInput").focus(), 100);
+      setTimeout(() => document.getElementById("userEmailInput").focus(), 100);
     };
-    initUser();
+    window.logoutUser = async function () {
+      try { await signOut(auth); } catch (e) { console.error("logoutUser error:", e); }
+    };
+    window.openAdminUsers = function () {
+      if (!isAdminUser()) return showToast("Admin access only","error");
+      ["adminNewUserName","adminNewUserEmail","adminNewUserPassword"].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.value = "";
+      });
+      document.getElementById("adminNewUserRole").value = "rep";
+      renderAdminUsersList();
+      document.getElementById("adminUsersModal").classList.add("active");
+    };
+    function renderAdminUsersList() {
+      const wrap = document.getElementById("adminUsersList");
+      if (!wrap) return;
+      const users = Object.values(usersCache).sort((a,b) => (a.name || a.email || "").localeCompare(b.name || b.email || ""));
+      if (!users.length) {
+        wrap.innerHTML = `<div class="empty-workspace" style="padding:32px 20px;"><strong>No users yet</strong><p>Create the first rep or admin above.</p></div>`;
+        return;
+      }
+      wrap.innerHTML = `<div class="user-list">${users.map(u => `
+        <div class="user-row">
+          <div class="user-row-main">
+            <div class="user-row-name">${esc(u.name || "Unnamed User")}</div>
+            <div class="user-row-sub">${esc(u.email || "")}</div>
+          </div>
+          <span class="user-role-badge ${u.role === "admin" ? "user-role-admin" : "user-role-rep"}">${esc(u.role || "rep")}</span>
+        </div>
+      `).join("")}</div>`;
+    }
+    window.createManagedUser = async function () {
+      if (!isAdminUser()) return showToast("Admin access only","error");
+      const name = document.getElementById("adminNewUserName").value.trim();
+      const email = document.getElementById("adminNewUserEmail").value.trim().toLowerCase();
+      const password = document.getElementById("adminNewUserPassword").value;
+      const role = document.getElementById("adminNewUserRole").value;
+      if (!name || !email || !password) return showToast("Name, email, and password are required","error");
+      try {
+        const cred = await createUserWithEmailAndPassword(secondaryAuth, email, password);
+        await setDoc(doc(db, "users", cred.user.uid), {
+          name, email, role,
+          createdAt: serverTimestamp(),
+          createdBy: currentUserId
+        });
+        await signOut(secondaryAuth);
+        showToast(`User created: ${name}`,"success");
+        ["adminNewUserName","adminNewUserEmail","adminNewUserPassword"].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.value = "";
+        });
+        document.getElementById("adminNewUserRole").value = "rep";
+      } catch (e) {
+        console.error("createManagedUser error:", e);
+        showToast(e?.message || "Failed to create user","error");
+      }
+    };
+    onAuthStateChanged(auth, async firebaseUser => {
+      try {
+        if (!firebaseUser) {
+          currentUserProfile = null;
+          currentUserId = "";
+          currentUser = "";
+          allLeads = {};
+          usersCache = {};
+          if (unsubscribeLeads) { unsubscribeLeads(); unsubscribeLeads = null; }
+          if (unsubscribeUsers) { unsubscribeUsers(); unsubscribeUsers = null; }
+          applyUserDisplay();
+          document.getElementById("leadTableBody").innerHTML =
+            `<tr class="state-row"><td colspan="9"><strong>Sign in required</strong><p>Use your email and password to access leads.</p></td></tr>`;
+          document.getElementById("leadQueue").innerHTML =
+            `<div class="empty-workspace"><div class="big">🔐</div><strong>Sign in to view your workspace</strong><p>Your assigned leads will appear here after login.</p></div>`;
+          document.getElementById("userModal").classList.add("active");
+          return;
+        }
+        await loadCurrentUserProfile(firebaseUser);
+        applyUserDisplay();
+        closeModal("userModal");
+        bindLeadListener();
+        if (isAdminUser()) bindUsersListener();
+        else if (unsubscribeUsers) { unsubscribeUsers(); unsubscribeUsers = null; usersCache = {}; }
+      } catch (e) {
+        console.error("auth init error:", e);
+        setUserModalError(e?.message || "Could not load your account.");
+        document.getElementById("userModal").classList.add("active");
+      }
+    });
 
     // ── VIEW SWITCH ────────────────────────────────────────────────
     window.switchView = function (v) {
@@ -944,24 +1186,6 @@
       updateFilterDropdowns();
       if (activeView === "workspace") renderWorkspace();
     }
-
-    // ── REAL-TIME SYNC ─────────────────────────────────────────────
-    onSnapshot(
-      query(collection(db,"leads"), orderBy("createdAt","desc")),
-      snapshot => {
-        snapshot.docChanges().forEach(ch => {
-          const d = { id: ch.doc.id, ...ch.doc.data() };
-          if (ch.type === "added" || ch.type === "modified") allLeads[d.id] = d;
-          if (ch.type === "removed") delete allLeads[d.id];
-        });
-        if (!bulkImportInProgress) refreshLeadViews();
-      },
-      err => {
-        console.error(err);
-        document.getElementById("leadTableBody").innerHTML =
-          `<tr class="state-row"><td colspan="9"><strong>Could not connect</strong><p>Check Firebase config and Firestore rules.</p></td></tr>`;
-      }
-    );
 
     // ── METRICS ────────────────────────────────────────────────────
     function updateMetrics() {
@@ -1360,6 +1584,7 @@
 
     // ── CLEAR ALL ──────────────────────────────────────────────────
     window.clearAllLeads = async function () {
+      if (!isAdminUser()) return showToast("Admin access only","error");
       const ids = Object.keys(allLeads);
       if (!ids.length) return showToast("Nothing to clear","");
       if (!confirm(`Delete all ${ids.length} leads? This cannot be undone.`)) return;

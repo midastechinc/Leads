@@ -724,7 +724,8 @@
       <select id="filterTitle" onchange="applyFilters()"><option value="">All Titles</option></select>
       <div class="spacer"></div>
       <input type="file" id="csvInput" accept=".csv" onchange="handleCSV(event)">
-      <button class="btn btn-secondary" onclick="document.getElementById('csvInput').click()">Import CSV</button>
+      <button class="btn btn-secondary" id="importCsvBtn" style="display:none" onclick="document.getElementById('csvInput').click()">Import CSV</button>
+      <button class="btn btn-secondary" id="importBatchesBtn" style="display:none" onclick="openImportBatches()">Delete Batch</button>
       <button class="btn btn-primary"   onclick="openAddLead()">+ Add Lead</button>
       <button class="btn btn-danger" id="clearAllBtn" style="display:none" onclick="clearAllLeads()">Clear All</button>
     </div>
@@ -932,6 +933,18 @@
     </div>
   </div>
 
+  <!-- ══ Import Batches Modal ══ -->
+  <div class="modal-overlay" id="importBatchesModal">
+    <div class="modal modal-wide">
+      <h2>Imported Batches</h2>
+      <p class="modal-sub">Delete one CSV import batch without clearing the full lead database. Batch delete removes leads created by that import and clears the batch record.</p>
+      <div id="importBatchesList"></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal('importBatchesModal')">Close</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ══ User Login Modal ══ -->
   <div class="modal-overlay active" id="userModal">
     <div class="modal">
@@ -1006,8 +1019,10 @@
     let currentUserProfile = null;
     let currentUserId = "";
     let usersCache = {};
+    let importBatchesCache = {};
     let unsubscribeLeads = null;
     let unsubscribeUsers = null;
+    let unsubscribeImportBatches = null;
     let bootstrapAdminDismissed = false;
 
     // ── CLOSE MODAL (defined early so initUser can call it) ────────
@@ -1042,6 +1057,22 @@
       return error?.message || "Could not sign in.";
     }
     function isAdminUser() { return currentUserProfile?.role === "admin"; }
+    function getAssignedRepName(lead) { return String(lead?.assignedTo || "").trim(); }
+    function isLeadVisibleToCurrentUser(lead) {
+      if (!lead) return false;
+      if (isAdminUser()) return true;
+      const assignedTo = getAssignedRepName(lead);
+      return !assignedTo || assignedTo === currentUser;
+    }
+    function getVisibleLeads() {
+      return Object.values(allLeads).filter(isLeadVisibleToCurrentUser);
+    }
+    function canCurrentUserManageLeadAssignment(lead) {
+      if (!lead) return false;
+      if (isAdminUser()) return true;
+      const assignedTo = getAssignedRepName(lead);
+      return !assignedTo || assignedTo === currentUser;
+    }
     function getBootstrapAdminRef() { return doc(db, "appMeta", "adminBootstrap"); }
     async function createAuthUserAccount(email, password) {
       const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${firebaseConfig.apiKey}`, {
@@ -1114,8 +1145,12 @@
       if (wsTitleEl) wsTitleEl.textContent = `${currentUser}'s Workspace`;
       const clearBtn = document.getElementById("clearAllBtn");
       const adminBtn = document.getElementById("adminUsersBtn");
+      const importBtn = document.getElementById("importCsvBtn");
+      const importBatchesBtn = document.getElementById("importBatchesBtn");
       if (clearBtn) clearBtn.style.display = isAdminUser() ? "inline-flex" : "none";
       if (adminBtn) adminBtn.style.display = isAdminUser() ? "inline-flex" : "none";
+      if (importBtn) importBtn.style.display = isAdminUser() ? "inline-flex" : "none";
+      if (importBatchesBtn) importBatchesBtn.style.display = isAdminUser() ? "inline-flex" : "none";
     }
     async function loadCurrentUserProfile(firebaseUser) {
       currentUserId = firebaseUser?.uid || "";
@@ -1168,6 +1203,18 @@
           if (document.getElementById("adminUsersModal")?.classList.contains("active")) renderAdminUsersList();
         },
         err => console.error("Users listener error:", err)
+      );
+    }
+    function bindImportBatchesListener() {
+      if (unsubscribeImportBatches) unsubscribeImportBatches();
+      unsubscribeImportBatches = onSnapshot(
+        query(collection(db, "importBatches"), orderBy("createdAt", "desc")),
+        snapshot => {
+          importBatchesCache = {};
+          snapshot.forEach(docSnap => { importBatchesCache[docSnap.id] = { id: docSnap.id, ...docSnap.data() }; });
+          if (document.getElementById("importBatchesModal")?.classList.contains("active")) renderImportBatchesList();
+        },
+        err => console.error("Import batches listener error:", err)
       );
     }
     window.loginUser = async function () {
@@ -1259,6 +1306,11 @@
       renderAdminUsersList();
       document.getElementById("adminUsersModal").classList.add("active");
     };
+    window.openImportBatches = function () {
+      if (!isAdminUser()) return showToast("Admin access only","error");
+      renderImportBatchesList();
+      document.getElementById("importBatchesModal").classList.add("active");
+    };
     function renderAdminUsersList() {
       const wrap = document.getElementById("adminUsersList");
       if (!wrap) return;
@@ -1277,6 +1329,57 @@
         </div>
       `).join("")}</div>`;
     }
+    function renderImportBatchesList() {
+      const wrap = document.getElementById("importBatchesList");
+      if (!wrap) return;
+      const batches = Object.values(importBatchesCache).sort((a,b) => {
+        const aSec = a.createdAt?.seconds || 0;
+        const bSec = b.createdAt?.seconds || 0;
+        return bSec - aSec;
+      });
+      if (!batches.length) {
+        wrap.innerHTML = `<div class="empty-workspace" style="padding:32px 20px;"><strong>No import batches yet</strong><p>Each CSV upload will appear here so admins can delete one batch at a time.</p></div>`;
+        return;
+      }
+      wrap.innerHTML = `<div class="user-list">${batches.map(batch => {
+        const addedCount = Number(batch.addedCount || 0);
+        const updatedCount = Number(batch.updatedCount || 0);
+        const stamp = batch.createdAt?.toDate ? fmtDate(batch.createdAt.toDate()) : "Just now";
+        return `
+        <div class="user-row">
+          <div class="user-row-main">
+            <div class="user-row-name">${esc(batch.fileName || "CSV Import")}</div>
+            <div class="user-row-sub">${esc(`${addedCount} added, ${updatedCount} updated • ${stamp}`)}</div>
+          </div>
+          <button class="btn btn-danger btn-sm" onclick="deleteImportBatch('${esc(batch.id)}')">Delete Batch</button>
+        </div>`;
+      }).join("")}</div>`;
+    }
+    window.deleteImportBatch = async function (batchId) {
+      if (!isAdminUser()) return showToast("Admin access only","error");
+      try {
+        const batchMeta = importBatchesCache[batchId];
+        if (!batchMeta) return showToast("Import batch not found","error");
+        const label = batchMeta.fileName || "this import batch";
+        const toDeleteSnapshot = await getDocs(query(collection(db, "leads"), where("importBatchId", "==", batchId)));
+        const leadIds = toDeleteSnapshot.docs.map(docSnap => docSnap.id);
+        if (!confirm(`Delete ${leadIds.length} leads from ${label}? This cannot be undone.`)) return;
+        showToast("Deleting batch…");
+        const CHUNK = 400;
+        for (let i = 0; i < leadIds.length; i += CHUNK) {
+          const batch = writeBatch(db);
+          leadIds.slice(i, i + CHUNK).forEach(id => batch.delete(doc(db, "leads", id)));
+          await batch.commit();
+        }
+        const metaBatch = writeBatch(db);
+        metaBatch.delete(doc(db, "importBatches", batchId));
+        await metaBatch.commit();
+        showToast(`${label} deleted`,"success");
+      } catch (e) {
+        console.error("deleteImportBatch error:", e);
+        showToast("Failed to delete batch","error");
+      }
+    };
     window.createManagedUser = async function () {
       if (!isAdminUser()) return showToast("Admin access only","error");
       const name = document.getElementById("adminNewUserName").value.trim();
@@ -1318,14 +1421,17 @@
           currentUser = "";
           allLeads = {};
           usersCache = {};
+          importBatchesCache = {};
           if (unsubscribeLeads) { unsubscribeLeads(); unsubscribeLeads = null; }
           if (unsubscribeUsers) { unsubscribeUsers(); unsubscribeUsers = null; }
+          if (unsubscribeImportBatches) { unsubscribeImportBatches(); unsubscribeImportBatches = null; }
           applyUserDisplay();
           document.getElementById("leadTableBody").innerHTML =
             `<tr class="state-row"><td colspan="9"><strong>Sign in required</strong><p>Use your email and password to access leads.</p></td></tr>`;
           document.getElementById("leadQueue").innerHTML =
             `<div class="empty-workspace"><div class="big">🔐</div><strong>Sign in to view your workspace</strong><p>Your assigned leads will appear here after login.</p></div>`;
           closeBootstrapAdminModal();
+          closeModal("importBatchesModal");
           document.getElementById("userModal").classList.add("active");
           return;
         }
@@ -1333,8 +1439,16 @@
         applyUserDisplay();
         closeModal("userModal");
         bindLeadListener();
-        if (isAdminUser()) bindUsersListener();
-        else if (unsubscribeUsers) { unsubscribeUsers(); unsubscribeUsers = null; usersCache = {}; }
+        if (isAdminUser()) {
+          bindUsersListener();
+          bindImportBatchesListener();
+        } else {
+          if (unsubscribeUsers) { unsubscribeUsers(); unsubscribeUsers = null; }
+          if (unsubscribeImportBatches) { unsubscribeImportBatches(); unsubscribeImportBatches = null; }
+          usersCache = {};
+          importBatchesCache = {};
+          closeModal("importBatchesModal");
+        }
         await refreshBootstrapAdminState(firebaseUser);
       } catch (e) {
         console.error("auth init error:", e);
@@ -1343,6 +1457,7 @@
         }
         setUserModalError(formatAuthError(e));
         closeBootstrapAdminModal();
+        closeModal("importBatchesModal");
         document.getElementById("userModal").classList.add("active");
       }
     });
@@ -1366,7 +1481,7 @@
 
     // ── METRICS ────────────────────────────────────────────────────
     function updateMetrics() {
-      const leads = Object.values(allLeads);
+      const leads = getVisibleLeads();
       const n = s => leads.filter(l => l.status === s).length;
       document.getElementById("metricTotal").textContent     = leads.length;
       document.getElementById("metricNew").textContent       = n("New");
@@ -1385,7 +1500,7 @@
     };
 
     function updateFilterDropdowns() {
-      const leads = Object.values(allLeads);
+      const leads = getVisibleLeads();
       const setOpts = (id, values, label) => {
         const sel = document.getElementById(id), cur = sel.value;
         sel.innerHTML = `<option value="">${label}</option>` +
@@ -1403,7 +1518,7 @@
       const rep     = document.getElementById("filterRep").value;
       const country = document.getElementById("filterCountry").value;
       const title   = document.getElementById("filterTitle").value;
-      const leads   = Object.values(allLeads).filter(l => {
+      const leads   = getVisibleLeads().filter(l => {
         const email = cleanEmail(l.email);
         return (
           (!search  || (l.name||"").toLowerCase().includes(search) ||
@@ -1493,7 +1608,7 @@
       const status  = document.getElementById("wsFilterStatus")?.value || "";
       const sort    = document.getElementById("wsSort")?.value || "priority";
 
-      const myLeads = Object.values(allLeads).filter(l =>
+      const myLeads = getVisibleLeads().filter(l =>
         l.assignedTo === me &&
         (!status || l.status === status) &&
         (!search || (l.name||"").toLowerCase().includes(search) ||
@@ -1581,8 +1696,11 @@
 
     // ── ASSIGN COMPANY ─────────────────────────────────────────────
     window.openAssignCompany = function (groupKey) {
-      const companyLeads = getCompanyLeads(groupKey);
+      const companyLeads = getCompanyLeads(groupKey).filter(isLeadVisibleToCurrentUser);
       if (!companyLeads.length) return;
+      if (!companyLeads.every(canCurrentUserManageLeadAssignment)) {
+        return showToast("You can only claim unassigned leads or unassign your own leads","error");
+      }
       assignTarget = {
         type: "company",
         groupKey,
@@ -1592,6 +1710,22 @@
       selectedRep = getCompanyAssignedRep(companyLeads);
       document.getElementById("assignModalSub").textContent =
         `${assignTarget.companyName} — ${companyLeads.length} lead${companyLeads.length!==1?"s":""}`;
+
+      if (!isAdminUser()) {
+        const repChoices = [
+          { value: currentUser, label: currentUser || "Myself", count: Object.values(allLeads).filter(l => l.assignedTo === currentUser).length, color: "#2563eb" },
+          { value: "__UNASSIGNED__", label: "Unassigned", count: Object.values(allLeads).filter(l => !getAssignedRepName(l)).length, color: "#6b7280" }
+        ];
+        document.getElementById("repOptionsList").innerHTML = repChoices.map(choice => {
+          const initials = choice.label === "Unassigned" ? "UA" : choice.label.split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2);
+          return `<div class="rep-option${choice.value===selectedRep?" selected":""}" onclick="selectRep(this,'${esc(choice.value)}')">
+            <div class="rep-avatar" style="background:${choice.color}">${esc(initials)}</div>
+            <div><div class="rep-name">${esc(choice.label)}</div><div class="rep-count">${choice.count} lead${choice.count!==1?"s":""}</div></div>
+          </div>`;
+        }).join("");
+        document.getElementById("assignModal").classList.add("active");
+        return;
+      }
 
       const reps = [...new Set(Object.values(allLeads).map(l=>l.assignedTo).filter(Boolean))].sort();
       if (currentUser && !reps.includes(currentUser)) reps.unshift(currentUser);
@@ -1614,7 +1748,7 @@
     };
 
     window.selectRep = function (el, name) {
-      if (!name) return;
+      if (name === undefined || name === null || name === "") return;
       selectedRep = name;
       document.querySelectorAll(".rep-option").forEach(o => o.classList.remove("selected"));
       if (el) el.classList.add("selected");
@@ -1624,14 +1758,16 @@
       if (!assignTarget || !selectedRep) return showToast("Select a rep first","error");
       try {
         if (assignTarget.type === "company") {
+          const nextAssignedTo = selectedRep === "__UNASSIGNED__" ? "" : selectedRep;
           const batch = writeBatch(db);
           assignTarget.leadIds.forEach(id => {
             batch.update(doc(db,"leads",id), {
-              assignedTo: selectedRep, updatedAt: serverTimestamp()
+              assignedTo: nextAssignedTo, updatedAt: serverTimestamp()
             });
           });
           await batch.commit();
-          showToast(`${assignTarget.companyName} assigned to ${selectedRep}`,"success");
+          const actionLabel = nextAssignedTo ? `assigned to ${nextAssignedTo}` : "unassigned";
+          showToast(`${assignTarget.companyName} ${actionLabel}`,"success");
         }
         closeModal("assignModal");
       } catch(e) { console.error(e); showToast("Failed to assign","error"); }
@@ -1639,6 +1775,7 @@
 
     // ── UPDATE STATUS ──────────────────────────────────────────────
     window.updateStatus = async function (id, status) {
+      if (!canCurrentUserManageLeadAssignment(allLeads[id])) return showToast("This lead is assigned to another rep","error");
       try { await updateDoc(doc(db,"leads",id), { status, updatedAt: serverTimestamp() }); }
       catch(e) { console.error(e); showToast("Failed","error"); }
     };
@@ -1647,6 +1784,7 @@
     window.openActivity = function (id) {
       currentLeadId = id;
       const l = allLeads[id];
+      if (!isLeadVisibleToCurrentUser(l)) return showToast("This lead is assigned to another rep","error");
       document.getElementById("activityModalSub").textContent =
         l ? `${l.name||""}${l.company?" — "+l.company:""}` : "";
       document.getElementById("activityNotes").value        = "";
@@ -1676,6 +1814,7 @@
     window.openDetail = function (id) {
       const l = allLeads[id];
       if (!l) return;
+      if (!isLeadVisibleToCurrentUser(l)) return showToast("This lead is assigned to another rep","error");
       currentLeadId = id;
       document.getElementById("detailName").textContent = l.name || "Lead Details";
       document.getElementById("detailSub").textContent  = [l.title, l.company].filter(Boolean).join(" — ");
@@ -1763,13 +1902,19 @@
     window.clearAllLeads = async function () {
       if (!isAdminUser()) return showToast("Admin access only","error");
       const ids = Object.keys(allLeads);
-      if (!ids.length) return showToast("Nothing to clear","");
-      if (!confirm(`Delete all ${ids.length} leads? This cannot be undone.`)) return;
+      const importBatchIds = Object.keys(importBatchesCache);
+      if (!ids.length && !importBatchIds.length) return showToast("Nothing to clear","");
+      if (!confirm(`Delete all ${ids.length} leads and ${importBatchIds.length} import batch record${importBatchIds.length!==1?"s":""}? This cannot be undone.`)) return;
       showToast("Deleting…");
       const CHUNK = 500;
       for (let i = 0; i < ids.length; i += CHUNK) {
         const batch = writeBatch(db);
         ids.slice(i,i+CHUNK).forEach(id => batch.delete(doc(db,"leads",id)));
+        await batch.commit();
+      }
+      for (let i = 0; i < importBatchIds.length; i += CHUNK) {
+        const batch = writeBatch(db);
+        importBatchIds.slice(i,i+CHUNK).forEach(id => batch.delete(doc(db,"importBatches",id)));
         await batch.commit();
       }
       showToast("All leads cleared","success");
@@ -1906,6 +2051,7 @@
     }
 
     window.handleCSV = async function (event) {
+      if (!isAdminUser()) return showToast("Admin access only","error");
       if (bulkImportInProgress) return showToast("An import is already running","error");
       const file = event.target.files[0];
       if (!file) return;
@@ -1997,14 +2143,32 @@
         showToast(`Importing ${toAdd.length} new, ${toUpdate.length} updates…`);
         const CHUNK = 100;
         const totalOps = toAdd.length + toUpdate.length;
+        if (!totalOps) return showToast("No changes — all leads already exist","success");
         let completedOps = 0;
+        const importBatchRef = doc(collection(db, "importBatches"));
+        const importBatchId = importBatchRef.id;
+        const importFileName = file.name || "CSV Import";
 
         bulkImportInProgress = true;
         try {
+          await setDoc(importBatchRef, {
+            fileName: importFileName,
+            addedCount: toAdd.length,
+            updatedCount: toUpdate.length,
+            createdAt: serverTimestamp(),
+            createdBy: currentUserId,
+            createdByName: currentUser || ""
+          });
           for (let i=0;i<toAdd.length;i+=CHUNK) {
             const b = writeBatch(db);
             const batchItems = toAdd.slice(i,i+CHUNK);
-            batchItems.forEach(l => b.set(doc(collection(db,"leads")),l));
+            batchItems.forEach(l => b.set(doc(collection(db,"leads")), {
+              ...l,
+              importBatchId,
+              importFileName,
+              importedBy: currentUser || "",
+              importedAt: serverTimestamp()
+            }));
             await b.commit();
             completedOps += batchItems.length;
             showToast(`Importing… ${completedOps}/${totalOps}`,"");

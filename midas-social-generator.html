@@ -254,8 +254,6 @@ body.lt-shell select{
   background-position:right 13px center;
   background-size:11px 7px;
 }
-body.lt-shell .flux-settings{display:none}
-body.lt-shell .flux-settings.on{display:grid}
 body.lt-shell .flux-panel{display:none}
 body.lt-shell .flux-panel.on{display:block}
 body.lt-shell .mode-btn,
@@ -435,25 +433,20 @@ body.lt-shell .toast{
     <div class="lbl">🎨 Image Engine</div>
     <select id="imageEngine">
       <option value="canvas" selected>Built-in Graphic Renderer</option>
-      <option value="flux">FLUX AI Image Generation</option>
+      <option value="flux">FLUX via 1min.ai</option>
     </select>
-    <p class="note">Use FLUX when you want AI-generated visuals instead of text-based graphic layouts.</p>
-  </div>
-  <div class="panel flux-panel" id="fluxKeyPanel" style="margin-bottom:0">
-    <div class="lbl">🔑 FLUX API Key</div>
-    <input id="fluxApiKey" type="password" placeholder="Enter your Black Forest Labs API key">
-    <p class="note">Shown only for the direct FLUX route. Your 1min.ai key is used for text generation, while direct FLUX currently uses a Black Forest Labs key.</p>
+    <p class="note">Use FLUX when you want AI-generated visuals instead of text-based graphic layouts. This uses your existing 1min.ai API key.</p>
   </div>
 </div>
 
 <div class="panel flux-panel" id="fluxModelPanel">
   <div class="lbl">⚙️ FLUX Model</div>
   <select id="fluxModel">
-    <option value="flux-pro-1.1" selected>FLUX 1.1 Pro</option>
-    <option value="flux-dev">FLUX Dev</option>
-    <option value="flux-schnell" disabled>FLUX Schnell (not in current official hosted endpoint docs)</option>
+    <option value="black-forest-labs/flux-1.1-pro" selected>FLUX 1.1 Pro</option>
+    <option value="black-forest-labs/flux-dev">FLUX Dev</option>
+    <option value="black-forest-labs/flux-schnell">FLUX Schnell</option>
   </select>
-  <p class="note">The direct BFL route currently supports FLUX 1.1 Pro and FLUX Dev in this app. If you want a single-key setup, we can switch image generation to a 1min.ai-supported image model instead.</p>
+  <p class="note">These FLUX models are called through 1min.ai, so one API key now covers both text and image generation.</p>
 </div>
 
 <button class="go" id="genBtn" onclick="run()">⚡ GENERATE POSTS</button>
@@ -532,7 +525,6 @@ function toast(m){const t=document.getElementById('toast');t.textContent=m;t.cla
 
 function syncImageEngineUI() {
   const engine = document.getElementById('imageEngine')?.value || 'canvas';
-  document.getElementById('fluxKeyPanel')?.classList.toggle('on', engine === 'flux');
   document.getElementById('fluxModelPanel')?.classList.toggle('on', engine === 'flux');
 }
 
@@ -782,71 +774,50 @@ function buildFluxPrompt(post, isIG) {
   ].filter(Boolean).join(' ');
 }
 
-async function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 async function generateFluxImage(apiKey, model, prompt, isIG) {
-  const endpointMap = {
-    'flux-pro-1.1': 'https://api.bfl.ai/v1/flux-pro-1.1',
-    'flux-dev': 'https://api.bfl.ai/v1/flux-dev'
-  };
-  const endpoint = endpointMap[model];
-  if (!endpoint) {
-    throw new Error('Selected FLUX model is not available through the current hosted endpoint setup.');
-  }
   const dims = getFluxDimensions(isIG);
-  const submitRes = await fetch(endpoint, {
+  const promptObject = {
+    prompt,
+    aspect_ratio: 'custom',
+    width: dims.width,
+    height: dims.height,
+    output_quality: 90
+  };
+  if (model === 'black-forest-labs/flux-schnell') {
+    promptObject.num_inference_steps = 4;
+    promptObject.go_fast = true;
+    promptObject.megapixels = '1';
+  } else {
+    promptObject.safety_tolerance = 2;
+    promptObject.prompt_upsampling = true;
+  }
+
+  const submitRes = await fetch('https://api.1min.ai/api/features', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'x-key': apiKey
+      'API-KEY': apiKey
     },
     body: JSON.stringify({
-      prompt,
-      width: dims.width,
-      height: dims.height,
-      prompt_upsampling: true,
-      safety_tolerance: 2,
-      output_format: 'jpeg'
+      type: 'IMAGE_GENERATOR',
+      model,
+      promptObject
     })
   });
   if (!submitRes.ok) {
     let msg = `HTTP ${submitRes.status}`;
     try {
       const err = await submitRes.json();
-      msg = err?.message || err?.detail || msg;
+      msg = err?.error?.message || err?.message || err?.detail || msg;
     } catch (_) {}
-    throw new Error(`FLUX submit failed: ${msg}`);
+    throw new Error(`1min.ai FLUX request failed: ${msg}`);
   }
   const submitData = await submitRes.json();
-  const pollingUrl = submitData?.polling_url;
-  if (!pollingUrl) {
-    throw new Error('FLUX did not return a polling URL.');
-  }
-
-  for (let attempt = 0; attempt < 40; attempt += 1) {
-    await sleep(2500);
-    const pollRes = await fetch(pollingUrl, {
-      headers: {
-        'x-key': apiKey
-      }
-    });
-    if (!pollRes.ok) {
-      continue;
-    }
-    const pollData = await pollRes.json();
-    const status = String(pollData?.status || '').toLowerCase();
-    if (status === 'ready' || status === 'completed') {
-      const imageUrl = pollData?.result?.sample || pollData?.sample;
-      if (!imageUrl) throw new Error('FLUX completed without returning an image URL.');
-      return imageUrl;
-    }
-    if (status === 'error' || status === 'failed') {
-      throw new Error(pollData?.error || pollData?.message || 'FLUX image generation failed.');
-    }
-  }
-  throw new Error('FLUX image generation timed out.');
+  const imageUrl = submitData?.aiRecord?.temporaryUrl;
+  if (imageUrl) return imageUrl;
+  const resultPath = submitData?.aiRecord?.aiRecordDetail?.resultObject?.[0];
+  if (resultPath) return `https://asset.1min.ai/${resultPath}`;
+  throw new Error('1min.ai FLUX completed without returning an image URL.');
 }
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -1658,11 +1629,9 @@ async function run(){
   const voiceKey=document.getElementById('brandVoice').value;
   const imageStyle=document.getElementById('imageStyle').value;
   const imageEngine=document.getElementById('imageEngine').value;
-  const fluxApiKey=document.getElementById('fluxApiKey').value.trim();
   const fluxModel=document.getElementById('fluxModel').value;
   const audienceCfg=audienceMap[audienceKey]||audienceMap.business_owners;
   const voiceCfg=voiceMap[voiceKey]||voiceMap.premium;
-  if(imageEngine==='flux' && !fluxApiKey){showErr('Please enter your FLUX / BFL API key.');return}
 
   // Get topic source
   let topicContext='';
@@ -1873,7 +1842,7 @@ Generate all ${perPlat*2} posts.`;
 
       if(imageEngine==='flux'){
         const fluxPrompt=buildFluxPrompt(post,isIG);
-        generateFluxImage(fluxApiKey,fluxModel,fluxPrompt,isIG).then((imageUrl)=>{
+        generateFluxImage(apiKey,fluxModel,fluxPrompt,isIG).then((imageUrl)=>{
           card.dataset.imageUrl=imageUrl;
           imgDiv.innerHTML=`<img src="${imageUrl}" alt="${post.headline||'Generated image'}" style="width:100%;height:100%;object-fit:cover;display:block">`;
         }).catch((imageErr)=>{
@@ -1896,7 +1865,7 @@ Generate all ${perPlat*2} posts.`;
     document.getElementById('statusBar').classList.remove('on');
 
   } catch(err){
-    showErr(err.message+'<br><small>Check your 1min.ai key, credit balance, and FLUX/BFL API key if you are using AI image generation.</small>');
+    showErr(err.message+'<br><small>Check your 1min.ai key and credit balance. FLUX image generation now uses that same key.</small>');
   }
   btn.disabled=false;
   btn.innerHTML='⚡ GENERATE POSTS';

@@ -749,6 +749,10 @@ function getFluxDimensions(isIG) {
     : { width: 1344, height: 704 };
 }
 
+function getFluxAspectRatio(isIG) {
+  return isIG ? '1:1' : '16:9';
+}
+
 function buildFluxPrompt(post, isIG) {
   const platformPrompt = isIG
     ? 'Square composition for Instagram. Strong focal point, clean composition, premium lighting.'
@@ -794,13 +798,10 @@ function getPreferredImageModel(imageStyle, requestedModel) {
 }
 
 async function generateFluxImage(apiKey, model, prompt, isIG) {
-  const dims = getFluxDimensions(isIG);
   const resolvedModel = getPreferredImageModel(currentGenerationContext.imageStyle, model);
   const promptObject = {
     prompt,
-    aspect_ratio: 'custom',
-    width: dims.width,
-    height: dims.height,
+    aspect_ratio: getFluxAspectRatio(isIG),
     output_quality: 90
   };
   if (resolvedModel === 'black-forest-labs/flux-schnell') {

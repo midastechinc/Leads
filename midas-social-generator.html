@@ -80,6 +80,7 @@ select option{background:#111827}
 
 /* Posts */
 .psec{display:none}.psec.on{display:block}
+.posts-actions{display:flex;justify-content:flex-end;gap:10px;margin:-4px 0 16px}
 .posts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(380px,1fr));gap:24px}
 .pcard{background:var(--card);border:1px solid var(--bdr);border-radius:16px;overflow:hidden;animation:fu .38s ease forwards;opacity:0;transform:translateY(14px)}
 @keyframes fu{to{opacity:1;transform:translateY(0)}}
@@ -437,23 +438,26 @@ body.lt-shell .toast{
     <div class="lbl">🎨 Image Engine</div>
     <select id="imageEngine">
       <option value="canvas" selected>Built-in Graphic Renderer</option>
-      <option value="flux">FLUX via 1min.ai</option>
+      <option value="flux">AI Image via 1min.ai</option>
     </select>
-    <p class="note">Use FLUX when you want AI-generated visuals instead of text-based graphic layouts. This uses your existing 1min.ai API key.</p>
+    <p class="note">Generate copy first, then create visuals on demand with your existing 1min.ai key.</p>
   </div>
 </div>
 
 <div class="panel flux-panel" id="fluxModelPanel">
-  <div class="lbl">⚙️ FLUX Model</div>
+  <div class="lbl">⚙️ Image Model</div>
   <select id="fluxModel">
-    <option value="black-forest-labs/flux-1.1-pro" selected>FLUX 1.1 Pro</option>
+    <option value="auto_best" selected>Auto Best Quality</option>
+    <option value="black-forest-labs/flux-1.1-pro-ultra">FLUX 1.1 Pro Ultra</option>
+    <option value="black-forest-labs/flux-1.1-pro">FLUX 1.1 Pro</option>
+    <option value="recraft">Recraft v3</option>
     <option value="black-forest-labs/flux-dev">FLUX Dev</option>
     <option value="black-forest-labs/flux-schnell">FLUX Schnell</option>
   </select>
-  <p class="note">These FLUX models are called through 1min.ai, so one API key now covers both text and image generation.</p>
+  <p class="note">Auto Best uses a more human-looking premium model path by default: Flux 1.1 Pro Ultra for realistic campaign visuals, or Recraft v3 when a designed infographic feel fits better.</p>
 </div>
 
-<button class="go" id="genBtn" onclick="run()">⚡ GENERATE POSTS</button>
+<button class="go" id="genBtn" onclick="run()">⚡ GENERATE CONTENT</button>
 
 <div class="err" id="errBox"></div>
 <div class="status" id="statusBar">
@@ -469,6 +473,9 @@ body.lt-shell .toast{
 
 <div class="psec" id="postsSec">
   <div class="sec">📸 LinkedIn &amp; Instagram Posts</div>
+  <div class="posts-actions">
+    <button class="ab p" id="genAllImagesBtn" type="button" style="display:none;max-width:260px" onclick="generateAllImages()">🖼️ Generate All Images</button>
+  </div>
   <div class="posts-grid" id="postsGrid"></div>
 </div>
 
@@ -772,14 +779,23 @@ function buildFluxPrompt(post, isIG) {
     `Topic: ${sourcePrompt}`,
     `Category: ${post.category || 'Cybersecurity'}.`,
     structuredBits.join(' '),
-    'Visual direction: premium B2B technology brand, Ontario business setting, polished office or operational environment, blue and white palette, subtle cinematic lighting, realistic or high-end editorial illustration style.',
-    'Do not add any text, letters, logos, UI screenshots, watermarks, or infographic numbers inside the image.',
-    'Keep the image clean, trustworthy, professional, and suitable as a background or hero visual for a social media post.'
+    'Visual direction: premium B2B technology brand, Ontario business setting, polished office or operational environment, believable real-world composition, restrained blue and neutral palette, tasteful lighting, human art direction, high-end editorial or commercial campaign quality.',
+    'Avoid generic AI aesthetics, surreal objects, excessive glow, fantasy lighting, plastic-looking people, warped hands, fake dashboards, and stock-photo clichés.',
+    'Do not add any text, letters, logos, UI screenshots, watermarks, infographic numbers, or poster typography inside the image.',
+    'Keep the image clean, trustworthy, professional, and suitable as a human-designed social campaign visual or hero background.'
   ].filter(Boolean).join(' ');
+}
+
+function getPreferredImageModel(imageStyle, requestedModel) {
+  if (requestedModel && requestedModel !== 'auto_best') return requestedModel;
+  const style = String(imageStyle || '').toLowerCase();
+  if (style === 'tips' || style === 'checklist' || style === 'stats') return 'recraft';
+  return 'black-forest-labs/flux-1.1-pro-ultra';
 }
 
 async function generateFluxImage(apiKey, model, prompt, isIG) {
   const dims = getFluxDimensions(isIG);
+  const resolvedModel = getPreferredImageModel(currentGenerationContext.imageStyle, model);
   const promptObject = {
     prompt,
     aspect_ratio: 'custom',
@@ -787,10 +803,12 @@ async function generateFluxImage(apiKey, model, prompt, isIG) {
     height: dims.height,
     output_quality: 90
   };
-  if (model === 'black-forest-labs/flux-schnell') {
+  if (resolvedModel === 'black-forest-labs/flux-schnell') {
     promptObject.num_inference_steps = 4;
     promptObject.go_fast = true;
     promptObject.megapixels = '1';
+  } else if (resolvedModel === 'recraft') {
+    promptObject.style = 'realistic_image';
   } else {
     promptObject.safety_tolerance = 2;
     promptObject.prompt_upsampling = true;
@@ -804,7 +822,7 @@ async function generateFluxImage(apiKey, model, prompt, isIG) {
     },
     body: JSON.stringify({
       type: 'IMAGE_GENERATOR',
-      model,
+      model: resolvedModel,
       promptObject
     })
   });
@@ -1662,12 +1680,13 @@ async function run(){
 
   const btn=document.getElementById('genBtn');
   btn.disabled=true;
-  btn.innerHTML='<div class="spin"></div>&nbsp; '+( useWebSearch?'SEARCHING NEWS...':'GENERATING POSTS...');
+  btn.innerHTML='<div class="spin"></div>&nbsp; '+( useWebSearch?'SEARCHING NEWS...':'WRITING CONTENT...');
 
   document.getElementById('newsSec').classList.remove('on');
   document.getElementById('postsSec').classList.remove('on');
   document.getElementById('newsCont').innerHTML='';
   document.getElementById('postsGrid').innerHTML='';
+  document.getElementById('genAllImagesBtn').style.display='none';
 
   try {
     let sourceItems=[];
@@ -1696,7 +1715,7 @@ Return ONLY a raw JSON array (nothing before [ or after ]):
       if(!sourceItems.length) sourceItems=[{headline:`Ransomware Attacks on Ontario SMBs Surge in ${CURRENT_YEAR}`,source:"BleepingComputer",date:`April ${CURRENT_YEAR}`,summary:"Ransomware incidents targeting Canadian small businesses remain elevated. Healthcare clinics and accounting firms continue to be top targets.",key_stat:"40%",stat_label:"surge in attacks",category_tag:"RANSOMWARE ALERT"}];
 
       // Show news
-      setSt('News found! Writing post copy...','2/3');
+      setSt('News found! Writing post copy...','2/2');
       document.getElementById('newsSec').classList.add('on');
       const nc=document.getElementById('newsCont');
       sourceItems.slice(0,perPlat+1).forEach(n=>{
@@ -1704,7 +1723,7 @@ Return ONLY a raw JSON array (nothing before [ or after ]):
       });
     } else {
       // Manual topic
-      setSt('Generating posts for your topic...','1/2');
+      setSt('Writing post copy for your topic...','1/1');
       sourceItems=[{headline:topicContext,summary:topicContext,key_stat:null,stat_label:null,category_tag:'SECURITY'}];
       document.getElementById('newsSec').classList.add('on');
       document.getElementById('newsCont').innerHTML=`<div class="nc"><h4>Manual Topic</h4><p>${topicContext}</p></div>`;
@@ -1800,9 +1819,10 @@ Generate all ${perPlat*2} posts.`;
     }
     posts=normalizeStructuredPosts(posts, requestedVisualStyle);
 
-    // ── Render ──────────────────────────────────────────────────────
-    setSt(imageEngine==='flux'?'Generating FLUX images...':'Rendering images...','3/3');
+    // ── Render content first ───────────────────────────────────────
+    setSt('Content ready. Generate images when you are happy with the copy.','Done');
     document.getElementById('postsSec').classList.add('on');
+    document.getElementById('genAllImagesBtn').style.display='inline-flex';
     const grid=document.getElementById('postsGrid');
 
     // Interleave IG and LI
@@ -1825,13 +1845,7 @@ Generate all ${perPlat*2} posts.`;
       const imgDiv=document.createElement('div');
       imgDiv.className='pimg';
       imgDiv.style.aspectRatio=isIG?'1/1':'1200/627';
-      if(imageEngine==='flux'){
-        imgDiv.innerHTML='<div style="display:flex;align-items:center;justify-content:center;height:100%;min-height:260px;color:#94a3b8;font:500 14px Inter,sans-serif;padding:24px;text-align:center">Generating FLUX image...</div>';
-      } else {
-        const cv=document.createElement('canvas');
-        cv.id=`cv${idx}`;
-        imgDiv.appendChild(cv);
-      }
+      imgDiv.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;height:100%;min-height:260px;color:#625846;font:500 14px Inter,sans-serif;padding:24px;text-align:center;background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(248,243,234,.92))">Content ready.<br>${imageEngine==='flux'?'Generate a premium image from this post.':'Generate the designed post image from this content.'}</div>`;
 
       const bd=document.createElement('div');
       bd.className='pbody';
@@ -1839,31 +1853,12 @@ Generate all ${perPlat*2} posts.`;
       const badge=isIG
         ?'<span class="pbadge big">📸 Instagram</span>'
         :'<span class="pbadge bli">💼 LinkedIn</span>';
-      bd.innerHTML=`${badge}<div class="pcap">${capTxt.replace(/\n/g,'<br>')}</div><div class="ptags">${post.hashtags||''}</div><div class="pacts"><button class="ab" onclick="cpCap(${idx})">📋 Caption</button><button class="ab" onclick="dlImg(${idx})">⬇️ Image</button><button class="ab" onclick="saveToLeadTracker(${idx})">💾 Save</button><button class="ab p" onclick="cpAll(${idx})">✨ Copy All</button></div>`;
+      bd.innerHTML=`${badge}<div class="pcap">${capTxt.replace(/\n/g,'<br>')}</div><div class="ptags">${post.hashtags||''}</div><div class="pacts"><button class="ab p" onclick="genImg(${idx})">🖼️ Generate Image</button><button class="ab" onclick="cpCap(${idx})">📋 Caption</button><button class="ab" onclick="dlImg(${idx})">⬇️ Image</button><button class="ab" onclick="saveToLeadTracker(${idx})">💾 Save</button><button class="ab p" onclick="cpAll(${idx})">✨ Copy All</button></div>`;
 
       card.appendChild(imgDiv);card.appendChild(bd);
       grid.appendChild(card);
-
-      if(imageEngine==='flux'){
-        const fluxPrompt=buildFluxPrompt(post,isIG);
-        generateFluxImage(apiKey,fluxModel,fluxPrompt,isIG).then((imageUrl)=>{
-          card.dataset.imageUrl=imageUrl;
-          imgDiv.innerHTML=`<img src="${imageUrl}" alt="${post.headline||'Generated image'}" style="width:100%;height:100%;object-fit:cover;display:block">`;
-        }).catch((imageErr)=>{
-          imgDiv.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;height:100%;min-height:260px;color:#fca5a5;font:500 14px Inter,sans-serif;padding:24px;text-align:center">FLUX image failed.<br>${imageErr.message}</div>`;
-        });
-      } else {
-        const cv=document.getElementById(`cv${idx}`);
-        const drawFn=isIG?drawIG:drawLI;
-        const doIt=()=>{
-          if(logoDark.complete&&logoDark.naturalWidth&&logoLight.complete&&logoLight.naturalWidth){
-            drawFn(cv,post);
-          } else {
-            setTimeout(doIt,80);
-          }
-        };
-        setTimeout(doIt,250+idx*70);
-      }
+      card.dataset.imageStatus='idle';
+      card.dataset.imageModel=fluxModel;
     });
 
     document.getElementById('statusBar').classList.remove('on');
@@ -1872,10 +1867,71 @@ Generate all ${perPlat*2} posts.`;
     showErr(err.message+'<br><small>Check your 1min.ai key and credit balance. FLUX image generation now uses that same key.</small>');
   }
   btn.disabled=false;
-  btn.innerHTML='⚡ GENERATE POSTS';
+  btn.innerHTML='⚡ GENERATE CONTENT';
 }
 
 function getCard(i){return document.querySelectorAll('.pcard')[i]}
+function renderImagePlaceholder(card,message,isError=false){
+  const imgDiv=card?.querySelector('.pimg');
+  if(!imgDiv) return;
+  imgDiv.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;height:100%;min-height:260px;color:${isError?'#c2413b':'#625846'};font:500 14px Inter,sans-serif;padding:24px;text-align:center;background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(248,243,234,.92))">${message}</div>`;
+}
+async function renderCanvasImage(card,index){
+  const imgDiv=card.querySelector('.pimg');
+  if(!imgDiv) return;
+  imgDiv.innerHTML='';
+  const cv=document.createElement('canvas');
+  cv.id=`cv${index}`;
+  imgDiv.appendChild(cv);
+  const post=card._postData||{};
+  const isIG=(card.dataset.platform||'')==='instagram';
+  const drawFn=isIG?drawIG:drawLI;
+  const doIt=()=>{
+    if(logoDark.complete&&logoDark.naturalWidth&&logoLight.complete&&logoLight.naturalWidth){
+      drawFn(cv,post);
+      card.dataset.imageStatus='ready';
+      delete card.dataset.imageUrl;
+    } else {
+      setTimeout(doIt,80);
+    }
+  };
+  doIt();
+}
+async function genImg(i){
+  const card=getCard(i);
+  if(!card) return;
+  if(card.dataset.imageStatus==='loading') return;
+  const imageEngine=card.dataset.imageEngine||currentGenerationContext.imageEngine||'canvas';
+  card.dataset.imageStatus='loading';
+  renderImagePlaceholder(card,imageEngine==='flux'?'Generating premium AI image...':'Building post image...');
+
+  try{
+    if(imageEngine==='flux'){
+      const apiKey=document.getElementById('apiKey').value.trim();
+      if(!apiKey){throw new Error('Please enter your 1min.ai API key first.')}
+      const post=card._postData||{};
+      const isIG=(card.dataset.platform||'')==='instagram';
+      const model=card.dataset.imageModel||document.getElementById('fluxModel')?.value||'auto_best';
+      const fluxPrompt=buildFluxPrompt(post,isIG);
+      const imageUrl=await generateFluxImage(apiKey,model,fluxPrompt,isIG);
+      card.dataset.imageUrl=imageUrl;
+      card.dataset.imageStatus='ready';
+      card.querySelector('.pimg').innerHTML=`<img src="${imageUrl}" alt="${post.headline||'Generated image'}" style="width:100%;height:100%;object-fit:cover;display:block">`;
+      return;
+    }
+    await renderCanvasImage(card,i);
+  }catch(err){
+    card.dataset.imageStatus='error';
+    renderImagePlaceholder(card,`Image generation failed.<br>${err.message||err}`,true);
+  }
+}
+async function generateAllImages(){
+  const cards=[...document.querySelectorAll('.pcard')];
+  for(let i=0;i<cards.length;i+=1){
+    await genImg(i);
+  }
+  toast('🖼️ Images generated');
+}
 function cpCap(i){const c=getCard(i);navigator.clipboard.writeText((c.dataset.caption||'').replace(/\\n/g,'\n')).then(()=>toast('✅ Caption copied!'))}
 function cpAll(i){const c=getCard(i);navigator.clipboard.writeText((c.dataset.caption||'').replace(/\\n/g,'\n')+'\n\n'+(c.dataset.hashtags||'')).then(()=>toast('✅ Copied!'))}
 async function saveToLeadTracker(i){

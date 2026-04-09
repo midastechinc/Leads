@@ -250,7 +250,14 @@ body.lt-shell textarea:focus{
 body.lt-shell select{
   background-color:var(--lt-surface);
   background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='7'%3E%3Cpath d='M1 1l4.5 4.5L10 1' stroke='%231d4ed8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;
+  background-position:right 13px center;
+  background-size:11px 7px;
 }
+body.lt-shell .flux-settings{display:none}
+body.lt-shell .flux-settings.on{display:grid}
+body.lt-shell .flux-panel{display:none}
+body.lt-shell .flux-panel.on{display:block}
 body.lt-shell .mode-btn,
 body.lt-shell .chip,
 body.lt-shell .ab{
@@ -432,21 +439,21 @@ body.lt-shell .toast{
     </select>
     <p class="note">Use FLUX when you want AI-generated visuals instead of text-based graphic layouts.</p>
   </div>
-  <div class="panel" style="margin-bottom:0">
-    <div class="lbl">🔑 FLUX / BFL API Key</div>
+  <div class="panel flux-panel" id="fluxKeyPanel" style="margin-bottom:0">
+    <div class="lbl">🔑 FLUX API Key</div>
     <input id="fluxApiKey" type="password" placeholder="Enter your Black Forest Labs API key">
-    <p class="note">Needed only when Image Engine is set to FLUX.</p>
+    <p class="note">Shown only for the direct FLUX route. Your 1min.ai key is used for text generation, while direct FLUX currently uses a Black Forest Labs key.</p>
   </div>
 </div>
 
-<div class="panel">
+<div class="panel flux-panel" id="fluxModelPanel">
   <div class="lbl">⚙️ FLUX Model</div>
   <select id="fluxModel">
     <option value="flux-pro-1.1" selected>FLUX 1.1 Pro</option>
     <option value="flux-dev">FLUX Dev</option>
     <option value="flux-schnell" disabled>FLUX Schnell (not in current official hosted endpoint docs)</option>
   </select>
-  <p class="note">The current official BFL hosted API documentation lists FLUX 1.1 Pro and FLUX Dev endpoints. Schnell can be added later through a supported hosted or local route.</p>
+  <p class="note">The direct BFL route currently supports FLUX 1.1 Pro and FLUX Dev in this app. If you want a single-key setup, we can switch image generation to a 1min.ai-supported image model instead.</p>
 </div>
 
 <button class="go" id="genBtn" onclick="run()">⚡ GENERATE POSTS</button>
@@ -512,14 +519,22 @@ document.getElementById('rememberApiKey')?.addEventListener('change', persistApi
 document.getElementById('apiKey')?.addEventListener('input', () => {
   if (document.getElementById('rememberApiKey')?.checked) persistApiKeyPreference();
 });
+document.getElementById('imageEngine')?.addEventListener('change', syncImageEngineUI);
 
 initializeLeadTrackerContext();
+syncImageEngineUI();
 
 // ── UI helpers ───────────────────────────────────────────────────────────────
 function setSt(t,s){document.getElementById('statusBar').classList.add('on');document.getElementById('stxt').textContent=t;document.getElementById('sstep').textContent=s}
 function showErr(m){const b=document.getElementById('errBox');b.innerHTML='⚠️ '+m;b.classList.add('on');document.getElementById('statusBar').classList.remove('on')}
 function hideErr(){document.getElementById('errBox').classList.remove('on')}
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2500)}
+
+function syncImageEngineUI() {
+  const engine = document.getElementById('imageEngine')?.value || 'canvas';
+  document.getElementById('fluxKeyPanel')?.classList.toggle('on', engine === 'flux');
+  document.getElementById('fluxModelPanel')?.classList.toggle('on', engine === 'flux');
+}
 
 // ── 1min.ai API ──────────────────────────────────────────────────────────────
 async function call1min(apiKey, model, prompt, webSearch=false) {

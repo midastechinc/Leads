@@ -85,8 +85,13 @@ select option{background:#111827}
 .pcard{background:var(--card);border:1px solid var(--bdr);border-radius:16px;overflow:hidden;animation:fu .38s ease forwards;opacity:0;transform:translateY(14px)}
 @keyframes fu{to{opacity:1;transform:translateY(0)}}
 .pcard:hover{border-color:rgba(0,174,239,0.28);box-shadow:0 0 26px rgba(0,174,239,0.09)}
-.pimg{width:100%;overflow:hidden;background:#0d1117;line-height:0}
+.pimg{width:100%;overflow:hidden;background:#0d1117;line-height:0;position:relative}
 .pimg canvas{width:100%;height:100%;display:block}
+.pimg-logo{position:absolute;top:10px;left:10px;background:rgba(255,255,255,0.92);border-radius:8px;padding:5px 8px;display:flex;align-items:center;pointer-events:none;z-index:2}
+.pimg-logo img{height:28px;display:block}
+.pimg-footer{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,0.65);color:rgba(255,255,255,0.93);font:600 12px Inter,sans-serif;text-align:center;padding:6px 8px;pointer-events:none;z-index:2;letter-spacing:0.02em}
+.pimg-brand-mark{position:absolute;right:10px;top:10px;width:36px;height:36px;border-radius:10px;background:rgba(255,255,255,0.9);padding:4px;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:2}
+.pimg-brand-mark img{width:100%;height:100%;object-fit:contain;display:block}
 .pbody{padding:16px}
 .pbadge{display:inline-flex;align-items:center;gap:5px;padding:3px 9px;border-radius:5px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-bottom:11px}
 .big{background:rgba(214,44,143,0.1);border:1px solid rgba(214,44,143,0.28);color:#f06292}
@@ -94,6 +99,7 @@ select option{background:#111827}
 .pcap{font-size:13px;color:var(--tx);line-height:1.72;margin-bottom:10px;white-space:pre-wrap;max-height:145px;overflow-y:auto}
 .pcap::-webkit-scrollbar{width:3px}.pcap::-webkit-scrollbar-thumb{background:rgba(0,174,239,.22);border-radius:2px}
 .ptags{font-size:11.5px;color:var(--c);line-height:1.8;margin-bottom:12px}
+.pcontact{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:12px;font-weight:600;color:rgba(0,174,239,0.95);background:rgba(0,174,239,0.07);border:1px solid rgba(0,174,239,0.18);border-radius:8px;padding:7px 12px;margin-bottom:10px;letter-spacing:0.01em}
 .pacts{display:flex;gap:7px;flex-wrap:wrap}
 .ab{flex:1 1 calc(50% - 4px);background:rgba(255,255,255,.04);border:1px solid var(--bdr);border-radius:7px;padding:8px 9px;color:var(--mt);font-family:'Inter',sans-serif;font-size:11.5px;font-weight:600;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:4px;white-space:nowrap}
 .ab:hover{background:rgba(0,174,239,.09);border-color:var(--c);color:var(--c)}
@@ -312,6 +318,7 @@ body.lt-shell .toast{
   <div class="hcopy">
     <strong>LeadTracker Social Studio</strong>
     <span>Create campaign-ready posts that feel native to the LeadTracker workspace.</span>
+    <div style="font:600 12px Inter,sans-serif;color:rgba(0,174,239,0.9);margin-top:4px;letter-spacing:0.02em;">📞 905-787-2038&nbsp;&nbsp;|&nbsp;&nbsp;🌐 midastech.ca&nbsp;&nbsp;|&nbsp;&nbsp;✉️ info@midastech.ca</div>
   </div>
   <div class="header-actions">
     <div class="htag">LeadTracker Connected</div>
@@ -332,7 +339,7 @@ body.lt-shell .toast{
   <div class="lbl">🔑 1min.ai API Key</div>
   <input type="password" id="apiKey" placeholder="Paste your 1min.ai API key...">
   <div class="mini-row">
-    <label class="mini-check"><input type="checkbox" id="rememberApiKey"> Remember on this browser</label>
+    <label class="mini-check"><input type="checkbox" id="rememberApiKey" checked> Save to database</label>
     <button class="mini-link" type="button" onclick="clearSavedApiKey()">Clear saved key</button>
   </div>
   <div class="lbl lbl-t">🤖 AI Model</div>
@@ -512,15 +519,17 @@ document.querySelectorAll('#topicPills .chip').forEach(c => {
   c.addEventListener('click', () => c.classList.toggle('on'));
 });
 
-const savedApiKey = loadSavedApiKey();
-if (savedApiKey) {
-  const apiKeyInput = document.getElementById('apiKey');
-  const rememberApiKey = document.getElementById('rememberApiKey');
-  if (apiKeyInput) apiKeyInput.value = savedApiKey;
-  if (rememberApiKey) rememberApiKey.checked = true;
-}
+// Load API key from Supabase on startup (async)
+loadSavedApiKey().then(savedApiKey => {
+  if (savedApiKey) {
+    const apiKeyInput = document.getElementById('apiKey');
+    const rememberApiKey = document.getElementById('rememberApiKey');
+    if (apiKeyInput) apiKeyInput.value = savedApiKey;
+    if (rememberApiKey) rememberApiKey.checked = true;
+  }
+});
 document.getElementById('rememberApiKey')?.addEventListener('change', persistApiKeyPreference);
-document.getElementById('apiKey')?.addEventListener('input', () => {
+document.getElementById('apiKey')?.addEventListener('change', () => {
   if (document.getElementById('rememberApiKey')?.checked) persistApiKeyPreference();
 });
 document.getElementById('imageEngine')?.addEventListener('change', syncImageEngineUI);
@@ -598,34 +607,54 @@ function getLeadTrackerClient() {
   return leadTrackerSupabase;
 }
 
-function loadSavedApiKey() {
+// ── API Key: Supabase-backed persistence ─────────────────────────────────────
+const API_KEY_SETTING = '1min_api_key';
+
+async function loadSavedApiKey() {
+  // Fallback to localStorage while Supabase initialises
+  const local = (() => { try { return localStorage.getItem(API_KEY_STORAGE_KEY) || ''; } catch(_){ return ''; } })();
   try {
-    return localStorage.getItem(API_KEY_STORAGE_KEY) || '';
-  } catch (_) {
-    return '';
+    const db = getLeadTrackerClient();
+    if (!db) return local;
+    const { data } = await db.from('settings').select('value').eq('key', API_KEY_SETTING).single();
+    if (data?.value) {
+      // Sync back to localStorage as fast-path for next load
+      try { localStorage.setItem(API_KEY_STORAGE_KEY, data.value); } catch(_){}
+      return data.value;
+    }
+  } catch (_) {}
+  return local;
+}
+
+async function persistApiKeyPreference() {
+  const remember = document.getElementById('rememberApiKey');
+  const apiKeyInput = document.getElementById('apiKey');
+  if (!remember || !apiKeyInput || !remember.checked || !apiKeyInput.value.trim()) return;
+  const val = apiKeyInput.value.trim();
+  // Save to localStorage immediately (fast)
+  try { localStorage.setItem(API_KEY_STORAGE_KEY, val); } catch(_){}
+  // Save to Supabase (persists across browsers/devices)
+  try {
+    const db = getLeadTrackerClient();
+    if (!db) return;
+    await db.from('settings').upsert({ key: API_KEY_SETTING, value: val }, { onConflict: 'key' });
+    toast('🔑 API key saved to database');
+  } catch(err) {
+    console.warn('Could not save API key to Supabase:', err);
   }
 }
 
-function persistApiKeyPreference() {
-  const remember = document.getElementById('rememberApiKey');
-  const apiKeyInput = document.getElementById('apiKey');
-  if (!remember || !apiKeyInput) return;
+async function clearSavedApiKey() {
+  try { localStorage.removeItem(API_KEY_STORAGE_KEY); } catch(_){}
   try {
-    if (remember.checked && apiKeyInput.value.trim()) {
-      localStorage.setItem(API_KEY_STORAGE_KEY, apiKeyInput.value.trim());
-    } else {
-      localStorage.removeItem(API_KEY_STORAGE_KEY);
-    }
-  } catch (_) {}
-}
-
-function clearSavedApiKey() {
-  try { localStorage.removeItem(API_KEY_STORAGE_KEY); } catch (_) {}
+    const db = getLeadTrackerClient();
+    if (db) await db.from('settings').delete().eq('key', API_KEY_SETTING);
+  } catch(_){}
   const remember = document.getElementById('rememberApiKey');
   const apiKeyInput = document.getElementById('apiKey');
   if (remember) remember.checked = false;
   if (apiKeyInput) apiKeyInput.value = '';
-  toast('🗑️ Saved API key cleared');
+  toast('🗑️ API key cleared from database');
 }
 
 const audienceMap = {
@@ -784,8 +813,8 @@ function buildFluxPrompt(post, isIG) {
     `Category: ${post.category || 'Cybersecurity'}.`,
     structuredBits.join(' '),
     'Visual direction: premium B2B technology brand, Ontario business setting, polished office or operational environment, believable real-world composition, restrained blue and neutral palette, tasteful lighting, human art direction, high-end editorial or commercial campaign quality.',
-    'Avoid generic AI aesthetics, surreal objects, excessive glow, fantasy lighting, plastic-looking people, warped hands, fake dashboards, and stock-photo clichés.',
-    'Do not add any text, letters, logos, UI screenshots, watermarks, infographic numbers, or poster typography inside the image.',
+    'Match a human-made campaign aesthetic: concise, credible, practical, emotionally clear, and specific to the business problem. Avoid generic AI glow, surreal objects, plastic faces, warped hands, fake dashboards, and stock-photo clichés.',
+    'Do not add any text, letters, logos, UI screenshots, watermarks, infographic numbers, or poster typography inside the image itself.',
     'Keep the image clean, trustworthy, professional, and suitable as a human-designed social campaign visual or hero background.'
   ].filter(Boolean).join(' ');
 }
@@ -889,13 +918,21 @@ function drawWrapped(ctx,text,x,y,maxW,lh,maxL){
   return y;
 }
 
-// Draw logo onto canvas (handles dark-bg logo for dark bg, light for light bg)
+// Draw logo onto canvas with a white backing pill so it's always visible
 function drawLogo(ctx,x,y,targetH,useDark){
   const img=useDark?logoDark:logoLight;
   if(!img.complete||!img.naturalWidth)return;
   const scale=targetH/img.naturalHeight;
-  const w=Math.round(img.naturalWidth*scale);
-  ctx.drawImage(img,x,y,Math.min(w,280),targetH);
+  const w=Math.min(Math.round(img.naturalWidth*scale),280);
+  const pad=10;
+  // White rounded backing so logo is visible on any background
+  ctx.save();
+  ctx.fillStyle='rgba(255,255,255,0.92)';
+  ctx.beginPath();
+  ctx.roundRect(x-pad, y-pad, w+pad*2, targetH+pad*2, 10);
+  ctx.fill();
+  ctx.restore();
+  ctx.drawImage(img,x,y,w,targetH);
 }
 
 function drawTechBackdrop(ctx,W,H){
@@ -1314,7 +1351,7 @@ function drawIG_Infographic(ctx, W, H, post) {
   ctx.fillText(ctaTxt,W/2,H-116);
   ctx.font='500 20px Inter,sans-serif';
   ctx.fillStyle='rgba(179,221,246,0.85)';
-  ctx.fillText('midastech.ca  •  905-787-2038  •  @midastech.it',W/2,H-84);
+  ctx.fillText('midastech.ca  •  905-787-2038  •  info@midastech.ca',W/2,H-84);
   ctx.textAlign='left';
 }
 
@@ -1642,7 +1679,7 @@ function drawLI_Infographic(ctx, W, H, post) {
 async function run(){
   hideErr();
   const apiKey=document.getElementById('apiKey').value.trim();
-  persistApiKeyPreference();
+  persistApiKeyPreference(); // async — fires and forgets, non-blocking
   if(!apiKey){showErr('Please enter your 1min.ai API key.');return}
 
   const model=document.querySelector('#modelChips .chip.on')?.dataset.model||'gpt-4o-mini';
@@ -1771,29 +1808,58 @@ BRAND VOICE: ${voiceCfg}
 TARGET AUDIENCE: ${audienceCfg.label}
 PRIMARY PAIN POINTS: ${audienceCfg.pain}
 
-CONTENT OBJECTIVE:
-- Make each post feel current, premium, specific, and useful.
-- Avoid generic cyber buzzwords and obvious filler.
-- Show business consequence, not just technical risk.
-- Mention Ontario, GTA, or Canadian SMB context where it naturally helps.
-- Keep claims grounded in the source material. Do not invent stats.
-- Treat these as trusted news source standards when framing credibility and specificity: ${PREFERRED_SOURCE_NAMES}.
+LEAD GENERATION OBJECTIVE — this is the most important part:
+Every post must make a GTA/Ontario business owner think "this is about MY business" and feel urgency to act. Posts that are too broad, too technical, or too news-focused do NOT generate leads. Follow these rules exactly:
+
+Use the style of your strongest posts:
+- Open with a sharp, specific hook that sounds like a real insight, not a brochure.
+- If you use a statistic or ROI claim, add one short line of context so it feels credible and useful.
+- Keep the emotional tone practical and urgent: the reader should feel the cost of inaction.
+- End with a low-friction offer that feels like help, not a hard sell.
+- Avoid generic corporate phrasing like "in today's landscape", "as cyber threats grow", or "we provide solutions".
+
+1. HOOK FIRST (scroll-stopper):
+   - Open with a specific stat, a real dollar amount, a named local risk, or a bold statement of fact.
+   - BANNED openers: "In today's landscape", "Did you know", "In an era of", "As cyber threats grow", "It's no secret". These are scroll-past phrases.
+   - Good hook examples: "Cyberattacks aren't random — email is the #1 entry point." / "85% of ransomware victims had no MFA." / "One phishing click cost an Ontario clinic 3 weeks of downtime."
+   - Make line 1 a statement, not a question. Bold claims outperform questions.
+
+2. MAKE IT ABOUT THEIR BUSINESS (not the news):
+   - Translate the news event into: "here is what this means for YOUR company in Ontario."
+   - Name the exact business types we serve: accounting firms, dental offices, warehouses, law firms, healthcare clinics.
+   - The reader should never think "this isn't about me." They should think "that's exactly my situation."
+
+3. SHOW THE REAL PAIN (not vague "risk"):
+   - Name specific consequences: downtime, ransomware payout, CRA audit exposure, client data breach, compliance fines, reputation damage, lost revenue.
+   - Use "most businesses we see still have:" followed by 2-3 bullet gaps (no MFA, no tested backup, outdated systems).
+   - This pattern converts. Use it.
+
+4. OFFER A QUICK WIN / AUDIT (not a generic CTA):
+   - End with a low-friction offer: "free security check", "15-minute call", "quick gap review", "we'll tell you exactly where you stand."
+   - BANNED CTAs: "act now before it's too late", "connect with us to mitigate risks", "don't wait until it's too late", "reach out today". These are clichés that kill conversions.
+   - Good CTA examples: "Want a quick assessment? Let's connect." / "DM me — we'll run a free check, no strings." / "Not sure where you stand? I'll show you in 15 minutes."
+   - CTA must feel like a trusted advisor offering help, not a salesperson closing a deal.
+
+5. LOCAL CREDIBILITY:
+   - Mention Ontario, GTA, Richmond Hill, or specific local industries naturally.
+   - Treat these as trusted sources for framing credibility: ${PREFERRED_SOURCE_NAMES}.
+   - Keep stats grounded in source material. Do not invent numbers.
 
 For each source item, generate ONE Instagram post AND ONE LinkedIn post. Total: ${perPlat*2} posts.
 
-STRICT RULES:
-- "headline": MAX 5 WORDS, punchy, for the image graphic header
-- "body": MAX 180 CHARACTERS for the image. Short, impactful. No long sentences.
-- "stat": most impactful number from the news (e.g. "40%") or null if none
+STRICT FORMAT RULES:
+- "headline": MAX 5 WORDS — punchy, fear/curiosity-driven, for the image graphic header
+- "body": MAX 180 CHARACTERS for the image. One sharp sentence naming the risk and consequence. No filler.
+- "stat": most alarming number from the news or null
 - "statLabel": 4-7 words describing the stat, or null
-- "cta": MAX 40 CHARACTERS (e.g. "BOOK FREE SECURITY AUDIT")
+- "cta": MAX 40 CHARACTERS — action-oriented (e.g. "BOOK YOUR FREE SECURITY AUDIT", "GET A FREE GAP REVIEW")
 - "category": short alert type (e.g. "RANSOMWARE ALERT", "SECURITY TIP")
-- Instagram caption: Hook (1 line) + 2-3 short punchy paragraphs + emoji + CTA. 80-140 words. Energetic, readable, and specific.
-- LinkedIn caption: Professional 150-220 words. Start with a strong non-clickbait hook, explain the business impact, give one practical insight, and end with a soft CTA. No hashtag spam. Write in short paragraphs for readability.
-- LinkedIn caption must sound like a credible advisor, not an ad. Limit self-promotion to 1-2 natural mentions of Midas Tech max.
-- Hashtags: Instagram 8-12 total, topic-specific and varied. LinkedIn 3-5 total, clean and relevant.
-- "imagePrompt": one strong visual prompt, 1-2 sentences max, describing the best AI-generated image concept for this post. No text overlays in the image.
-- For alert posts, do not just restate the news headline. Turn it into a business theme with clear risks and a practical solution frame.
+- Instagram caption: Bold statement hook (no question, no "Did you know") → 1-2 short paragraphs naming exact pain for the target industry → use arrow format for consequences (→ Downtime → Lost trust → Fines) → "Here's what we still see in most businesses:" + 2-3 bullet gaps (• No MFA • No tested backup • Outdated systems) → low-friction CTA. 90-140 words. Max 2 emojis total.
+- LinkedIn caption: 160-220 words. STRUCTURE EXACTLY AS FOLLOWS — (1) Bold factual hook line. (2) One sentence naming who is being targeted (specific industry + Ontario). (3) Consequence block using arrow format: "One successful attack can mean: → Downtime → Lost client trust → Compliance penalties". (4) Gap list: "Here's what we're still seeing in most businesses: • No MFA • No tested backup • Outdated systems". (5) One sentence bridge to Midas Tech. (6) Offer: free security check / 15-min call. (7) Soft CTA: "Want a quick assessment? Let's connect." — Use single blank lines between each block for LinkedIn spacing. No long paragraphs. No corporate speak. Max 2 Midas Tech mentions.
+- End EVERY caption (Instagram and LinkedIn) with a blank line followed exactly by this contact line: 📞 905-787-2038  |  🌐 midastech.ca  |  ✉️ info@midastech.ca
+- Hashtags: Instagram 8-12 varied topic hashtags. LinkedIn 3-5 clean professional hashtags.
+- "imagePrompt": Clean, minimal, high-contrast visual. Best performers: phishing email on screen, padlock breaking, a focused business owner at a laptop with warning indicators — relatable Ontario SMB office setting. NOT: abstract glowing shields, generic circuit boards, or busy infographic-style scenes. No text overlays. Think editorial photography style, not stock tech illustration.
+- For alert posts: frame as "this happened elsewhere — here is why YOUR Ontario business is next if you don't act."
 ${visualInstructions}
 - "postType": "${needsStructuredVisual?'infographic':'alert'}"
 ${audienceCfg.linkedinCTA}
@@ -1814,8 +1880,8 @@ Generate all ${perPlat*2} posts.`;
       const fallbackRisks=['Weak passwords','No MFA','Outdated systems','No backup strategy'];
       const fallbackServices=['Security audits','Microsoft 365 protection','Endpoint security','Backup solutions'];
       posts=[
-        {platform:'instagram',postType:needsStructuredVisual?'infographic':'alert',imageStyle:requestedVisualStyle,imagePrompt:'A premium cybersecurity operations scene for an Ontario small business, blue-lit office environment, secure devices, subtle urgency, polished commercial style, no text.',headline:'STAY AHEAD NOW',category:'RANSOMWARE ALERT',stat:'40%',statLabel:'surge in Canadian SMB attacks',body:'Ontario businesses are still prime ransomware targets. Is your team ready to respond?',caption:`🔐 Cyber threats are not slowing down for Ontario businesses.\n\nRecent reporting continues to show how often attackers succeed by exploiting simple gaps: weak passwords, missing MFA, old systems, and poor backup discipline.\n\nThat is why proactive protection matters more than reactive cleanup. Midas Tech helps SMBs reduce risk with security audits, Microsoft 365 protection, endpoint security, and reliable backup planning.\n\n💬 If you are unsure where your biggest risks are, let’s have a quick conversation.`,hashtags:'#Cybersecurity #MidasTech #OntarioIT #MSP #ITSupport #RichmondHill #DataProtection #SmallBusiness #Toronto #GTA',cta:'CONNECT WITH MIDAS TECH',sources:fallbackSources,risks:fallbackRisks,services:fallbackServices,tips:fallbackTips,checklist:fallbackChecklist,stats:fallbackStats},
-        {platform:'linkedin',postType:needsStructuredVisual?'infographic':'alert',imageStyle:requestedVisualStyle,imagePrompt:'A polished B2B cybersecurity visual showing a modern business team protecting operations, premium blue and white palette, Ontario SMB context, realistic editorial style, no text.',headline:'STAY AHEAD NOW',category:'RANSOMWARE ALERT',stat:'40%',statLabel:'surge in Canadian SMB attacks',body:'Ontario businesses are still prime ransomware targets. Is your team ready to respond?',caption:`Cyber threats are not slowing down, and most successful attacks still come back to the same operational gaps.\n\nRecent cybersecurity reporting keeps pointing to familiar weak points: poor password hygiene, no MFA, outdated systems, and backup strategies that were never properly tested. For Ontario businesses, that means the real risk is not just the headline incident. It is the downtime, client disruption, and recovery cost that follow.\n\nThe organizations that handle this well usually take a proactive approach before something breaks. They review security posture, harden Microsoft 365, strengthen endpoint controls, and make sure backup and recovery plans actually work.\n\nAt Midas Tech, we help GTA businesses do exactly that in a practical way that fits day-to-day operations.\n\nIf you want a second opinion on your current security gaps, we are happy to talk.`,hashtags:'#Cybersecurity #ManagedIT #OntarioBusiness #SMBSecurity #Ransomware',cta:'CONNECT WITH MIDAS TECH',sources:fallbackSources,risks:fallbackRisks,services:fallbackServices,tips:fallbackTips,checklist:fallbackChecklist,stats:fallbackStats}
+        {platform:'instagram',postType:needsStructuredVisual?'infographic':'alert',imageStyle:requestedVisualStyle,imagePrompt:'A premium cybersecurity operations scene for an Ontario small business, blue-lit office environment, secure devices, subtle urgency, polished commercial style, no text.',headline:'STAY AHEAD NOW',category:'RANSOMWARE ALERT',stat:'40%',statLabel:'surge in Canadian SMB attacks',body:'Ontario businesses are still prime ransomware targets. Is your team ready to respond?',caption:`Ransomware doesn’t pick targets randomly — it finds the gaps you haven’t fixed yet.\n\nAccounting firms and healthcare clinics in Ontario are being hit hardest right now.\n\nOne phishing email can mean:\n→ Days of downtime\n→ Lost client trust\n→ Compliance penalties\n\nHere’s what we still see in most businesses:\n• No MFA\n• No tested backup\n• Outdated systems\n\n💬 Want to know where you stand? We’ll run a free security check — no strings.\n\n📞 905-787-2038  |  🌐 midastech.ca  |  ✉️ info@midastech.ca`,hashtags:'#Cybersecurity #MidasTech #OntarioIT #MSP #ITSupport #RichmondHill #DataProtection #SmallBusiness #Toronto #GTA',cta:'CONNECT WITH MIDAS TECH',sources:fallbackSources,risks:fallbackRisks,services:fallbackServices,tips:fallbackTips,checklist:fallbackChecklist,stats:fallbackStats},
+        {platform:'linkedin',postType:needsStructuredVisual?'infographic':'alert',imageStyle:requestedVisualStyle,imagePrompt:'A polished B2B cybersecurity visual showing a modern business team protecting operations, premium blue and white palette, Ontario SMB context, realistic editorial style, no text.',headline:'STAY AHEAD NOW',category:'RANSOMWARE ALERT',stat:'40%',statLabel:'surge in Canadian SMB attacks',body:'Ontario businesses are still prime ransomware targets. Is your team ready to respond?',caption:`Cyber threats are not slowing down, and most successful attacks still come back to the same operational gaps.\n\nRecent cybersecurity reporting keeps pointing to familiar weak points: poor password hygiene, no MFA, outdated systems, and backup strategies that were never properly tested. For Ontario businesses, that means the real risk is not just the headline incident. It is the downtime, client disruption, and recovery cost that follow.\n\nThe organizations that handle this well usually take a proactive approach before something breaks. They review security posture, harden Microsoft 365, strengthen endpoint controls, and make sure backup and recovery plans actually work.\n\nAt Midas Tech, we help GTA businesses do exactly that in a practical way that fits day-to-day operations.\n\nWant a quick assessment? Let's connect — we'll tell you exactly where you stand.\n\n📞 905-787-2038  |  🌐 midastech.ca  |  ✉️ info@midastech.ca`,hashtags:'#Cybersecurity #ManagedIT #OntarioBusiness #SMBSecurity #Ransomware',cta:'CONNECT WITH MIDAS TECH',sources:fallbackSources,risks:fallbackRisks,services:fallbackServices,tips:fallbackTips,checklist:fallbackChecklist,stats:fallbackStats}
       ];
     }
     posts=normalizeStructuredPosts(posts, requestedVisualStyle);
@@ -1837,7 +1903,12 @@ Generate all ${perPlat*2} posts.`;
       const card=document.createElement('div');
       card.className='pcard';
       card.style.animationDelay=`${idx*0.09}s`;
-      card.dataset.caption=post.caption||'';
+      const CONTACT_FOOTER = '\n\n📞 905-787-2038  |  🌐 midastech.ca  |  ✉️ info@midastech.ca';
+      const rawCap = (post.caption||'').replace(/\\n/g,'\n');
+      const capStripped = rawCap.replace(/\n+📞\s*905-787-2038[^\n]*/g,'').trimEnd();
+      const finalCap = capStripped + CONTACT_FOOTER;
+
+      card.dataset.caption=finalCap;
       card.dataset.hashtags=post.hashtags||'';
       card.dataset.platform=post.platform;
       card.dataset.imageEngine=imageEngine;
@@ -1850,11 +1921,11 @@ Generate all ${perPlat*2} posts.`;
 
       const bd=document.createElement('div');
       bd.className='pbody';
-      const capTxt=(post.caption||'').replace(/\\n/g,'\n');
       const badge=isIG
         ?'<span class="pbadge big">📸 Instagram</span>'
         :'<span class="pbadge bli">💼 LinkedIn</span>';
-      bd.innerHTML=`${badge}<div class="pcap">${capTxt.replace(/\n/g,'<br>')}</div><div class="ptags">${post.hashtags||''}</div><div class="pacts"><button class="ab p" onclick="genImg(${idx})">🖼️ Generate Image</button><button class="ab" onclick="cpCap(${idx})">📋 Caption</button><button class="ab" onclick="dlImg(${idx})">⬇️ Image</button><button class="ab" onclick="saveToLeadTracker(${idx})">💾 Save</button><button class="ab p" onclick="cpAll(${idx})">✨ Copy All</button></div>`;
+      const capDisplay=capStripped.replace(/\n/g,'<br>');
+      bd.innerHTML=`${badge}<div class="pcap">${capDisplay}</div><div class="pcontact">📞 <strong>905-787-2038</strong>&nbsp;&nbsp;|&nbsp;&nbsp;🌐 <strong>midastech.ca</strong>&nbsp;&nbsp;|&nbsp;&nbsp;✉️ <strong>info@midastech.ca</strong></div><div class="ptags">${post.hashtags||''}</div><div class="pacts"><button class="ab p" onclick="genImg(${idx})">🖼️ Generate Image</button><button class="ab" onclick="cpCap(${idx})">📋 Caption</button><button class="ab" onclick="dlImg(${idx})">⬇️ Image</button><button class="ab" onclick="saveToLeadTracker(${idx})">💾 Save</button><button class="ab p" onclick="cpAll(${idx})">✨ Copy All</button></div>`;
 
       card.appendChild(imgDiv);card.appendChild(bd);
       grid.appendChild(card);
@@ -1876,6 +1947,7 @@ function renderImagePlaceholder(card,message,isError=false){
   const imgDiv=card?.querySelector('.pimg');
   if(!imgDiv) return;
   imgDiv.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;height:100%;min-height:260px;color:${isError?'#c2413b':'#625846'};font:500 14px Inter,sans-serif;padding:24px;text-align:center;background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(248,243,234,.92))">${message}</div>`;
+  imgDiv.insertAdjacentHTML('beforeend',`<div class="pimg-logo"><img src="data:image/png;base64,${LOGO_DARK_B64}" alt="Midas Tech"></div><div class="pimg-brand-mark"><img src="data:image/png;base64,${LOGO_DARK_B64}" alt="Midas Tech"></div><div class="pimg-footer">midastech.ca &nbsp;•&nbsp; 905-787-2038 &nbsp;•&nbsp; info@midastech.ca</div>`);
 }
 async function renderCanvasImage(card,index){
   const imgDiv=card.querySelector('.pimg');
@@ -1884,6 +1956,8 @@ async function renderCanvasImage(card,index){
   const cv=document.createElement('canvas');
   cv.id=`cv${index}`;
   imgDiv.appendChild(cv);
+  // CSS logo + footer overlays — always visible regardless of canvas drawLogo state
+  imgDiv.insertAdjacentHTML('beforeend',`<div class="pimg-logo"><img src="data:image/png;base64,${LOGO_DARK_B64}" alt="Midas Tech"></div><div class="pimg-brand-mark"><img src="data:image/png;base64,${LOGO_DARK_B64}" alt="Midas Tech"></div><div class="pimg-footer">midastech.ca &nbsp;•&nbsp; 905-787-2038 &nbsp;•&nbsp; info@midastech.ca</div>`);
   const post=card._postData||{};
   const isIG=(card.dataset.platform||'')==='instagram';
   const drawFn=isIG?drawIG:drawLI;
@@ -1896,7 +1970,7 @@ async function renderCanvasImage(card,index){
       setTimeout(doIt,80);
     }
   };
-  doIt();
+  setTimeout(doIt,120);
 }
 async function genImg(i){
   const card=getCard(i);
@@ -1917,7 +1991,9 @@ async function genImg(i){
       const imageUrl=await generateFluxImage(apiKey,model,fluxPrompt,isIG);
       card.dataset.imageUrl=imageUrl;
       card.dataset.imageStatus='ready';
-      card.querySelector('.pimg').innerHTML=`<img src="${imageUrl}" alt="${post.headline||'Generated image'}" style="width:100%;height:100%;object-fit:cover;display:block">`;
+      // Use CSS overlay for logo + contact bar (avoids CORS canvas issues)
+      const pimg=card.querySelector('.pimg');
+      pimg.innerHTML=`<img src="${imageUrl}" alt="${post.headline||'Generated image'}" style="width:100%;height:100%;object-fit:cover;display:block"><div class="pimg-logo"><img src="data:image/png;base64,${LOGO_DARK_B64}" alt="Midas Tech"></div><div class="pimg-brand-mark"><img src="data:image/png;base64,${LOGO_DARK_B64}" alt="Midas Tech"></div><div class="pimg-footer">midastech.ca &nbsp;•&nbsp; 905-787-2038 &nbsp;•&nbsp; info@midastech.ca</div>`;
       return;
     }
     await renderCanvasImage(card,i);
@@ -1933,8 +2009,10 @@ async function generateAllImages(){
   }
   toast('🖼️ Images generated');
 }
-function cpCap(i){const c=getCard(i);navigator.clipboard.writeText((c.dataset.caption||'').replace(/\\n/g,'\n')).then(()=>toast('✅ Caption copied!'))}
-function cpAll(i){const c=getCard(i);navigator.clipboard.writeText((c.dataset.caption||'').replace(/\\n/g,'\n')+'\n\n'+(c.dataset.hashtags||'')).then(()=>toast('✅ Copied!'))}
+const _CF='\n\n📞 905-787-2038  |  🌐 midastech.ca  |  ✉️ info@midastech.ca';
+function _addCF(text){return /905-787-2038/.test(text)?text:text.trimEnd()+_CF;}
+function cpCap(i){const c=getCard(i);const cap=_addCF((c.dataset.caption||'').replace(/\\n/g,'\n'));navigator.clipboard.writeText(cap).then(()=>toast('✅ Caption copied!'))}
+function cpAll(i){const c=getCard(i);const cap=_addCF((c.dataset.caption||'').replace(/\\n/g,'\n'));const tags=c.dataset.hashtags||'';navigator.clipboard.writeText(cap+(tags?'\n\n'+tags:'')).then(()=>toast('✅ Copied!'))}
 async function saveToLeadTracker(i){
   const c=getCard(i);
   const post=c?._postData;
@@ -1962,8 +2040,23 @@ async function saveToLeadTracker(i){
   };
 
   try{
+    // Check for duplicate before saving (same platform + headline + caption)
+    const { data: existing, error: checkErr } = await db
+      .from('social_posts')
+      .select('id')
+      .eq('platform', payload.platform)
+      .eq('headline', payload.headline)
+      .limit(1);
+    if(checkErr) throw checkErr;
+    if(existing && existing.length > 0){
+      toast('⚠️ This post is already saved — skipping duplicate.');
+      return;
+    }
     const { error } = await db.from('social_posts').insert(payload);
     if(error) throw error;
+    // Mark the save button as saved so user knows
+    const saveBtn=document.querySelectorAll('.pcard')[i]?.querySelector('button[onclick^="saveToLeadTracker"]');
+    if(saveBtn){saveBtn.textContent='✅ Saved';saveBtn.disabled=true;}
     toast('✅ Saved to Lead Tracker');
   }catch(err){
     showErr(`Could not save to Lead Tracker.<br><small>${err.message||err}</small>`);
@@ -1973,13 +2066,24 @@ async function dlImg(i){
   const c=getCard(i);
   const imageUrl=c?.dataset.imageUrl;
   if(imageUrl){
-    const a=document.createElement('a');
-    a.download=`midas-tech-${c.dataset.platform||'post'}-${i+1}.jpg`;
-    a.href=imageUrl;
-    a.target='_blank';
-    a.click();
-    toast('🖼️ FLUX image opened!');
-    return;
+    try{
+      const branded=await buildBrandedExportFromUrl(imageUrl,c._postData||{},c.dataset.platform||'post');
+      const a=document.createElement('a');
+      a.download=`midas-tech-${c.dataset.platform||'post'}-${i+1}.png`;
+      a.href=branded;
+      a.click();
+      toast('🖼️ Branded image saved!');
+      return;
+    }catch(err){
+      console.warn('Branded export failed, falling back to raw image', err);
+      const a=document.createElement('a');
+      a.download=`midas-tech-${c.dataset.platform||'post'}-${i+1}.jpg`;
+      a.href=imageUrl;
+      a.target='_blank';
+      a.click();
+      toast('🖼️ Raw image opened!');
+      return;
+    }
   }
   const cv=document.getElementById(`cv${i}`);
   if(cv){
@@ -1989,6 +2093,47 @@ async function dlImg(i){
     a.click();
     toast('🖼️ Image saved!')
   }
+}
+
+async function buildBrandedExportFromUrl(imageUrl, post, platform){
+  const isIG=(platform||'').toLowerCase()==='instagram';
+  const W=isIG?1080:1200;
+  const H=isIG?1080:627;
+  const canvas=document.createElement('canvas');
+  canvas.width=W;
+  canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  const base=new Image();
+  base.crossOrigin='anonymous';
+  const loaded=await new Promise((resolve,reject)=>{
+    base.onload=()=>resolve();
+    base.onerror=reject;
+    base.src=imageUrl;
+  });
+  ctx.drawImage(base,0,0,W,H);
+  ctx.fillStyle='rgba(0,0,0,0.04)';
+  ctx.fillRect(0,0,W,H);
+  const footerH=isIG?76:58;
+  ctx.fillStyle='rgba(3,8,18,0.68)';
+  ctx.fillRect(0,H-footerH,W,footerH);
+  const logo=new Image();
+  logo.src='data:image/png;base64,'+LOGO_DARK_B64;
+  await new Promise((resolve)=>{logo.onload=resolve; logo.onerror=resolve;});
+  if(logo.complete&&logo.naturalWidth){
+    const lh=isIG?30:24;
+    const pad=isIG?10:8;
+    const lw=Math.min(260, Math.round(logo.naturalWidth*(lh/logo.naturalHeight)));
+    ctx.fillStyle='rgba(255,255,255,0.92)';
+    ctx.beginPath();
+    ctx.roundRect(18,18,lw+pad*2,lh+pad*2,10);
+    ctx.fill();
+    ctx.drawImage(logo,18+pad,18+pad,lw,lh);
+  }
+  ctx.fillStyle='rgba(255,255,255,0.93)';
+  ctx.font='600 12px Inter,sans-serif';
+  ctx.textAlign='center';
+  ctx.fillText('midastech.ca  •  905-787-2038  •  info@midastech.ca',W/2,H-footerH/2+5);
+  return canvas.toDataURL('image/png');
 }
 </script>
 </body>

@@ -782,10 +782,31 @@ function getFluxAspectRatio(isIG) {
   return isIG ? '1:1' : '16:9';
 }
 
+function getImageRecipe(post, isIG) {
+  const text = `${post?.headline || ''} ${post?.category || ''} ${post?.body || ''} ${post?.caption || ''}`.toLowerCase();
+  const platform = isIG
+    ? 'Square social post, poster-like composition, stronger centered focal point.'
+    : 'Wide LinkedIn composition, editorial campaign layout, clear subject hierarchy.';
+
+  if (/(phish|email|inbox|credential|account)/.test(text)) {
+    return `${platform} Dark cybersecurity scene with a business laptop showing a suspicious email, subtle warning glow, blue and teal accents, high contrast, minimal clutter, one clear focal point, believable office setting, no text.`;
+  }
+  if (/(ransom|breach|attack|malware|hack|shutdown|downtime|lock|leak)/.test(text)) {
+    return `${platform} Dramatic ransomware scene with a locked computer or secured laptop, subtle glitch energy, dark background, blue lighting, high contrast, premium corporate mood, one clear focal point, no text.`;
+  }
+  if (/(roi|return|value|investment|cost|savings)/.test(text)) {
+    return `${platform} Business-focused cybersecurity visual with subtle financial chart lines, shield protection, clean corporate environment, restrained blue and teal palette, premium editorial style, no text.`;
+  }
+  if (/(mfa|backup|password|patch|system|gap|compliance|checklist|audit)/.test(text)) {
+    return `${platform} Minimal corporate cybersecurity visual showing a focused business owner, security checklist cues, simple icons, dark gradient background, blue accents, clean layout, no text.`;
+  }
+  return `${platform} Clean cybersecurity campaign visual, dark background with blue neon accents, one clear subject, strong negative space, premium commercial photography look, subtle urgency, no text.`;
+}
+
 function buildFluxPrompt(post, isIG) {
   const platformPrompt = isIG
-    ? 'Square composition for Instagram. Strong focal point, clean composition, premium lighting.'
-    : 'Wide composition for LinkedIn. Professional commercial composition with clear subject hierarchy.';
+    ? 'Square composition for Instagram. Strong focal point, clean composition, premium lighting, big mobile-friendly visual read.'
+    : 'Wide composition for LinkedIn. Professional commercial composition with clear subject hierarchy and editorial breathing room.';
   const structuredBits = [];
   if (Array.isArray(post.tips) && post.tips.length) {
     structuredBits.push(`Key talking points: ${post.tips.map((tip) => `${tip.title}: ${tip.body}`).join(' | ')}`);
@@ -806,14 +827,17 @@ function buildFluxPrompt(post, isIG) {
     structuredBits.push(`Credibility sources: ${post.sources.join(' | ')}`);
   }
   const sourcePrompt = post.imagePrompt || `${post.headline || 'Cybersecurity business visual'}. ${post.body || ''}`.trim();
+  const recipePrompt = getImageRecipe(post, isIG);
   return [
     'Create a premium, modern cybersecurity-themed marketing visual for a managed IT and security company.',
     platformPrompt,
     `Topic: ${sourcePrompt}`,
+    `Art direction: ${recipePrompt}`,
     `Category: ${post.category || 'Cybersecurity'}.`,
     structuredBits.join(' '),
-    'Visual direction: premium B2B technology brand, Ontario business setting, polished office or operational environment, believable real-world composition, restrained blue and neutral palette, tasteful lighting, human art direction, high-end editorial or commercial campaign quality.',
-    'Match a human-made campaign aesthetic: concise, credible, practical, emotionally clear, and specific to the business problem. Avoid generic AI glow, surreal objects, plastic faces, warped hands, fake dashboards, and stock-photo clichés.',
+    'Visual direction: premium B2B technology brand, Ontario business setting, polished office or operational environment, believable real-world composition, restrained blue and teal palette, tasteful lighting, human art direction, high-end editorial or commercial campaign quality.',
+    'Match a human-made campaign aesthetic: concise, credible, practical, emotionally clear, and specific to the business problem. Avoid generic AI glow, surreal objects, plastic faces, warped hands, fake dashboards, stock-photo clichés, and crowded infographic clutter.',
+    'Design principle: one clear message, one focal point, strong negative space, minimal visual noise, and a mobile-friendly read at a glance.',
     'Do not add any text, letters, logos, UI screenshots, watermarks, infographic numbers, or poster typography inside the image itself.',
     'Keep the image clean, trustworthy, professional, and suitable as a human-designed social campaign visual or hero background.'
   ].filter(Boolean).join(' ');
@@ -1790,6 +1814,8 @@ Return ONLY a raw JSON array (nothing before [ or after ]):
 - "tips": array of exactly 3 objects: [{"num":"01","title":"Short Title","body":"One sentence explanation max 90 chars"}] — this populates the infographic boxes`
       : `- "imageStyle": "alert" for every post
 - For alert visuals, think like a poster with a clear narrative flow: warning headline -> proof/source row -> 4 business risks -> 4 service solutions -> urgent CTA
+- For alert visuals, keep the imagePrompt short and scene-based. Follow one of these proven recipe types: phishing email on screen, locked laptop / ransomware warning, business owner at laptop with warning indicators, ROI / shield / financial chart cues, or a minimal compliance checklist scene.
+- The imagePrompt should describe a human-made campaign visual with dark background, blue/teal accents, one clear focal point, strong negative space, and no text overlays.
 - "sources": array of exactly 3 short source names used as credibility markers
 - "risks": array of exactly 4 short risk items, each 2-5 words
 - "services": array of exactly 4 short solution items, each 2-5 words`;
@@ -1885,8 +1911,8 @@ Generate all ${perPlat*2} posts.`;
       const fallbackRisks=['Weak passwords','No MFA','Outdated systems','No backup strategy'];
       const fallbackServices=['Security audits','Microsoft 365 protection','Endpoint security','Backup solutions'];
       posts=[
-        {platform:'instagram',postType:needsStructuredVisual?'infographic':'alert',imageStyle:requestedVisualStyle,imagePrompt:'A premium cybersecurity operations scene for an Ontario small business, blue-lit office environment, secure devices, subtle urgency, polished commercial style, no text.',headline:'STAY AHEAD NOW',category:'RANSOMWARE ALERT',stat:'40%',statLabel:'surge in Canadian SMB attacks',body:'Ontario businesses are still prime ransomware targets. Is your team ready to respond?',caption:`Ransomware is not a distant threat — it looks for weak spots right now.\n\nOne phishing click can shut down an Ontario business for days.\n\nAccounting firms and healthcare clinics in Ontario are being hit hardest.\n\nOne attack can mean:\n→ Days of downtime\n→ Lost client trust\n→ Compliance penalties\n\nHere’s what we still see in most businesses:\n• No MFA\n• No tested backup\n• Outdated systems\n\n💬 We’re offering a quick 15-minute security check this week.\n\n📞 905-787-2038  |  🌐 midastech.ca  |  ✉️ info@midastech.ca`,hashtags:'#Cybersecurity #MidasTech #OntarioIT #MSP #ITSupport #RichmondHill #DataProtection #SmallBusiness #Toronto #GTA',cta:'CONNECT WITH MIDAS TECH',sources:fallbackSources,risks:fallbackRisks,services:fallbackServices,tips:fallbackTips,checklist:fallbackChecklist,stats:fallbackStats},
-        {platform:'linkedin',postType:needsStructuredVisual?'infographic':'alert',imageStyle:requestedVisualStyle,imagePrompt:'A polished B2B cybersecurity visual showing a modern business team protecting operations, premium blue and white palette, Ontario SMB context, realistic editorial style, no text.',headline:'STAY AHEAD NOW',category:'RANSOMWARE ALERT',stat:'40%',statLabel:'surge in Canadian SMB attacks',body:'Ontario businesses are still prime ransomware targets. Is your team ready to respond?',caption:`Cyber threats are not slowing down.\n\nOne phishing click can shut down an Ontario business for days.\n\nOntario accounting firms, clinics, and warehouses are still getting hit through the same basic gaps.\n\nOne attack can mean:\n→ Downtime\n→ Lost client trust\n→ Compliance penalties\n\nHere's what we're still seeing in most businesses:\n• No MFA\n• No tested backup\n• Outdated systems\n\nAt Midas Tech, we help GTA businesses close those gaps before they turn into incidents.\n\nIf you want a quick 15-minute security check this week, reply here and we’ll take a look.\n\n📞 905-787-2038  |  🌐 midastech.ca  |  ✉️ info@midastech.ca`,hashtags:'#Cybersecurity #ManagedIT #OntarioBusiness #SMBSecurity #Ransomware',cta:'CONNECT WITH MIDAS TECH',sources:fallbackSources,risks:fallbackRisks,services:fallbackServices,tips:fallbackTips,checklist:fallbackChecklist,stats:fallbackStats}
+        {platform:'instagram',postType:needsStructuredVisual?'infographic':'alert',imageStyle:requestedVisualStyle,imagePrompt:'Dark cybersecurity campaign visual, blue neon accents, business laptop with a suspicious email and subtle warning glow, minimal clutter, strong negative space, premium editorial feel, no text.',headline:'STAY AHEAD NOW',category:'RANSOMWARE ALERT',stat:'40%',statLabel:'surge in Canadian SMB attacks',body:'Ontario businesses are still prime ransomware targets. Is your team ready to respond?',caption:`Ransomware is not a distant threat — it looks for weak spots right now.\n\nOne phishing click can shut down an Ontario business for days.\n\nAccounting firms and healthcare clinics in Ontario are being hit hardest.\n\nOne attack can mean:\n→ Days of downtime\n→ Lost client trust\n→ Compliance penalties\n\nHere’s what we still see in most businesses:\n• No MFA\n• No tested backup\n• Outdated systems\n\n💬 We’re offering a quick 15-minute security check this week.\n\n📞 905-787-2038  |  🌐 midastech.ca  |  ✉️ info@midastech.ca`,hashtags:'#Cybersecurity #MidasTech #OntarioIT #MSP #ITSupport #RichmondHill #DataProtection #SmallBusiness #Toronto #GTA',cta:'CONNECT WITH MIDAS TECH',sources:fallbackSources,risks:fallbackRisks,services:fallbackServices,tips:fallbackTips,checklist:fallbackChecklist,stats:fallbackStats},
+        {platform:'linkedin',postType:needsStructuredVisual?'infographic':'alert',imageStyle:requestedVisualStyle,imagePrompt:'Wide LinkedIn cybersecurity visual, dark background with blue and teal accents, a focused business owner at a laptop with warning indicators and subtle shield cues, premium commercial style, one clear focal point, no text.',headline:'STAY AHEAD NOW',category:'RANSOMWARE ALERT',stat:'40%',statLabel:'surge in Canadian SMB attacks',body:'Ontario businesses are still prime ransomware targets. Is your team ready to respond?',caption:`Cyber threats are not slowing down.\n\nOne phishing click can shut down an Ontario business for days.\n\nOntario accounting firms, clinics, and warehouses are still getting hit through the same basic gaps.\n\nOne attack can mean:\n→ Downtime\n→ Lost client trust\n→ Compliance penalties\n\nHere's what we're still seeing in most businesses:\n• No MFA\n• No tested backup\n• Outdated systems\n\nAt Midas Tech, we help GTA businesses close those gaps before they turn into incidents.\n\nIf you want a quick 15-minute security check this week, reply here and we’ll take a look.\n\n📞 905-787-2038  |  🌐 midastech.ca  |  ✉️ info@midastech.ca`,hashtags:'#Cybersecurity #ManagedIT #OntarioBusiness #SMBSecurity #Ransomware',cta:'CONNECT WITH MIDAS TECH',sources:fallbackSources,risks:fallbackRisks,services:fallbackServices,tips:fallbackTips,checklist:fallbackChecklist,stats:fallbackStats}
       ];
     }
     posts=normalizeStructuredPosts(posts, requestedVisualStyle);

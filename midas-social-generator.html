@@ -1029,7 +1029,16 @@ function drawLogo(ctx,x,y,targetH,useDark){
   ctx.drawImage(img,x,y,w,targetH);
 }
 
-function drawTechBackdrop(ctx,W,H){
+function drawTechBackdrop(ctx,W,H,backgroundImage=null){
+  if (backgroundImage && backgroundImage.complete && backgroundImage.naturalWidth) {
+    ctx.save();
+    ctx.filter='blur(18px)';
+    ctx.globalAlpha=0.34;
+    ctx.drawImage(backgroundImage,0,0,W,H);
+    ctx.restore();
+    ctx.fillStyle='rgba(3,8,18,0.42)';
+    ctx.fillRect(0,0,W,H);
+  }
   ctx.fillStyle='#08101c';
   ctx.fillRect(0,0,W,H);
   let g=ctx.createLinearGradient(0,0,W,H);
@@ -1088,19 +1097,29 @@ function drawSlantedBand(ctx,x,y,w,h,color,slant){
   ctx.fill();
 }
 
+function loadImageFromUrl(url) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error('Could not load generated image background.'));
+    img.src = url;
+  });
+}
+
 // ════════════════════════════════════════════════════════════════════════════
 //  INSTAGRAM  1080×1080
 // ════════════════════════════════════════════════════════════════════════════
-function drawIG(canvas, post) {
+function drawIG(canvas, post, backgroundImage=null) {
   const W=1080, H=1080;
   canvas.width=W; canvas.height=H;
   const ctx=canvas.getContext('2d');
   const visualStyle = getVisualStyle(post);
 
   if(visualStyle !== 'alert'){
-    drawIG_Infographic(ctx, W, H, post);
+    drawIG_Infographic(ctx, W, H, post, backgroundImage);
   } else {
-    drawIG_Alert(ctx, W, H, post);
+    drawIG_Alert(ctx, W, H, post, backgroundImage);
   }
 }
 
@@ -1166,8 +1185,8 @@ function applyLeadTrackerPrefill() {
 }
 
 // ── Instagram ALERT / STAT style ─────────────────────────────────────────────
-function drawIG_Alert(ctx, W, H, post) {
-  drawTechBackdrop(ctx,W,H);
+function drawIG_Alert(ctx, W, H, post, backgroundImage=null) {
+  drawTechBackdrop(ctx,W,H,backgroundImage);
   ctx.fillStyle='rgba(4,8,16,0.36)';
   ctx.fillRect(0,0,W,H);
 
@@ -1331,8 +1350,10 @@ function drawIG_Alert(ctx, W, H, post) {
 }
 
 // ── Instagram INFOGRAPHIC / TIPS style ───────────────────────────────────────
-function drawIG_Infographic(ctx, W, H, post) {
+function drawIG_Infographic(ctx, W, H, post, backgroundImage=null) {
   const visualStyle = getVisualStyle(post);
+  drawTechBackdrop(ctx,W,H,backgroundImage);
+  ctx.fillStyle='rgba(8,17,31,0.38)';ctx.fillRect(0,0,W,H);
   ctx.fillStyle='#08111f';ctx.fillRect(0,0,W,H);
   let g=ctx.createRadialGradient(W*0.82,H*0.12,0,W*0.82,H*0.12,W*0.75);
   g.addColorStop(0,'rgba(0,174,239,0.22)');g.addColorStop(1,'transparent');
@@ -1468,22 +1489,22 @@ function drawIconRow(ctx,x,y,isRed){
 // ════════════════════════════════════════════════════════════════════════════
 //  LINKEDIN  1200×627
 // ════════════════════════════════════════════════════════════════════════════
-function drawLI(canvas, post) {
+function drawLI(canvas, post, backgroundImage=null) {
   const W=1200, H=627;
   canvas.width=W; canvas.height=H;
   const ctx=canvas.getContext('2d');
   const visualStyle=getVisualStyle(post);
 
   if(visualStyle !== 'alert'){
-    drawLI_Infographic(ctx,W,H,post);
+    drawLI_Infographic(ctx,W,H,post,backgroundImage);
   } else {
-    drawLI_Alert(ctx,W,H,post);
+    drawLI_Alert(ctx,W,H,post,backgroundImage);
   }
 }
 
 // ── LinkedIn ALERT / STAT ─────────────────────────────────────────────────────
-function drawLI_Alert(ctx, W, H, post) {
-  drawTechBackdrop(ctx,W,H);
+function drawLI_Alert(ctx, W, H, post, backgroundImage=null) {
+  drawTechBackdrop(ctx,W,H,backgroundImage);
   ctx.fillStyle='rgba(4,8,16,0.34)';
   ctx.fillRect(0,0,W,H);
 
@@ -1637,8 +1658,10 @@ function drawLI_Alert(ctx, W, H, post) {
 }
 
 // ── LinkedIn INFOGRAPHIC / TIPS ───────────────────────────────────────────────
-function drawLI_Infographic(ctx, W, H, post) {
+function drawLI_Infographic(ctx, W, H, post, backgroundImage=null) {
   const visualStyle = getVisualStyle(post);
+  drawTechBackdrop(ctx,W,H,backgroundImage);
+  ctx.fillStyle='rgba(8,17,31,0.38)';ctx.fillRect(0,0,W,H);
   ctx.fillStyle='#08111f';ctx.fillRect(0,0,W,H);
   let g=ctx.createLinearGradient(0,0,W,H);
   g.addColorStop(0,'rgba(6,16,30,1)');
@@ -2060,7 +2083,7 @@ function renderImagePlaceholder(card,message,isError=false){
   imgDiv.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;height:100%;min-height:260px;color:${isError?'#c2413b':'#625846'};font:500 14px Inter,sans-serif;padding:24px;text-align:center;background:linear-gradient(180deg,rgba(255,255,255,.98),rgba(248,243,234,.92))">${message}</div>`;
   imgDiv.insertAdjacentHTML('beforeend',`<div class="pimg-logo"><img src="data:image/png;base64,${LOGO_DARK_B64}" alt="Midas Tech"></div><div class="pimg-footer">midastech.ca &nbsp;•&nbsp; 905-787-2038 &nbsp;•&nbsp; info@midastech.ca</div>`);
 }
-async function renderCanvasImage(card,index){
+async function renderCanvasImage(card,index,backgroundImage=null){
   const imgDiv=card.querySelector('.pimg');
   if(!imgDiv) return;
   imgDiv.innerHTML='';
@@ -2072,11 +2095,16 @@ async function renderCanvasImage(card,index){
   const post=card._postData||{};
   const isIG=(card.dataset.platform||'')==='instagram';
   const drawFn=isIG?drawIG:drawLI;
+  const bgUrl=card.dataset.bgImageUrl||card.dataset.imageUrl||'';
+  let resolvedBackground=backgroundImage;
+  if(!resolvedBackground && bgUrl){
+    resolvedBackground=await loadImageFromUrl(bgUrl).catch(()=>null);
+  }
   const doIt=()=>{
     if(logoDark.complete&&logoDark.naturalWidth&&logoLight.complete&&logoLight.naturalWidth){
-      drawFn(cv,post);
+      drawFn(cv,post,resolvedBackground);
       card.dataset.imageStatus='ready';
-      delete card.dataset.imageUrl;
+      card.dataset.renderMode='composed';
     } else {
       setTimeout(doIt,80);
     }
@@ -2101,10 +2129,9 @@ async function genImg(i){
       const fluxPrompt=buildFluxPrompt(post,isIG);
       const imageUrl=await generateFluxImage(apiKey,model,fluxPrompt,isIG);
       card.dataset.imageUrl=imageUrl;
+      card.dataset.bgImageUrl=imageUrl;
       card.dataset.imageStatus='ready';
-      // Use CSS overlay for logo + contact bar (avoids CORS canvas issues)
-      const pimg=card.querySelector('.pimg');
-      pimg.innerHTML=`<img src="${imageUrl}" alt="${post.headline||'Generated image'}" style="width:100%;height:100%;object-fit:cover;display:block"><div class="pimg-logo"><img src="data:image/png;base64,${LOGO_DARK_B64}" alt="Midas Tech"></div><div class="pimg-footer">midastech.ca &nbsp;•&nbsp; 905-787-2038 &nbsp;•&nbsp; info@midastech.ca</div>`;
+      await renderCanvasImage(card,i);
       return;
     }
     await renderCanvasImage(card,i);
@@ -2176,6 +2203,23 @@ async function saveToLeadTracker(i){
 async function dlImg(i){
   const c=getCard(i);
   const imageUrl=c?.dataset.imageUrl;
+  const isFlux=(c?.dataset.imageEngine||'')==='flux' || !!c?.dataset.bgImageUrl;
+  if(isFlux){
+    const cv=document.getElementById(`cv${i}`);
+    if(cv){
+      try{
+        const a=document.createElement('a');
+        a.download=`midas-tech-${c.dataset.platform||'post'}-${i+1}.jpg`;
+        a.href=cv.toDataURL('image/jpeg',0.92);
+        a.click();
+        toast('🖼️ Image saved!');
+        return;
+      }catch(err){
+        showErr(`Could not export the composed image.<br><small>${err.message||err}</small>`);
+        return;
+      }
+    }
+  }
   if(imageUrl){
     try{
       const branded=await buildBrandedExportFromUrl(imageUrl,c._postData||{},c.dataset.platform||'post');

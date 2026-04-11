@@ -1695,11 +1695,19 @@
       el.textContent = message;
       el.style.display = message ? "block" : "none";
     }
+    const fileOriginLoginHint = "Open LeadTracker from a local web server, not by double-clicking index.html. Use Launch LeadTracker.bat so Firebase sign-in runs from http://localhost.";
+    const hostedOriginLoginHint = () => {
+      const origin = `${window.location.protocol}//${window.location.hostname}`;
+      return `Firebase sign-in is blocked for this hosted domain (${origin}). Add this domain to Firebase Authentication > Settings > Authorized domains, then try again.`;
+    };
     function formatAuthError(error) {
       const code = error?.code || "";
       if (window.location.protocol === "file:" &&
           (code === "auth/network-request-failed" || code === "auth/operation-not-supported-in-this-environment")) {
-        return "This app is being opened directly from a file. Run it from a local web server or add the hosting domain in Firebase Authorized Domains before signing in.";
+        return fileOriginLoginHint;
+      }
+      if (code === "auth/unauthorized-domain") {
+        return hostedOriginLoginHint();
       }
       if (code === "auth/invalid-credential" || code === "auth/invalid-login-credentials") {
         return "Email or password is incorrect.";
@@ -1837,21 +1845,41 @@
       currentUser = "";
       if (!firebaseUser) return;
       const userRef = doc(db, "users", firebaseUser.uid);
-      let snap = await getDoc(userRef);
-      if (!snap.exists()) {
-        const email = (firebaseUser.email || "").trim().toLowerCase();
-        const fallbackProfile = {
-          name: firebaseUser.displayName || inferNameFromEmail(email),
-          email,
-          role: "rep",
-          createdAt: serverTimestamp(),
-          autoCreated: true
-        };
-        await setDoc(userRef, fallbackProfile);
-        snap = await getDoc(userRef);
+      const email = (firebaseUser.email || "").trim().toLowerCase();
+      const fallbackProfile = {
+        id: firebaseUser.uid,
+        name: firebaseUser.displayName || inferNameFromEmail(email),
+        email,
+        role: "rep",
+        autoCreated: true,
+        profileSyncStatus: "local"
+      };
+      try {
+        let snap = await getDoc(userRef);
+        if (!snap.exists()) {
+          try {
+            await setDoc(userRef, {
+              name: fallbackProfile.name,
+              email,
+              role: "rep",
+              createdAt: serverTimestamp(),
+              autoCreated: true
+            });
+            snap = await getDoc(userRef);
+          } catch (writeError) {
+            console.warn("Could not create user profile document:", writeError);
+            currentUserProfile = fallbackProfile;
+            currentUser = fallbackProfile.name || firebaseUser.email || "User";
+            return;
+          }
+        }
+        currentUserProfile = { id: snap.id, ...snap.data() };
+        currentUser = currentUserProfile.name || firebaseUser.email || "User";
+      } catch (readError) {
+        console.warn("Could not load user profile document:", readError);
+        currentUserProfile = fallbackProfile;
+        currentUser = fallbackProfile.name || firebaseUser.email || "User";
       }
-      currentUserProfile = { id: snap.id, ...snap.data() };
-      currentUser = currentUserProfile.name || firebaseUser.email || "User";
     }
     function bindLeadListener() {
       if (unsubscribeLeads) unsubscribeLeads();
@@ -2091,6 +2119,12 @@
       console.warn("auth persistence setup failed:", e);
     }
 
+    if (window.location.protocol === "file:") {
+      setUserModalError(fileOriginLoginHint);
+    } else if (window.location.hostname.endsWith("github.io")) {
+      setUserModalError(hostedOriginLoginHint());
+    }
+
     onAuthStateChanged(auth, async firebaseUser => {
       try {
         if (!firebaseUser) {
@@ -2133,11 +2167,31 @@
         console.error("auth init error:", e);
         if (e?.message === "No user profile found. Ask an admin to create your account.") {
           try { await signOut(auth); } catch (signOutError) { console.error("profile cleanup signOut error:", signOutError); }
+          setUserModalError(formatAuthError(e));
+        } else if (auth.currentUser) {
+          console.warn("Continuing with signed-in auth user after profile initialization error.");
+          const email = (auth.currentUser.email || "").trim().toLowerCase();
+          currentUserProfile = {
+            id: auth.currentUser.uid,
+            name: auth.currentUser.displayName || inferNameFromEmail(email),
+            email,
+            role: "rep",
+            autoCreated: true,
+            profileSyncStatus: "fallback"
+          };
+          currentUser = currentUserProfile.name || auth.currentUser.email || "User";
+          applyUserDisplay();
+          closeModal("userModal");
+          bindLeadListener();
+          setUserModalError("Signed in, but your profile could not sync with Firestore. You may have limited access until the Firestore rules are fixed.");
+        } else {
+          setUserModalError(formatAuthError(e));
         }
-        setUserModalError(formatAuthError(e));
         closeBootstrapAdminModal();
         closeModal("importBatchesModal");
-        document.getElementById("userModal").classList.add("active");
+        if (!auth.currentUser) {
+          document.getElementById("userModal").classList.add("active");
+        }
       }
     });
 

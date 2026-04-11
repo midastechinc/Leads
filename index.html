@@ -3568,7 +3568,7 @@
             <div class="social-post-tags">${hashtags}</div>
             <div class="social-post-actions">
               <button class="btn btn-secondary btn-sm" onclick='navigator.clipboard.writeText(${JSON.stringify((post.caption || "") + "\n\n" + (post.hashtags || ""))})'>Copy Post</button>
-              <button class="btn btn-secondary btn-sm" onclick='window.open(`${getLeadTrackerPostCreatorBaseUrl()}?draft=${encodeURIComponent(String(post.id))}`,"_blank","noopener")'>Open Creator</button>
+              <button class="btn btn-secondary btn-sm" onclick='window.open(${JSON.stringify(`${getLeadTrackerPostCreatorBaseUrl()}?draft=${encodeURIComponent(String(post.id))}`)},"_blank","noopener")'>Open Creator</button>
               <button class="btn btn-secondary btn-sm" onclick='window.open(${JSON.stringify(post.image_url || "")},"_blank","noopener")' ${post.image_url ? "" : "disabled"}>Open Image</button>
             </div>
           </div>`;

@@ -2552,6 +2552,18 @@ function applyLeadTrackerPrefill() {
   const style = params.get('style');
   const company = params.get('company');
   const draft = params.get('draft');
+  const platformContext = params.get('platform_context');
+
+  const normalizeSelectValue = (value, aliases, allowed) => {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    const lower = raw.toLowerCase();
+    if (allowed.includes(raw)) return raw;
+    if (aliases[lower]) return aliases[lower];
+    const slug = lower.replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+    if (allowed.includes(slug)) return slug;
+    return raw;
+  };
 
   if (mode === 'manual' || topic) {
     setMode('manual');
@@ -2559,13 +2571,45 @@ function applyLeadTrackerPrefill() {
     if (manualInput && topic) manualInput.value = topic;
   }
   if (audience && document.getElementById('targetAudience')) {
-    document.getElementById('targetAudience').value = audience;
+    const audienceSelect = document.getElementById('targetAudience');
+    const audienceValue = normalizeSelectValue(
+      audience,
+      {
+        'business owners': 'business_owners',
+        'business owner': 'business_owners',
+        'business owners and decision makers': 'business_owners',
+        'decision makers': 'business_owners',
+        'healthcare clinics': 'healthcare',
+        'healthcare clinics and medical teams': 'healthcare',
+        'accounting firms': 'accounting',
+        'accounting & finance firms': 'accounting',
+        'operations & office managers': 'operations',
+        'warehouses & logistics teams': 'warehouses'
+      },
+      Array.from(audienceSelect.options).map((opt) => opt.value)
+    );
+    audienceSelect.value = audienceValue;
   }
   if (voice && document.getElementById('brandVoice')) {
-    document.getElementById('brandVoice').value = voice;
+    const voiceSelect = document.getElementById('brandVoice');
+    const voiceValue = normalizeSelectValue(
+      voice,
+      {
+        'premium trusted advisor': 'premium',
+        'direct & straightforward': 'direct',
+        'executive thought leadership': 'thought_leader',
+        'friendly local expert': 'friendly'
+      },
+      Array.from(voiceSelect.options).map((opt) => opt.value)
+    );
+    voiceSelect.value = voiceValue;
   }
   if (industry && document.getElementById('industryFocus')) {
     document.getElementById('industryFocus').value = industry;
+  }
+  if (platformContext && /leadtracker/i.test(platformContext)) {
+    const manualInput = document.getElementById('manualTopic');
+    if (manualInput && !manualInput.value && topic) manualInput.value = topic;
   }
   if (company) {
     document.title = `Midas Tech — LeadTracker Social Studio — ${company}`;

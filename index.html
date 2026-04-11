@@ -1620,7 +1620,7 @@
       </div>
       <p class="modal-sub" id="userModalError" style="display:none; margin-bottom:0; color:var(--red);"></p>
       <div class="modal-actions">
-        <button class="btn btn-primary" onclick="loginUser()">Sign In</button>
+        <button class="btn btn-primary" id="loginBtn" type="button" onclick="loginUser()">Sign In</button>
       </div>
     </div>
   </div>
@@ -1706,6 +1706,7 @@
     let unsubscribeImportBatches = null;
     let bootstrapAdminDismissed = false;
     let loginModalTimer = null;
+    let authBusy = false;
 
     // ── CLOSE MODAL (defined early so initUser can call it) ────────
     function closeModal(id) { document.getElementById(id)?.classList.remove("active"); }
@@ -1717,6 +1718,14 @@
       if (!el) return;
       el.textContent = message;
       el.style.display = message ? "block" : "none";
+    }
+    function setLoginBusy(isBusy) {
+      authBusy = isBusy;
+      const btn = document.getElementById("loginBtn");
+      if (btn) {
+        btn.disabled = isBusy;
+        btn.textContent = isBusy ? "Signing In..." : "Sign In";
+      }
     }
     const fileOriginLoginHint = "Open LeadTracker from a local web server, not by double-clicking index.html. Use Launch LeadTracker.bat so Firebase sign-in runs from http://localhost.";
     const hostedOriginLoginHint = () => {
@@ -1970,7 +1979,9 @@
       );
     }
     window.loginUser = async function () {
+      if (authBusy) return;
       try {
+        setLoginBusy(true);
         const email = document.getElementById("userEmailInput").value.trim().toLowerCase();
         const password = document.getElementById("userPasswordInput").value;
         if (!email || !password) return setUserModalError("Enter your email and password.");
@@ -1980,6 +1991,9 @@
       } catch(e) {
         console.error("loginUser error:", e);
         setUserModalError(formatAuthError(e));
+        showLoginModal(formatAuthError(e));
+      } finally {
+        setLoginBusy(false);
       }
     };
     window.changeUser = function () {
@@ -1990,7 +2004,17 @@
       setTimeout(() => document.getElementById("userEmailInput").focus(), 100);
     };
     window.logoutUser = async function () {
-      try { await signOut(auth); } catch (e) { console.error("logoutUser error:", e); }
+      try {
+        setLoginBusy(false);
+        await signOut(auth);
+      } catch (e) {
+        console.error("logoutUser error:", e);
+      } finally {
+        document.getElementById("userPasswordInput").value = "";
+        setUserModalError("");
+        showLoginModal("Signed out. Enter your email and password to continue.");
+        setTimeout(() => document.getElementById("userEmailInput")?.focus(), 100);
+      }
     };
     window.dismissBootstrapAdmin = function () {
       bootstrapAdminDismissed = true;

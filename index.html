@@ -2190,8 +2190,6 @@
 
     if (window.location.protocol === "file:") {
       setUserModalError(fileOriginLoginHint);
-    } else if (window.location.hostname.endsWith("github.io")) {
-      setUserModalError(hostedOriginLoginHint());
     }
 
     onAuthStateChanged(auth, async firebaseUser => {

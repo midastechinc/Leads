@@ -2011,6 +2011,11 @@
         console.error("logoutUser error:", e);
       } finally {
         document.getElementById("userPasswordInput").value = "";
+        document.getElementById("userEmailInput").value = "";
+        currentUserProfile = null;
+        currentUserId = "";
+        currentUser = "";
+        authBusy = false;
         setUserModalError("");
         showLoginModal("Signed out. Enter your email and password to continue.");
         setTimeout(() => document.getElementById("userEmailInput")?.focus(), 100);

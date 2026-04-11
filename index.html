@@ -1646,6 +1646,9 @@
     };
     window.dismissBootstrapAdmin = window.dismissBootstrapAdmin || function () {};
     window.claimBootstrapAdmin = window.claimBootstrapAdmin || function () {};
+    if (window.location.protocol === "file:") {
+      window.location.replace("https://midastechinc.github.io/Leads/");
+    }
   </script>
 
   <!-- Supabase (LinkedIn Dashboard) -->

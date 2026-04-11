@@ -1634,6 +1634,20 @@
 
   <div class="toast" id="toast"></div>
 
+  <script>
+    // Keep login buttons from throwing a ReferenceError if the module script
+    // cannot initialize yet, especially when the page is opened from file://.
+    window.loginUser = window.loginUser || function () {
+      const el = document.getElementById("userModalError");
+      if (el) {
+        el.textContent = "Open LeadTracker from a local web server (Launch LeadTracker.bat). Firebase sign-in does not work from file:// URLs.";
+        el.style.display = "block";
+      }
+    };
+    window.dismissBootstrapAdmin = window.dismissBootstrapAdmin || function () {};
+    window.claimBootstrapAdmin = window.claimBootstrapAdmin || function () {};
+  </script>
+
   <!-- Supabase (LinkedIn Dashboard) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 

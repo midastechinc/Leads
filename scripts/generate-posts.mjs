@@ -65,6 +65,34 @@ const INDUSTRY_HASHTAGS = {
   general:    '#CyberSecurity #ManagedIT #OntarioBusiness #GTA #SmallBusiness #MidasTech',
 };
 
+const BANNED_OPENERS = [
+  'everything looks normal',
+  'everything seems normal',
+  'everything seems fine',
+  'everything looks fine',
+  'until it isn',
+  'did you know',
+  'in today\'s landscape',
+  'as cyber threats grow',
+  'it\'s no secret',
+  'in an era of',
+  'cybercriminals are',
+  'cyber threats are',
+  'the threat is real',
+  'you might think',
+  'most businesses think',
+  'think your business is safe',
+  'imagine a late',
+  'imagine receiving',
+  'picture this',
+  'what if i told you',
+];
+
+function hasBannedOpener(caption) {
+  const start = String(caption || '').toLowerCase().slice(0, 80);
+  return BANNED_OPENERS.some(phrase => start.includes(phrase));
+}
+
 const PREFERRED_SOURCES = [
   'BleepingComputer (bleepingcomputer.com)',
   'The Hacker News (thehackernews.com)',
@@ -310,8 +338,26 @@ Return ONLY a raw JSON array (nothing before [ or after ]):
   }
 ]`;
 
-  const postsRaw = await call1min(postsPrompt, false);
-  const posts = extractJSON(postsRaw);
+  let posts = [];
+  const MAX_ATTEMPTS = 3;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    const retryNote = attempt > 1
+      ? `\n\nATTENTION: Previous attempt failed validation. The opening line of EVERY post must be a specific concrete sentence — a named business type, a real number, or a specific event. Do NOT start with "Everything", "Imagine", "Picture", or any vague philosophical statement.`
+      : '';
+    const postsRaw = await call1min(postsPrompt + retryNote, false);
+    const candidates = extractJSON(postsRaw);
+
+    const flagged = candidates.filter(p => hasBannedOpener(p.caption));
+    if (flagged.length > 0) {
+      console.warn(`   ⚠️  Attempt ${attempt}: ${flagged.length} post(s) used a banned opener — ${attempt < MAX_ATTEMPTS ? 'retrying...' : 'accepting anyway.'}`);
+      flagged.forEach(p => console.warn(`      [${p.platform}] "${String(p.caption || '').slice(0, 60)}..."`));
+      if (attempt < MAX_ATTEMPTS) continue;
+    }
+
+    posts = candidates;
+    if (attempt > 1 && flagged.length === 0) console.log(`   ✅ Clean openers on attempt ${attempt}`);
+    break;
+  }
 
   if (!posts.length) throw new Error('AI returned no posts — check 1min.ai credits and API key.');
   console.log(`   ✅ Generated ${posts.length} posts`);

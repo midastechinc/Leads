@@ -220,7 +220,8 @@ Generate exactly 3 posts — one per platform. Each post MUST use a completely d
 ═══════════════════════════════════════════
 INSTAGRAM POST — Emotional fear/consequence angle
 ═══════════════════════════════════════════
-- Open with a vivid, specific business scenario (not a stat) — paint the moment of a breach
+- Open with a vivid, specific moment that drops the reader into a real scene — name a business type, a day, a specific thing that went wrong. Example styles: "A Richmond Hill accounting firm lost 3 years of client files on a Tuesday morning." / "One email. That's all it took to shut down a GTA dental clinic for 4 days." / "The backup existed. It just hadn't worked in 6 months."
+- NEVER open with a philosophical statement, a rhetorical question, or a vague warning
 - Make the reader feel the pain: downtime, client call, lost data, panic
 - Short punchy paragraphs, max 2-3 lines each
 - Middle: name the exact gap most businesses have (no MFA, no tested backup, etc.)
@@ -231,8 +232,8 @@ INSTAGRAM POST — Emotional fear/consequence angle
 ═══════════════════════════════════════════
 LINKEDIN POST — Authority/thought leadership angle
 ═══════════════════════════════════════════
-- Open with a bold professional observation or contrarian insight — NOT a scenario
-- Something like: "We reviewed 30 Ontario businesses this quarter. Here's what we found." or "Most IT teams don't want you to know this."
+- Open with a specific, experience-grounded or data-grounded statement that immediately establishes authority. Example styles: "We audited 40 Ontario SMBs this year. 34 had no tested backup." / "The #1 entry point for ransomware in GTA businesses right now isn't software — it's email." / "I keep seeing the same 3 mistakes in accounting firms across Ontario."
+- NEVER open with a vague warning, a philosophical statement, or a rhetorical question
 - Middle: professional breakdown — 3-4 short paragraphs with specific insights, patterns, or data from the news
 - Include the news story framed as a professional trend, not a scare story
 - Position Midas Tech as the leading cybersecurity authority in GTA
@@ -252,7 +253,7 @@ GOOGLE POST — Local action/offer angle
 
 ═══════════════════════════════════════════
 RULES FOR ALL 3 POSTS:
-- BANNED openers: "Did you know", "In today's landscape", "As cyber threats grow", "It's no secret", "In an era of"
+- BANNED openers (never use any of these, not even partially): "Did you know", "In today's landscape", "As cyber threats grow", "It's no secret", "In an era of", "Everything looks normal", "Everything looks fine", "until it isn't", "Cybercriminals are", "Cyber threats are", "The threat is real", "You might think", "Most businesses think", "Think your business is safe"
 - End every caption with: 📞 905-787-2038  |  🌐 midastech.ca  |  ✉️ info@midastech.ca
 - Do not invent statistics not present in the source material
 - Never mention competitor names or product names

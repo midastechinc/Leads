@@ -1,0 +1,39 @@
+name: Daily Social Post Generator
+
+on:
+  schedule:
+    # 10:30 AM EDT (UTC-4) = 14:30 UTC  — runs April through October
+    # 10:30 AM EST (UTC-5) = 15:30 UTC  — runs November through March
+    # Using 14:30 UTC year-round (fires at 10:30 AM in summer, 9:30 AM in winter)
+    - cron: '30 14 * * *'
+  workflow_dispatch:
+    # Allows manual trigger from GitHub Actions tab for testing
+
+jobs:
+  generate-posts:
+    name: Generate & Save Daily Posts
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: scripts/package.json
+
+      - name: Install dependencies
+        run: npm install
+        working-directory: scripts
+
+      - name: Generate daily posts
+        env:
+          SUPABASE_URL:      ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          ONEMIN_API_KEY:    ${{ secrets.ONEMIN_API_KEY }}
+        run: node generate-posts.mjs
+        working-directory: scripts

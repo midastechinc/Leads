@@ -217,11 +217,16 @@ TOPIC FOCUS: ${topic.label}
 
 Generate exactly 3 posts — one per platform. Each post MUST use a completely different angle, hook, opening line, narrative, and emotional approach. They must read as if written by 3 different writers for 3 different reader mindsets. Do NOT reuse the same hook, sentence, or idea across posts.
 
+CRITICAL — THE FIRST WORD OF EVERY POST MUST NOT BE "Everything", "Imagine", "Picture", "Think", "What", "When", "How", "Are", "Is", "Do", "Can", "Your", "Most", "Many", or any vague generalization. The opening line must be CONCRETE and SPECIFIC — a named business, a real number, a specific event, or a direct statement of fact.
+
 ═══════════════════════════════════════════
 INSTAGRAM POST — Emotional fear/consequence angle
 ═══════════════════════════════════════════
-- Open with a vivid, specific moment that drops the reader into a real scene — name a business type, a day, a specific thing that went wrong. Example styles: "A Richmond Hill accounting firm lost 3 years of client files on a Tuesday morning." / "One email. That's all it took to shut down a GTA dental clinic for 4 days." / "The backup existed. It just hadn't worked in 6 months."
-- NEVER open with a philosophical statement, a rhetorical question, or a vague warning
+- THE FIRST SENTENCE must name a specific business type AND a specific consequence. It must be a statement of something that happened, not a setup or a warning. Use one of these exact structures:
+  • "[Business type] in [Ontario city/GTA] [specific bad thing]. [Time reference]." → e.g. "A Mississauga dental clinic lost access to 6 years of patient records on a Wednesday morning."
+  • "[Specific bad thing]. [Business type] in [Ontario location] [consequence]." → e.g. "One phishing email. A Markham accounting firm lost 3 weeks of billing data."
+  • "[Specific number or fact]. [Direct consequence for a named business type]." → e.g. "4 days of downtime. That's what a GTA warehouse faced after a single ransomware attack last month."
+- NEVER open with "Everything", "Imagine", "Picture this", or any scene-setting philosophical line
 - Make the reader feel the pain: downtime, client call, lost data, panic
 - Short punchy paragraphs, max 2-3 lines each
 - Middle: name the exact gap most businesses have (no MFA, no tested backup, etc.)
@@ -232,8 +237,11 @@ INSTAGRAM POST — Emotional fear/consequence angle
 ═══════════════════════════════════════════
 LINKEDIN POST — Authority/thought leadership angle
 ═══════════════════════════════════════════
-- Open with a specific, experience-grounded or data-grounded statement that immediately establishes authority. Example styles: "We audited 40 Ontario SMBs this year. 34 had no tested backup." / "The #1 entry point for ransomware in GTA businesses right now isn't software — it's email." / "I keep seeing the same 3 mistakes in accounting firms across Ontario."
-- NEVER open with a vague warning, a philosophical statement, or a rhetorical question
+- THE FIRST SENTENCE must be a specific, verifiable, experience-based or data-based statement. Use one of these exact structures:
+  • "We [audited/reviewed/visited] [number] Ontario [business type] this [time period]. [Specific finding]." → e.g. "We reviewed 38 Ontario SMBs this quarter. 31 had no tested disaster recovery plan."
+  • "The #1 [threat/gap/entry point] for [business type] in [Ontario/GTA] right now is [specific thing]." → e.g. "The #1 entry point for ransomware in Ontario law firms right now isn't software — it's email."
+  • "I keep seeing the same [number] [gaps/mistakes/patterns] across [business type] in the GTA." → e.g. "I keep seeing the same 3 security gaps in GTA healthcare clinics — and attackers know it."
+- NEVER open with "Everything", "Imagine", or any philosophical/narrative scene-setter
 - Middle: professional breakdown — 3-4 short paragraphs with specific insights, patterns, or data from the news
 - Include the news story framed as a professional trend, not a scare story
 - Position Midas Tech as the leading cybersecurity authority in GTA

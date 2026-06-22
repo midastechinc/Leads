@@ -93,7 +93,40 @@ function hasBannedOpener(caption) {
   return BANNED_OPENERS.some(phrase => start.includes(phrase));
 }
 
-const PREFERRED_SOURCES = [
+// ── Smart image prompt type selection ────────────────────────────────────────
+const IMAGE_PROMPT_TYPES = {
+  alert_warning:    'Alert / Warning Graphic — bold red/dark urgent layout, single threat message, high contrast',
+  stats_card:       'Stats Card — one large number dominates, clean minimal typography, dark background',
+  checklist_card:   'Checklist / Action Steps — 3-5 numbered steps in cards, structured layout',
+  infographic:      'Infographic — 3-5 key points with icons, sectioned dark layout',
+  quote_card:       'Thought Leadership Quote — one strong statement, minimal design, authority feel',
+  editorial_photo:  'Single-Message Graphic — bold headline, one supporting line, lots of breathing room',
+  workflow_diagram: 'Problem → Solution — split layout comparing the risk on left, fix on right',
+  comparison_card:  'Case Study Visual — situation → outcome flow, minimal timeline layout',
+};
+
+function pickImagePromptType(post) {
+  const text = `${post.headline || ''} ${post.category || ''} ${post.caption || ''}`.toLowerCase();
+
+  // Map content signals to relevant types (2-3 per signal)
+  const pools = {
+    alert_warning:    /alert|warning|risk|threat|urgent|critical|breach|ransom|attack|hack|phish/.test(text),
+    stats_card:       /stat|number|percent|%|rise|surge|increase|report|data|metric/.test(text),
+    checklist_card:   /tip|step|check|action|fix|audit|review|list|do this|protect|secure your/.test(text),
+    infographic:      /guide|how to|explain|educational|learn|understand|multiple|key point/.test(text),
+    quote_card:       /insight|authority|expert|believe|truth|leadership|opinion|pattern|we see/.test(text),
+    workflow_diagram: /problem|solution|before|after|compare|vs|manual|automate|improve|upgrade/.test(text),
+    comparison_card:  /case|scenario|story|situation|outcome|example|real world|incident/.test(text),
+    editorial_photo:  true, // always eligible as fallback
+  };
+
+  const eligible = Object.entries(pools).filter(([, match]) => match).map(([type]) => type);
+  // Prioritise content-matched types; always at least editorial_photo
+  const pool = eligible.length > 1 ? eligible.filter(t => t !== 'editorial_photo') : eligible;
+  return pool[Math.floor(Math.random() * pool.length)];
+}
+
+
   'BleepingComputer (bleepingcomputer.com)',
   'The Hacker News (thehackernews.com)',
   'Dark Reading (darkreading.com)',
@@ -295,6 +328,10 @@ RULES FOR ALL 3 POSTS:
 - Never mention competitor names or product names
 - Each post must feel completely independent — different hook, different narrative, different reader
 
+For each post also include:
+- "image_prompt_type": one of these values picked to best match the post content: "alert_warning" (urgent threat posts), "stats_card" (stat-heavy posts), "checklist_card" (tips/steps posts), "infographic" (educational multi-point posts), "quote_card" (authority/insight posts), "editorial_photo" (emotional story posts), "workflow_diagram" (problem→solution posts), "comparison_card" (case study posts)
+- "image_prompt": a Midjourney/Canva AI image prompt for this post — 20-30 words, purely visual (NO text or logos in the image), dark navy (#0b0f1c) and electric blue (#00AEEF) color scheme, professional cybersecurity B2B aesthetic, cinematic lighting. Format: "[visual scene description], dark navy and electric blue, professional cybersecurity aesthetic, cinematic lighting, 4K, no text"
+
 Return ONLY a raw JSON array (nothing before [ or after ]):
 [
   {
@@ -308,7 +345,9 @@ Return ONLY a raw JSON array (nothing before [ or after ]):
     "cta": "max 40 chars",
     "notes": "",
     "image_engine": "post",
-    "image_style": ""
+    "image_style": "",
+    "image_prompt_type": "best matching type from the list above",
+    "image_prompt": "20-30 word Midjourney/Canva image prompt"
   },
   {
     "platform": "linkedin",
@@ -321,7 +360,9 @@ Return ONLY a raw JSON array (nothing before [ or after ]):
     "cta": "max 40 chars",
     "notes": "",
     "image_engine": "post",
-    "image_style": ""
+    "image_style": "",
+    "image_prompt_type": "best matching type from the list above",
+    "image_prompt": "20-30 word Midjourney/Canva image prompt"
   },
   {
     "platform": "google",
@@ -334,7 +375,9 @@ Return ONLY a raw JSON array (nothing before [ or after ]):
     "cta": "max 8 words",
     "notes": "",
     "image_engine": "post",
-    "image_style": ""
+    "image_style": "",
+    "image_prompt_type": "best matching type from the list above",
+    "image_prompt": "20-30 word Midjourney/Canva image prompt"
   }
 ]`;
 
@@ -364,34 +407,44 @@ Return ONLY a raw JSON array (nothing before [ or after ]):
 
   // Step 3: Save to Supabase
   const today = new Date().toISOString().split('T')[0];
-  const rows = posts.map(post => ({
-    platform:               String(post.platform || '').toLowerCase(),
-    headline:               post.headline || '',
-    category:               post.category || category,
-    caption:                (post.caption || '').replace(/\\n/g, '\n'),
-    hashtags:               post.hashtags || hashtags,
-    cta:                    post.cta || '',
-    notes:                  post.notes || '',
-    status:                 'draft',
-    image_engine:           'post',
-    image_style:            post.image_style || '',
-    image_url:              '',
-    attachment_image_url:   '',
-    attachment_image_name:  '',
-    source_topic:           topic.label,
-    target_audience:        'GTA Business Owners',
-    brand_voice:            'premium',
-    post_payload:           { ...post, newsSource: sourceItems[0] },
-    auto_generated:         true,
-    generation_date:        today,
-  }));
+  const rows = posts.map(post => {
+    // Use AI-picked type; validate it; fall back to smart local pick if invalid
+    const aiType = post.image_prompt_type;
+    const imagePromptType = IMAGE_PROMPT_TYPES[aiType]
+      ? aiType
+      : pickImagePromptType(post);
+
+    return {
+      platform:               String(post.platform || '').toLowerCase(),
+      headline:               post.headline || '',
+      category:               post.category || category,
+      caption:                (post.caption || '').replace(/\\n/g, '\n'),
+      hashtags:               post.hashtags || hashtags,
+      cta:                    post.cta || '',
+      notes:                  post.notes || '',
+      status:                 'draft',
+      image_engine:           'post',
+      image_style:            post.image_style || '',
+      image_url:              '',
+      attachment_image_url:   '',
+      attachment_image_name:  '',
+      source_topic:           topic.label,
+      target_audience:        'GTA Business Owners',
+      brand_voice:            'premium',
+      post_payload:           { ...post, newsSource: sourceItems[0] },
+      auto_generated:         true,
+      generation_date:        today,
+      image_prompt:           post.image_prompt || '',
+      image_prompt_type:      imagePromptType,
+    };
+  });
 
   const { error: insertError } = await supabase.from('social_posts').insert(rows);
   if (insertError) throw new Error(`Supabase insert failed: ${insertError.message}`);
 
   console.log(`\n🎉 Done! Saved ${rows.length} posts for ${today}`);
   console.log(`   Topic: ${topic.label}`);
-  rows.forEach(r => console.log(`   [${r.platform.toUpperCase()}] "${r.headline}"`));
+  rows.forEach(r => console.log(`   [${r.platform.toUpperCase()}] "${r.headline}" | prompt: ${r.image_prompt_type}`));
 }
 
 run().catch(err => {

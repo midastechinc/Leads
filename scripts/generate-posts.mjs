@@ -126,7 +126,8 @@ function pickImagePromptType(post) {
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
-
+// ── Preferred news sources ────────────────────────────────────────────────────
+const PREFERRED_SOURCES = [
   'BleepingComputer (bleepingcomputer.com)',
   'The Hacker News (thehackernews.com)',
   'Dark Reading (darkreading.com)',

@@ -1784,7 +1784,11 @@
       return Object.values(allLeads).filter(isLeadVisibleToCurrentUser);
     }
     function getKnownReps() {
-      const reps = [...new Set(Object.values(allLeads).map(l => l.assignedTo).filter(Boolean))].sort();
+      // Real rep/admin accounts first (so a rep with zero leads assigned yet still shows
+      // up as an option), plus any legacy assignedTo strings from before accounts existed.
+      const fromUsers = Object.values(usersCache).map(u => (u.name || u.email || "").trim()).filter(Boolean);
+      const fromLeads = Object.values(allLeads).map(l => l.assignedTo).filter(Boolean);
+      const reps = [...new Set([...fromUsers, ...fromLeads])].sort();
       if (currentUser && !reps.includes(currentUser)) reps.unshift(currentUser);
       return reps;
     }
@@ -2407,15 +2411,15 @@
         applyUserDisplay();
         hideLoginModal();
         bindLeadListener();
+        // Every signed-in user (not just admins) needs the users list loaded so every
+        // rep shows up as an assignment option — see getKnownReps().
+        bindUsersListener();
         if (isAdminUser()) {
-          bindUsersListener();
           bindImportBatchesListener();
           bindArchiveOperationsListener();
         } else {
-          if (unsubscribeUsers) { unsubscribeUsers(); unsubscribeUsers = null; }
           if (unsubscribeImportBatches) { unsubscribeImportBatches(); unsubscribeImportBatches = null; }
           if (unsubscribeArchiveOperations) { unsubscribeArchiveOperations(); unsubscribeArchiveOperations = null; }
-          usersCache = {};
           importBatchesCache = {};
           archiveOperationsCache = {};
           closeModal("importBatchesModal");
@@ -2729,8 +2733,7 @@
       // Every rep (not just admins) can assign to any rep in this list — they just can't
       // open this modal in the first place for a lead someone else already owns (see the
       // canCurrentUserManageLeadAssignment check above).
-      const reps = [...new Set(Object.values(allLeads).map(l=>l.assignedTo).filter(Boolean))].sort();
-      if (currentUser && !reps.includes(currentUser)) reps.unshift(currentUser);
+      const reps = getKnownReps();
 
       const colors = ["#2563eb","#16a34a","#d97706","#7c3aed","#dc2626","#0891b2"];
       document.getElementById("repOptionsList").innerHTML = reps.map((r,i) => {

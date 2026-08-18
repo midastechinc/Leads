@@ -737,6 +737,8 @@
       header {
         padding: 14px 16px;
         align-items: flex-start;
+        flex-wrap: wrap;
+        row-gap: 12px;
       }
       .header-right {
         width: 100%;
@@ -1176,6 +1178,7 @@
       <button class="btn btn-social-studio" onclick="openSocialStudio()">Social Studio</button>
       <button class="btn btn-secondary" id="importCsvBtn" style="display:none" onclick="document.getElementById('csvInput').click()">Import CSV</button>
       <button class="btn btn-secondary" id="importBatchesBtn" style="display:none" onclick="openImportBatches()">Delete Batch</button>
+      <button class="btn btn-secondary" id="recentlyClearedBtn" style="display:none" onclick="openRecentlyCleared()">Recently Cleared</button>
       <button class="btn btn-primary"   onclick="openAddLead()">+ Add Lead</button>
       <button class="btn btn-danger" id="clearAllBtn" style="display:none" onclick="clearAllLeads()">Clear All</button>
     </div>
@@ -1592,6 +1595,18 @@
     </div>
   </div>
 
+  <!-- ══ Recently Cleared Modal ══ -->
+  <div class="modal-overlay" id="recentlyClearedModal">
+    <div class="modal modal-wide">
+      <h2>Recently Cleared</h2>
+      <p class="modal-sub">Every "Clear All" or "Delete Batch" archives the leads it removes instead of destroying them. Restore any of the last 50 clearing actions below.</p>
+      <div id="recentlyClearedList"></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal('recentlyClearedModal')">Close</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ══ CSV Mapping Modal ══ -->
   <div class="modal-overlay" id="csvMappingModal">
     <div class="modal modal-wide" style="max-width:860px;">
@@ -1701,9 +1716,11 @@
     let currentUserId = "";
     let usersCache = {};
     let importBatchesCache = {};
+    let archiveOperationsCache = {};
     let unsubscribeLeads = null;
     let unsubscribeUsers = null;
     let unsubscribeImportBatches = null;
+    let unsubscribeArchiveOperations = null;
     let bootstrapAdminDismissed = false;
     let loginModalTimer = null;
     let authBusy = false;
@@ -1885,10 +1902,12 @@
       const adminBtn = document.getElementById("adminUsersBtn");
       const importBtn = document.getElementById("importCsvBtn");
       const importBatchesBtn = document.getElementById("importBatchesBtn");
+      const recentlyClearedBtn = document.getElementById("recentlyClearedBtn");
       if (clearBtn) clearBtn.style.display = isAdminUser() ? "inline-flex" : "none";
       if (adminBtn) adminBtn.style.display = isAdminUser() ? "inline-flex" : "none";
       if (importBtn) importBtn.style.display = isAdminUser() ? "inline-flex" : "none";
       if (importBatchesBtn) importBatchesBtn.style.display = isAdminUser() ? "inline-flex" : "none";
+      if (recentlyClearedBtn) recentlyClearedBtn.style.display = isAdminUser() ? "inline-flex" : "none";
       // Update LinkedIn admin bar visibility on auth change
       const liBar = document.getElementById("liAdminBar");
       if (liBar) liBar.style.display = isAdminUser() ? "flex" : "none";
@@ -1976,6 +1995,18 @@
           if (document.getElementById("importBatchesModal")?.classList.contains("active")) renderImportBatchesList();
         },
         err => console.error("Import batches listener error:", err)
+      );
+    }
+    function bindArchiveOperationsListener() {
+      if (unsubscribeArchiveOperations) unsubscribeArchiveOperations();
+      unsubscribeArchiveOperations = onSnapshot(
+        query(collection(db, "archiveOperations"), orderBy("performedAt", "desc"), limit(50)),
+        snapshot => {
+          archiveOperationsCache = {};
+          snapshot.forEach(docSnap => { archiveOperationsCache[docSnap.id] = { id: docSnap.id, ...docSnap.data() }; });
+          if (document.getElementById("recentlyClearedModal")?.classList.contains("active")) renderArchiveOperationsList();
+        },
+        err => console.error("Archive operations listener error:", err)
       );
     }
     window.loginUser = async function () {
@@ -2136,6 +2167,148 @@
         </div>`;
       }).join("")}</div>`;
     }
+    // ── ARCHIVE-ON-CLEAR ─────────────────────────────────────────────
+    // Every bulk delete copies what it removes into archivedLeads /
+    // archivedImportBatches (tagged with one archiveOperationId) *before*
+    // deleting the originals, so "Clear All" and "Delete Batch" can be
+    // undone later from the Recently Cleared modal.
+    async function archiveAndDeleteLeads(leadEntries, { type, label, importBatches = [] }) {
+      const CHUNK = 400;
+      const operationRef = doc(collection(db, "archiveOperations"));
+      const operationId = operationRef.id;
+
+      for (let i = 0; i < leadEntries.length; i += CHUNK) {
+        const batch = writeBatch(db);
+        leadEntries.slice(i, i + CHUNK).forEach(({ id, data }) => {
+          const { id: _id, ...rest } = data || {};
+          batch.set(doc(db, "archivedLeads", id), {
+            ...rest,
+            archiveOperationId: operationId,
+            archivedAt: serverTimestamp(),
+            archivedBy: currentUserId,
+            archivedByName: currentUser || ""
+          });
+        });
+        await batch.commit();
+      }
+
+      if (importBatches.length) {
+        const metaBatch = writeBatch(db);
+        importBatches.forEach(({ id, data }) => {
+          const { id: _id, ...rest } = data || {};
+          metaBatch.set(doc(db, "archivedImportBatches", id), {
+            ...rest,
+            archiveOperationId: operationId,
+            archivedAt: serverTimestamp()
+          });
+        });
+        await metaBatch.commit();
+      }
+
+      await setDoc(operationRef, {
+        type, label,
+        leadCount: leadEntries.length,
+        importBatchIds: importBatches.map(b => b.id),
+        performedBy: currentUserId,
+        performedByName: currentUser || "",
+        performedAt: serverTimestamp(),
+        restoredAt: null,
+        restoredBy: null
+      });
+
+      for (let i = 0; i < leadEntries.length; i += CHUNK) {
+        const batch = writeBatch(db);
+        leadEntries.slice(i, i + CHUNK).forEach(({ id }) => batch.delete(doc(db, "leads", id)));
+        await batch.commit();
+      }
+      if (importBatches.length) {
+        const metaBatch = writeBatch(db);
+        importBatches.forEach(({ id }) => metaBatch.delete(doc(db, "importBatches", id)));
+        await metaBatch.commit();
+      }
+
+      return operationId;
+    }
+    window.openRecentlyCleared = function () {
+      if (!isAdminUser()) return showToast("Admin access only","error");
+      renderArchiveOperationsList();
+      document.getElementById("recentlyClearedModal").classList.add("active");
+    };
+    function renderArchiveOperationsList() {
+      const wrap = document.getElementById("recentlyClearedList");
+      if (!wrap) return;
+      const ops = Object.values(archiveOperationsCache).sort((a,b) => {
+        const aSec = a.performedAt?.seconds || 0;
+        const bSec = b.performedAt?.seconds || 0;
+        return bSec - aSec;
+      });
+      if (!ops.length) {
+        wrap.innerHTML = `<div class="empty-workspace" style="padding:32px 20px;"><strong>Nothing cleared yet</strong><p>"Clear All" and "Delete Batch" actions will show up here and can be restored.</p></div>`;
+        return;
+      }
+      wrap.innerHTML = `<div class="user-list">${ops.map(op => {
+        const stamp = op.performedAt?.toDate ? fmtDate(op.performedAt.toDate()) : "Just now";
+        const who = op.performedByName || "Unknown";
+        const restored = !!op.restoredAt;
+        return `
+        <div class="user-row">
+          <div class="user-row-main">
+            <div class="user-row-name">${esc(op.label || "Cleared leads")}</div>
+            <div class="user-row-sub">${esc(`${op.leadCount || 0} lead${op.leadCount === 1 ? "" : "s"} • by ${who} • ${stamp}`)}${restored ? " • Restored" : ""}</div>
+          </div>
+          ${restored
+            ? `<span class="user-role-badge user-role-rep">Restored</span>`
+            : `<button class="btn btn-secondary btn-sm" onclick="restoreArchiveOperation('${esc(op.id)}')">Restore</button>`}
+        </div>`;
+      }).join("")}</div>`;
+    }
+    window.restoreArchiveOperation = async function (operationId) {
+      if (!isAdminUser()) return showToast("Admin access only","error");
+      try {
+        const op = archiveOperationsCache[operationId];
+        if (!op) return showToast("Archive record not found","error");
+        if (op.restoredAt) return showToast("Already restored","error");
+        if (!confirm(`Restore ${op.leadCount || 0} lead${op.leadCount === 1 ? "" : "s"} from "${op.label || "this action"}"?`)) return;
+        showToast("Restoring…");
+
+        const [leadsSnap, batchesSnap] = await Promise.all([
+          getDocs(query(collection(db, "archivedLeads"), where("archiveOperationId", "==", operationId))),
+          getDocs(query(collection(db, "archivedImportBatches"), where("archiveOperationId", "==", operationId)))
+        ]);
+
+        const CHUNK = 400;
+        const leadDocs = leadsSnap.docs;
+        for (let i = 0; i < leadDocs.length; i += CHUNK) {
+          const batch = writeBatch(db);
+          leadDocs.slice(i, i + CHUNK).forEach(docSnap => {
+            const { archiveOperationId: _op, archivedAt, archivedBy, archivedByName, ...lead } = docSnap.data();
+            batch.set(doc(db, "leads", docSnap.id), lead);
+            batch.delete(doc(db, "archivedLeads", docSnap.id));
+          });
+          await batch.commit();
+        }
+
+        if (batchesSnap.docs.length) {
+          const metaBatch = writeBatch(db);
+          batchesSnap.docs.forEach(docSnap => {
+            const { archiveOperationId: _op, archivedAt, ...meta } = docSnap.data();
+            metaBatch.set(doc(db, "importBatches", docSnap.id), meta);
+            metaBatch.delete(doc(db, "archivedImportBatches", docSnap.id));
+          });
+          await metaBatch.commit();
+        }
+
+        await updateDoc(doc(db, "archiveOperations", operationId), {
+          restoredAt: serverTimestamp(),
+          restoredBy: currentUserId
+        });
+
+        showToast(`Restored ${leadDocs.length} lead${leadDocs.length === 1 ? "" : "s"}`,"success");
+      } catch (e) {
+        console.error("restoreArchiveOperation error:", e);
+        showToast("Failed to restore","error");
+      }
+    };
     window.deleteImportBatch = async function (batchId) {
       if (!isAdminUser()) return showToast("Admin access only","error");
       try {
@@ -2143,18 +2316,14 @@
         if (!batchMeta) return showToast("Import batch not found","error");
         const label = batchMeta.fileName || "this import batch";
         const toDeleteSnapshot = await getDocs(query(collection(db, "leads"), where("importBatchId", "==", batchId)));
-        const leadIds = toDeleteSnapshot.docs.map(docSnap => docSnap.id);
-        if (!confirm(`Delete ${leadIds.length} leads from ${label}? This cannot be undone.`)) return;
+        const leadEntries = toDeleteSnapshot.docs.map(docSnap => ({ id: docSnap.id, data: docSnap.data() }));
+        if (!confirm(`Delete ${leadEntries.length} leads from ${label}? You can restore them afterward from "Recently Cleared".`)) return;
         showToast("Deleting batch…");
-        const CHUNK = 400;
-        for (let i = 0; i < leadIds.length; i += CHUNK) {
-          const batch = writeBatch(db);
-          leadIds.slice(i, i + CHUNK).forEach(id => batch.delete(doc(db, "leads", id)));
-          await batch.commit();
-        }
-        const metaBatch = writeBatch(db);
-        metaBatch.delete(doc(db, "importBatches", batchId));
-        await metaBatch.commit();
+        await archiveAndDeleteLeads(leadEntries, {
+          type: "deleteBatch",
+          label: `Deleted batch: ${label}`,
+          importBatches: [{ id: batchId, data: batchMeta }]
+        });
         showToast(`${label} deleted`,"success");
       } catch (e) {
         console.error("deleteImportBatch error:", e);
@@ -2207,9 +2376,11 @@
           allLeads = {};
           usersCache = {};
           importBatchesCache = {};
+          archiveOperationsCache = {};
           if (unsubscribeLeads) { unsubscribeLeads(); unsubscribeLeads = null; }
           if (unsubscribeUsers) { unsubscribeUsers(); unsubscribeUsers = null; }
           if (unsubscribeImportBatches) { unsubscribeImportBatches(); unsubscribeImportBatches = null; }
+          if (unsubscribeArchiveOperations) { unsubscribeArchiveOperations(); unsubscribeArchiveOperations = null; }
           applyUserDisplay();
           document.getElementById("leadTableBody").innerHTML =
             `<tr class="state-row"><td colspan="9"><strong>Sign in required</strong><p>Use your email and password to access leads.</p></td></tr>`;
@@ -2217,6 +2388,7 @@
             `<div class="empty-workspace"><div class="big">🔐</div><strong>Sign in to view your workspace</strong><p>Your assigned leads will appear here after login.</p></div>`;
           closeBootstrapAdminModal();
           closeModal("importBatchesModal");
+          closeModal("recentlyClearedModal");
           scheduleLoginModal();
           return;
         }
@@ -2227,12 +2399,16 @@
         if (isAdminUser()) {
           bindUsersListener();
           bindImportBatchesListener();
+          bindArchiveOperationsListener();
         } else {
           if (unsubscribeUsers) { unsubscribeUsers(); unsubscribeUsers = null; }
           if (unsubscribeImportBatches) { unsubscribeImportBatches(); unsubscribeImportBatches = null; }
+          if (unsubscribeArchiveOperations) { unsubscribeArchiveOperations(); unsubscribeArchiveOperations = null; }
           usersCache = {};
           importBatchesCache = {};
+          archiveOperationsCache = {};
           closeModal("importBatchesModal");
+          closeModal("recentlyClearedModal");
         }
         await refreshBootstrapAdminState(firebaseUser);
       } catch (e) {
@@ -2818,19 +2994,16 @@
       const ids = Object.keys(allLeads);
       const importBatchIds = Object.keys(importBatchesCache);
       if (!ids.length && !importBatchIds.length) return showToast("Nothing to clear","");
-      if (!confirm(`Delete all ${ids.length} leads and ${importBatchIds.length} import batch record${importBatchIds.length!==1?"s":""}? This cannot be undone.`)) return;
+      if (!confirm(`Delete all ${ids.length} leads and ${importBatchIds.length} import batch record${importBatchIds.length!==1?"s":""}? You can restore them afterward from "Recently Cleared".`)) return;
       showToast("Deleting…");
-      const CHUNK = 500;
-      for (let i = 0; i < ids.length; i += CHUNK) {
-        const batch = writeBatch(db);
-        ids.slice(i,i+CHUNK).forEach(id => batch.delete(doc(db,"leads",id)));
-        await batch.commit();
-      }
-      for (let i = 0; i < importBatchIds.length; i += CHUNK) {
-        const batch = writeBatch(db);
-        importBatchIds.slice(i,i+CHUNK).forEach(id => batch.delete(doc(db,"importBatches",id)));
-        await batch.commit();
-      }
+      await archiveAndDeleteLeads(
+        ids.map(id => ({ id, data: allLeads[id] })),
+        {
+          type: "clearAll",
+          label: "Cleared all leads",
+          importBatches: importBatchIds.map(id => ({ id, data: importBatchesCache[id] }))
+        }
+      );
       showToast("All leads cleared","success");
     };
 

@@ -2715,22 +2715,9 @@
       document.getElementById("assignModalSub").textContent =
         `${assignTarget.companyName} — ${companyLeads.length} lead${companyLeads.length!==1?"s":""}`;
 
-      if (!isAdminUser()) {
-        const repChoices = [
-          { value: currentUser, label: currentUser || "Myself", count: Object.values(allLeads).filter(l => l.assignedTo === currentUser).length, color: "#2563eb" },
-          { value: "__UNASSIGNED__", label: "Unassigned", count: Object.values(allLeads).filter(l => !getAssignedRepName(l)).length, color: "#6b7280" }
-        ];
-        document.getElementById("repOptionsList").innerHTML = repChoices.map(choice => {
-          const initials = choice.label === "Unassigned" ? "UA" : choice.label.split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2);
-          return `<div class="rep-option${choice.value===selectedRep?" selected":""}" onclick="selectRep(this,'${esc(choice.value)}')">
-            <div class="rep-avatar" style="background:${choice.color}">${esc(initials)}</div>
-            <div><div class="rep-name">${esc(choice.label)}</div><div class="rep-count">${choice.count} lead${choice.count!==1?"s":""}</div></div>
-          </div>`;
-        }).join("");
-        document.getElementById("assignModal").classList.add("active");
-        return;
-      }
-
+      // Every rep (not just admins) can assign to any rep in this list — they just can't
+      // open this modal in the first place for a lead someone else already owns (see the
+      // canCurrentUserManageLeadAssignment check above).
       const reps = [...new Set(Object.values(allLeads).map(l=>l.assignedTo).filter(Boolean))].sort();
       if (currentUser && !reps.includes(currentUser)) reps.unshift(currentUser);
 
@@ -2896,8 +2883,8 @@
 
       const assignedInput = document.getElementById("editLeadAssignedTo");
       if (assignedInput) {
-        assignedInput.readOnly = !isAdminUser();
-        assignedInput.placeholder = isAdminUser() ? "Rep name or blank for unassigned" : `Only blank or ${currentUser}`;
+        assignedInput.readOnly = false;
+        assignedInput.placeholder = "Rep name or blank for unassigned";
       }
 
       const extraKeys = getLeadEditableExtraKeys(lead);
@@ -2920,10 +2907,9 @@
       if (!lead) return showToast("Lead not found","error");
       if (!isLeadVisibleToCurrentUser(lead)) return showToast("This lead is assigned to another rep","error");
 
+      // Any rep can hand this lead to any other rep — they just can't reach this point
+      // for a lead someone else already owns (isLeadVisibleToCurrentUser above).
       const assignedToRaw = (document.getElementById("editLeadAssignedTo").value || "").trim();
-      if (!isAdminUser() && assignedToRaw && assignedToRaw !== currentUser) {
-        return showToast("Reps can only keep the lead assigned to themselves or leave it unassigned","error");
-      }
 
       const updates = {
         name: document.getElementById("editLeadName").value.trim(),

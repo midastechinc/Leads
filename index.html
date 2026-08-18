@@ -1476,7 +1476,7 @@
             <option>Proposal</option><option>Closed</option><option>Dead</option>
           </select>
         </div>
-        <div class="form-group"><label>Assigned To</label><input type="text" id="editLeadAssignedTo"></div>
+        <div class="form-group"><label>Assigned To</label><select id="editLeadAssignedTo"></select></div>
       </div>
       <div class="form-row">
         <div class="form-group"><label>Country</label><input type="text" id="editLeadCountry"></div>
@@ -1537,7 +1537,7 @@
         <div class="form-group"><label>Title / Role</label><input type="text" id="newTitle" placeholder="CEO, Partner…"></div>
         <div class="form-group"><label>Industry</label><input type="text" id="newIndustry" placeholder="Accounting, IT…"></div>
       </div>
-      <div class="form-group"><label>Assigned To</label><input type="text" id="newAssigned" placeholder="Rep name"></div>
+      <div class="form-group"><label>Assigned To</label><select id="newAssigned"></select></div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="closeModal('addLeadModal')">Cancel</button>
         <button class="btn btn-primary" onclick="submitAddLead()">Add Lead</button>
@@ -1782,6 +1782,17 @@
     }
     function getVisibleLeads() {
       return Object.values(allLeads).filter(isLeadVisibleToCurrentUser);
+    }
+    function getKnownReps() {
+      const reps = [...new Set(Object.values(allLeads).map(l => l.assignedTo).filter(Boolean))].sort();
+      if (currentUser && !reps.includes(currentUser)) reps.unshift(currentUser);
+      return reps;
+    }
+    function populateRepSelect(selectEl, selectedValue) {
+      if (!selectEl) return;
+      selectEl.innerHTML = `<option value="">Unassigned</option>` +
+        getKnownReps().map(r => `<option value="${esc(r)}">${esc(r)}</option>`).join("");
+      selectEl.value = selectedValue || "";
     }
     function canCurrentUserManageLeadAssignment(lead) {
       if (!lead) return false;
@@ -2874,18 +2885,12 @@
       setInputValue("editLeadTitle", lead.title);
       setInputValue("editLeadIndustry", lead.industry);
       setInputValue("editLeadStatus", lead.status || "New");
-      setInputValue("editLeadAssignedTo", lead.assignedTo);
+      populateRepSelect(document.getElementById("editLeadAssignedTo"), lead.assignedTo);
       setInputValue("editLeadCountry", lead.country);
       setInputValue("editLeadCity", lead.city);
       setInputValue("editLeadState", lead.state);
       setInputValue("editLeadEmployeeRange", lead.employeeRange);
       setInputValue("editLeadAddress", lead.address);
-
-      const assignedInput = document.getElementById("editLeadAssignedTo");
-      if (assignedInput) {
-        assignedInput.readOnly = false;
-        assignedInput.placeholder = "Rep name or blank for unassigned";
-      }
 
       const extraKeys = getLeadEditableExtraKeys(lead);
       const extraWrap = document.getElementById("editLeadExtraFields");
@@ -2950,7 +2955,7 @@
     window.openAddLead = function () {
       ["newName","newCompany","newEmail","newPhone","newWebsite","newLinkedin","newTitle","newIndustry"].forEach(id =>
         document.getElementById(id).value = "");
-      document.getElementById("newAssigned").value = currentUser;
+      populateRepSelect(document.getElementById("newAssigned"), currentUser);
       document.getElementById("addLeadModal").classList.add("active");
       setTimeout(()=>document.getElementById("newName").focus(), 100);
     };

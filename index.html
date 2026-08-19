@@ -614,6 +614,9 @@
     .df-value a { color: var(--blue); text-decoration: none; cursor: pointer; }
     .df-value a:hover { text-decoration: underline; }
     .extras-heading { font-size: 10px; font-weight: 700; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.12em; margin: 14px 0 8px; grid-column: 1 / -1; border-top: 1px solid var(--border); padding-top: 12px; }
+    .email-draft-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+    .email-draft-btns .btn { position: relative; }
+    .email-sent-badge { display: block; font-size: 10px; font-weight: 600; color: var(--green); margin-top: 2px; }
 
     /* Assign modal */
     .rep-option { display: flex; align-items: center; gap: 10px; padding: 12px 13px; border: 1px solid var(--border); border-radius: 16px; cursor: pointer; transition: all 0.15s; margin-bottom: 8px; background: rgba(255,255,255,0.6); }
@@ -1440,6 +1443,7 @@
       <h2 id="detailName">Lead Details</h2>
       <p class="modal-sub" id="detailSub"></p>
       <div class="detail-grid" id="detailGrid"></div>
+      <div id="emailDraftsSection"></div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="closeModal('detailModal')">Close</button>
         <button class="btn btn-secondary" id="detailEditBtn" onclick="openEditLead()">Edit Lead</button>
@@ -2816,6 +2820,224 @@
     };
 
     // ── DETAIL VIEW ────────────────────────────────────────────────
+    // ── EMAIL DRAFTS ─────────────────────────────────────────────────
+    // Source: Midas Tech 4-Email Outreach Sequence (Law + Accounting). Emails 1 & 2 have
+    // industry-specific wording; Emails 3 & 4 are already firm-type-neutral in the source.
+    const EMAIL_TEMPLATES = {
+      law: {
+        1: { subject: "Complimentary IT & cybersecurity assessment — {{firm}}", body:
+`Hi {{first}},
+
+I'm Ali from Midas Tech, an Ontario-based IT company supporting small and mid-sized businesses.
+
+Law firms handle a lot of sensitive client information, so I wanted to offer {{firm}} a complimentary IT and cybersecurity assessment. We'd review areas such as Microsoft 365 security, backups, user access, and cyber-insurance readiness.
+
+There's no obligation, and we'll provide a short summary of anything that may need attention.
+
+Would you be open to a quick 15-minute conversation next week?
+
+Thanks,
+Ali Jaffar
+Midas Tech Inc.
+905-787-2038
+midastech.ca` },
+        2: { subject: "Re: Complimentary IT & cybersecurity assessment — {{firm}}", body:
+`Hi {{first}},
+
+Just a quick follow-up on my note from last week about a complimentary IT and cybersecurity assessment for {{firm}}.
+
+Most law firms we review find at least one quiet gap — often in M365 settings or backup recovery — and the summary we provide is yours to keep either way, even if we never work together.
+
+If now isn't the right time, no problem at all. Otherwise, I'm happy to grab 15 minutes whenever suits you.
+
+Thanks,
+Ali Jaffar
+Midas Tech Inc.
+905-787-2038
+midastech.ca` }
+      },
+      accounting: {
+        1: { subject: "Complimentary IT & cybersecurity assessment — {{firm}}", body:
+`Hi {{first}},
+
+I'm reaching out from Midas Tech. We provide managed IT and cybersecurity services to Ontario businesses.
+
+Because accounting firms handle sensitive financial and client information, we're offering {{firm}} a complimentary IT assessment. It includes a review of Microsoft 365 security, backups, employee access and cyber-insurance readiness.
+
+There's no obligation, and you'll receive a short summary of our findings.
+
+Would you have 15 minutes next week for a quick introduction?
+
+Thanks,
+Ali Jaffar
+Midas Tech Inc.
+905-787-2038
+midastech.ca` },
+        2: { subject: "Re: Complimentary IT & cybersecurity assessment — {{firm}}", body:
+`Hi {{first}},
+
+Just a quick follow-up on my note from last week about a complimentary IT and cybersecurity assessment for {{firm}}.
+
+Most accounting firms we review find at least one quiet gap — often in M365 settings or backup recovery — and the summary we provide is yours to keep either way, even if we never work together.
+
+If now isn't the right time, no problem at all. Otherwise, I'm happy to grab 15 minutes whenever suits you.
+
+Thanks,
+Ali Jaffar
+Midas Tech Inc.
+905-787-2038
+midastech.ca` }
+      },
+      generic: {
+        1: { subject: "Complimentary IT & cybersecurity assessment — {{firm}}", body:
+`Hi {{first}},
+
+I'm Ali from Midas Tech, an Ontario-based IT company supporting small and mid-sized businesses.
+
+I wanted to offer {{firm}} a complimentary IT and cybersecurity assessment. We'd review areas such as Microsoft 365 security, backups, user access, and cyber-insurance readiness.
+
+There's no obligation, and we'll provide a short summary of anything that may need attention.
+
+Would you be open to a quick 15-minute conversation next week?
+
+Thanks,
+Ali Jaffar
+Midas Tech Inc.
+905-787-2038
+midastech.ca` },
+        2: { subject: "Re: Complimentary IT & cybersecurity assessment — {{firm}}", body:
+`Hi {{first}},
+
+Just a quick follow-up on my note from last week about a complimentary IT and cybersecurity assessment for {{firm}}.
+
+The summary we provide is yours to keep either way, even if we never work together.
+
+If now isn't the right time, no problem at all. Otherwise, I'm happy to grab 15 minutes whenever suits you.
+
+Thanks,
+Ali Jaffar
+Midas Tech Inc.
+905-787-2038
+midastech.ca` }
+      }
+    };
+    const EMAIL_TEMPLATE_STEP3 = { subject: "Re: Complimentary IT & cybersecurity assessment — {{firm}}", body:
+`Hi {{first}},
+
+Just following up on my earlier email about the complimentary IT and cybersecurity assessment for {{firm}}. It's a simple review designed to identify possible gaps in security, backups, and Microsoft 365 — with no obligation on your end.
+
+If now isn't a good time, I completely understand. Otherwise, would a brief 15-minute call next week work for you?
+
+Thanks,
+Ali
+Midas Tech Inc.
+905-787-2038
+midastech.ca` };
+    const EMAIL_TEMPLATE_STEP4 = { subject: "Closing the loop — {{firm}}", body:
+`Hi {{first}},
+
+I don't want to keep filling your inbox, so this is my last note about the complimentary IT assessment I offered {{firm}}.
+
+The offer stands whenever timing is better — just keep my contact and reach out when it makes sense.
+
+Wishing you a great rest of the {{season}}.
+
+Thanks,
+Ali Jaffar
+Midas Tech Inc.
+905-787-2038
+midastech.ca` };
+
+    function detectFirmType(lead) {
+      const text = `${lead?.industry||""} ${lead?.title||""} ${lead?.company||""}`.toLowerCase();
+      if (/\b(law|legal|attorney|barrister|solicitor|counsel|llp)\b/.test(text)) return "law";
+      if (/\b(account|accounting|cpa|bookkeeping|bookkeeper|tax)\b/.test(text)) return "accounting";
+      return "generic";
+    }
+    function getCurrentSeason() {
+      const m = new Date().getMonth();
+      if (m <= 1 || m === 11) return "winter";
+      if (m <= 4) return "spring";
+      if (m <= 7) return "summer";
+      return "fall";
+    }
+    function getEmailTemplate(lead, step) {
+      if (step === 3) return EMAIL_TEMPLATE_STEP3;
+      if (step === 4) return EMAIL_TEMPLATE_STEP4;
+      return EMAIL_TEMPLATES[detectFirmType(lead)][step];
+    }
+    function fillEmailTemplate(str, lead) {
+      const first = String(lead?.name||"").trim().split(/\s+/)[0] || "there";
+      const firm  = String(lead?.company||"").trim() || lead?.name || "your firm";
+      return str
+        .replace(/\{\{first\}\}/g, first)
+        .replace(/\{\{firm\}\}/g, firm)
+        .replace(/\{\{season\}\}/g, getCurrentSeason());
+    }
+    function buildMailtoUrl(to, subject, body) {
+      return `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    }
+    const FIRM_TYPE_LABELS = { law: "Law firm", accounting: "Accounting firm", generic: "General" };
+    let emailDraftHistory = {}; // { [step]: { dateLabel } } — for whichever lead is open in the detail modal
+
+    async function loadEmailDraftHistory(id) {
+      emailDraftHistory = {};
+      try {
+        const snap = await getDocs(query(collection(db,"activities"), where("leadId","==",id)));
+        snap.forEach(docSnap => {
+          const a = docSnap.data();
+          if (a.type !== "Email" || !a.emailStep) return;
+          const d = a.date?.toDate ? a.date.toDate() : null;
+          const existing = emailDraftHistory[a.emailStep];
+          if (!existing || (d && (!existing.raw || d > existing.raw))) {
+            emailDraftHistory[a.emailStep] = { raw: d, dateLabel: d ? fmtDate(d) : "recently" };
+          }
+        });
+      } catch (e) {
+        console.warn("Could not load email draft history:", e);
+      }
+    }
+    function renderEmailDraftSection(lead) {
+      const wrap = document.getElementById("emailDraftsSection");
+      if (!wrap || !lead) return;
+      const email = cleanEmail(lead.email);
+      if (!email) {
+        wrap.innerHTML = `<div class="extras-heading">Email Drafts</div><p class="modal-sub" style="margin:4px 0 0;">No email address on file for this lead.</p>`;
+        return;
+      }
+      const variantLabel = FIRM_TYPE_LABELS[detectFirmType(lead)];
+      wrap.innerHTML = `<div class="extras-heading">Email Drafts <span style="font-weight:400;text-transform:none;letter-spacing:0;">— ${esc(variantLabel)} template</span></div>
+        <div class="email-draft-btns">
+          ${[1,2,3,4].map(step => {
+            const sent = emailDraftHistory[step];
+            const badge = sent ? `<span class="email-sent-badge">✓ Sent ${esc(sent.dateLabel)}</span>` : "";
+            return `<button class="btn btn-secondary btn-sm" onclick="sendEmailDraft('${esc(lead.id)}', ${step})">Email ${step}${badge}</button>`;
+          }).join("")}
+        </div>`;
+    }
+    window.sendEmailDraft = async function (id, step) {
+      const lead = allLeads[id];
+      if (!lead) return;
+      const email = cleanEmail(lead.email);
+      if (!email) return showToast("No email address on file","error");
+      const variant = detectFirmType(lead);
+      const tpl = getEmailTemplate(lead, step);
+      const subject = fillEmailTemplate(tpl.subject, lead);
+      const body    = fillEmailTemplate(tpl.body, lead);
+      window.location.href = buildMailtoUrl(email, subject, body);
+      try {
+        await addDoc(collection(db,"activities"), {
+          leadId: id, type: "Email", notes: `Opened Email ${step} (${variant}) draft`,
+          emailStep: step, emailVariant: variant,
+          user: currentUser, date: serverTimestamp()
+        });
+        await loadEmailDraftHistory(id);
+        if (currentLeadId === id) renderEmailDraftSection(allLeads[id]);
+      } catch (e) {
+        console.warn("Could not log email draft activity:", e);
+      }
+    };
+
     window.openDetail = function (id) {
       const l = allLeads[id];
       if (!l) return;
@@ -2874,6 +3096,12 @@
 
       document.getElementById("detailGrid").innerHTML = html;
       document.getElementById("detailModal").classList.add("active");
+
+      emailDraftHistory = {};
+      renderEmailDraftSection(l);
+      loadEmailDraftHistory(id).then(() => {
+        if (currentLeadId === id) renderEmailDraftSection(allLeads[id]);
+      });
     };
     window.openEditLead = function () {
       const lead = allLeads[currentLeadId];

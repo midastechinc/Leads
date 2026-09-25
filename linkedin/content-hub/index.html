@@ -1,0 +1,331 @@
+<title>Midas Content Hub</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700&family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F2F6F9;--surface:#FFFFFF;--sunk:#E9F0F5;--ink:#1F2B34;--muted:#5E6E7A;--line:#D8E2EA;
+  --accent:#0072BC;--accent-2:#00AEEF;--on-accent:#FFFFFF;
+  --ok:#1C7C52;--ok-bg:#E3F4EB;--warn:#9A4A06;--warn-bg:#FDF0DC;--bad:#B3261E;--bad-bg:#FBE6E4;
+  --li:#0A66C2;--ig:#C13584;--fb:#1877F2;
+  --display:"Sora",system-ui,sans-serif;--body:"Manrope",system-ui,-apple-system,"Segoe UI",sans-serif;--mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  color-scheme:dark;--bg:#0B1219;--surface:#121D27;--sunk:#0F1821;--ink:#E4EDF3;--muted:#93A6B4;--line:#22313D;
+  --accent:#3BB8F0;--accent-2:#00AEEF;--on-accent:#04121C;
+  --ok:#4ACB8E;--ok-bg:#12291F;--warn:#F2B45A;--warn-bg:#2B2113;--bad:#F58A7E;--bad-bg:#2E1716;
+  --li:#5AA7F0;--ig:#E77DB8;--fb:#6AA7FF;}}
+:root[data-theme="dark"]{
+  color-scheme:dark;--bg:#0B1219;--surface:#121D27;--sunk:#0F1821;--ink:#E4EDF3;--muted:#93A6B4;--line:#22313D;
+  --accent:#3BB8F0;--accent-2:#00AEEF;--on-accent:#04121C;
+  --ok:#4ACB8E;--ok-bg:#12291F;--warn:#F2B45A;--warn-bg:#2B2113;--bad:#F58A7E;--bad-bg:#2E1716;
+  --li:#5AA7F0;--ig:#E77DB8;--fb:#6AA7FF;}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--body);padding-inline:16px;padding-block:28px 64px}
+.wrap{max-width:1040px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+button{font:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--accent-2);outline-offset:2px}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* header */
+.head{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.head img{width:64px;height:64px;object-fit:cover;border-radius:14px;background:#000}
+.head h1{font-size:26px}
+.head p{margin:2px 0 0;color:var(--muted)}
+.contact{margin-left:auto;text-align:right;color:var(--muted);font-size:13px;line-height:1.6}
+.contact b{color:var(--ink);font-weight:600}
+
+/* summary */
+.summary{display:grid;grid-template-columns:1.6fr 1fr 1fr;gap:14px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 20px;display:flex;flex-direction:column;gap:8px}
+.label{font-size:11px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.next h2{font-size:19px}
+.next .meta{color:var(--muted);font-size:14px}
+.next.due{border-color:var(--accent);box-shadow:inset 4px 0 0 var(--accent)}
+.big{font-family:var(--display);font-size:30px;font-weight:700;line-height:1}
+.bar{height:8px;border-radius:8px;background:var(--sunk);overflow:hidden}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--accent-2),var(--accent));border-radius:8px;transition:width .4s}
+.dup ul{margin:0;padding-left:18px;font-size:13px;color:var(--muted)}
+.dup.clean .big{color:var(--ok)} .dup.issue .big{color:var(--bad)}
+
+/* filters */
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chip{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:7px 14px;font-size:13px;font-weight:600;display:inline-flex;gap:7px;align-items:center}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip .n{font-family:var(--mono);font-size:11px;opacity:.7}
+.toggle{margin-left:auto;display:flex;gap:8px;align-items:center;font-size:13px;color:var(--muted)}
+.toggle input{accent-color:var(--accent);width:16px;height:16px}
+
+/* timeline */
+.week{display:flex;flex-direction:column;gap:12px}
+.week>h3{font-size:13px;font-family:var(--body);text-transform:uppercase;letter-spacing:.09em;color:var(--muted);font-weight:700;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.row{display:grid;grid-template-columns:92px 1fr;gap:16px}
+.date{padding-top:16px;text-align:right}
+.date .d{font-family:var(--display);font-weight:700;font-size:15px}
+.date .t{color:var(--muted);font-size:12px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;display:grid;grid-template-columns:1fr 132px;gap:6px 18px}
+.card.posted{background:var(--sunk)}
+.card.posted .body-preview{opacity:.7}
+.card.no-img{grid-template-columns:1fr}
+.top{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.plat{font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:6px}
+.plat::before{content:"";width:9px;height:9px;border-radius:3px;background:var(--pc)}
+.kind{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);border:1px solid currentColor;border-radius:6px;padding:1px 6px}
+.pill{font-size:12px;font-weight:700;border-radius:999px;padding:2px 10px;margin-left:auto}
+.pill.today{background:var(--accent);color:var(--on-accent)}
+.pill.overdue{background:var(--bad-bg);color:var(--bad)}
+.pill.upcoming{background:var(--sunk);color:var(--muted)}
+.pill.done{background:var(--ok-bg);color:var(--ok)}
+.card h4{margin:4px 0 0;font-family:var(--display);font-size:17px;grid-column:1}
+.body-preview{grid-column:1;white-space:pre-wrap;font-size:14px;color:var(--ink);max-height:7.5em;overflow:hidden;position:relative;margin:0;font-family:var(--body)}
+.body-preview::after{content:"";position:absolute;inset:auto 0 0 0;height:2.5em;background:linear-gradient(transparent,var(--surface))}
+.card.posted .body-preview::after{background:linear-gradient(transparent,var(--sunk))}
+.card.open .body-preview{max-height:none}
+.card.open .body-preview::after{display:none}
+.thumb{grid-column:2;grid-row:1 / span 4;align-self:start}
+.thumb img{width:132px;border-radius:10px;border:1px solid var(--line);display:block}
+.thumb button{margin-top:6px;width:100%}
+.notes{grid-column:1;font-size:13px;color:var(--warn);background:var(--warn-bg);border-radius:8px;padding:8px 10px}
+.fc{grid-column:1;font-size:13px;border:1px dashed var(--line);border-radius:8px;padding:8px 10px;white-space:pre-wrap}
+.fc b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.foot{grid-column:1 / -1;display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px;padding-top:12px;border-top:1px solid var(--line)}
+.count{font-size:12px;color:var(--muted)}
+.count.over{color:var(--bad);font-weight:700}
+.btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:9px;padding:7px 12px;font-size:13px;font-weight:600}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn.confirm{background:var(--warn-bg);border-color:var(--warn);color:var(--warn)}
+.btn.ghost{border-color:transparent;background:transparent;color:var(--muted)}
+.btn.done{background:var(--ok-bg);border-color:transparent;color:var(--ok)}
+.spacer{flex:1}
+.state{background:var(--surface);border:1px dashed var(--line);border-radius:14px;padding:28px;text-align:center;color:var(--muted)}
+.rules{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:16px}
+.rules ul{margin:6px 0 0;padding-left:18px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:9px 16px;border-radius:10px;font-size:13px;font-weight:600;opacity:0;transition:opacity .2s;pointer-events:none}
+.toast.show{opacity:1}
+textarea.cliphelper{position:fixed;left:-9999px;top:0}
+
+@media (max-width:760px){
+  .summary{grid-template-columns:1fr}
+  .contact{margin-left:0;text-align:left}
+  .row{grid-template-columns:1fr;gap:4px}
+  .date{padding-top:0;text-align:left;display:flex;gap:8px;align-items:baseline}
+  .card{grid-template-columns:1fr}
+  .thumb{grid-column:1;grid-row:auto}
+  .thumb img{width:100%;max-width:320px}
+  .thumb button{width:auto}
+  .toggle{margin-left:0}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="head">
+    <img src="img/logo.png" alt="Midas Tech logo">
+    <div>
+      <h1>Midas Content Hub</h1>
+      <p>Every post, in order, written separately for each platform. Copy it, post it, mark it done.</p>
+    </div>
+    <div class="contact"><b>Midas Tech Inc</b> · IT Services &amp; Cybersecurity<br>www.midastech.ca · info@midastech.ca · 905-787-2038</div>
+  </header>
+
+  <section class="summary" aria-live="polite">
+    <div class="panel next" id="next"><span class="label">Up next</span><h2>Loading your posts…</h2></div>
+    <div class="panel"><span class="label">Posted</span><div class="big mono" id="progNum">–</div><div class="bar"><i id="progBar" style="width:0"></i></div><span class="count" id="progSub"></span></div>
+    <div class="panel dup" id="dup"><span class="label">Duplicate check</span><div class="big">–</div></div>
+  </section>
+
+  <nav class="filters" id="filters" aria-label="Filter by platform"></nav>
+
+  <main id="list"><div class="state">Loading your content calendar…</div></main>
+
+  <section class="rules">
+    <span class="label">How this page keeps posts from doubling up</span>
+    <ul>
+      <li>Each platform gets its own wording. No two posts start with the same opening line.</li>
+      <li>An image is used at most once per platform.</li>
+      <li>After you tap <b>Mark as posted</b>, the copy button asks you to confirm before copying that post again.</li>
+      <li>Your posted log is saved with this page, so it's the same on your phone and your computer. Claude reads it before writing the next campaign.</li>
+    </ul>
+    <p>Midas Tech Inc · 30 Via Renzo Dr, Suite 200, Richmond Hill, ON L4S 0B8 · LinkedIn: linkedin.com/company/midastech786 · Instagram: @midastech.it · Facebook: facebook.com/MidasTech.ca</p>
+  </section>
+</div>
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+const PLATFORMS = {
+  'li-ali':   {name:'LinkedIn · Ali',        color:'var(--li)', limit:3000, articleLimit:110000},
+  'li-midas': {name:'LinkedIn · Midas Tech', color:'var(--li)', limit:3000},
+  'instagram':{name:'Instagram',             color:'var(--ig)', limit:2200, tags:30},
+  'facebook': {name:'Facebook',              color:'var(--fb)', limit:63206},
+};
+let posts = [], log = {}, filter = 'all', hidePosted = false, openIds = new Set(), confirmIds = new Set();
+let db = null, downloads = null, loaded = {posts:false, log:false};
+try { hidePosted = localStorage.getItem('hub.hidePosted') === '1'; filter = localStorage.getItem('hub.filter') || 'all'; } catch (e) {}
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const pad = n => String(n).padStart(2, '0');
+const todayKey = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; };
+const dayOf = p => p.when.slice(0, 10);
+const asDate = k => new Date(k + 'T12:00');
+const fmtDay = k => asDate(k).toLocaleDateString('en-CA', {weekday:'short', month:'short', day:'numeric'});
+const fmtPosted = iso => new Date(iso).toLocaleDateString('en-CA', {month:'short', day:'numeric'});
+const weekKey = k => { const d = asDate(k); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; };
+const firstLine = b => (b || '').split('\n').find(l => l.trim())?.trim().toLowerCase().replace(/[^\p{L}\p{N} ]/gu, '').trim() || '';
+
+function toast(msg) { const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast.h); toast.h = setTimeout(() => t.classList.remove('show'), 2200); }
+
+function status(p) {
+  if (log[p.id]) return 'done';
+  const d = dayOf(p), t = todayKey();
+  return d < t ? 'overdue' : d === t ? 'today' : 'upcoming';
+}
+
+function duplicates() {
+  const issues = [], lines = new Map(), imgs = new Map();
+  for (const p of posts) {
+    const l = firstLine(p.body);
+    if (l) { if (lines.has(l)) issues.push(`"${p.title}" opens the same way as "${lines.get(l).title}"`); else lines.set(l, p); }
+    if (p.image) { const k = p.platform + '|' + p.image;
+      if (imgs.has(k)) issues.push(`Same image used twice on ${PLATFORMS[p.platform]?.name}: "${imgs.get(k).title}" and "${p.title}"`); else imgs.set(k, p); }
+  }
+  return issues;
+}
+
+function renderSummary() {
+  const done = posts.filter(p => log[p.id]).length, total = posts.length;
+  $('#progNum').textContent = `${done} / ${total}`;
+  $('#progBar').style.width = total ? (done / total * 100) + '%' : '0';
+  const overdue = posts.filter(p => status(p) === 'overdue').length;
+  $('#progSub').textContent = overdue ? `${overdue} past its date and not marked posted` : done === total && total ? 'Campaign complete' : `${total - done} still to post`;
+  $('#progSub').className = 'count' + (overdue ? ' over' : '');
+
+  const next = posts.find(p => !log[p.id]);
+  const el = $('#next');
+  if (!next) { el.className = 'panel next'; el.innerHTML = `<span class="label">Up next</span><h2>Everything is posted</h2><span class="meta">Send Claude your next piece of content to start a new campaign.</span>`; }
+  else {
+    const s = status(next);
+    el.className = 'panel next' + (s !== 'upcoming' ? ' due' : '');
+    el.innerHTML = `<span class="label">Up next${s === 'today' ? ' · today' : s === 'overdue' ? ' · past due' : ''}</span>
+      <h2>${esc(next.kind === 'Article' ? next.title : next.title)}</h2>
+      <span class="meta">${esc(PLATFORMS[next.platform]?.name)} · ${fmtDay(dayOf(next))}, ${esc(next.time)}</span>
+      <div><button class="btn primary" data-act="jump" data-id="${esc(next.id)}">Go to post</button></div>`;
+  }
+
+  const issues = duplicates(), d = $('#dup');
+  d.className = 'panel dup ' + (issues.length ? 'issue' : 'clean');
+  d.innerHTML = issues.length
+    ? `<span class="label">Duplicate check</span><div class="big">${issues.length} found</div><ul>${issues.map(i => `<li>${esc(i)}</li>`).join('')}</ul>`
+    : `<span class="label">Duplicate check</span><div class="big">None found</div><span class="count">${posts.length} posts checked: unique opening lines, no image repeated on a platform.</span>`;
+}
+
+function renderFilters() {
+  const counts = {all: posts.length};
+  for (const p of posts) counts[p.platform] = (counts[p.platform] || 0) + 1;
+  const items = [['all', 'All platforms'], ...Object.entries(PLATFORMS).map(([k, v]) => [k, v.name])];
+  $('#filters').innerHTML = items.map(([k, n]) =>
+    `<button class="chip" data-act="filter" data-f="${k}" aria-pressed="${filter === k}">${esc(n)} <span class="n">${counts[k] || 0}</span></button>`).join('') +
+    `<label class="toggle"><input type="checkbox" id="hidePosted" ${hidePosted ? 'checked' : ''}> Hide posted</label>`;
+}
+
+function card(p) {
+  const pl = PLATFORMS[p.platform] || {name: p.platform, color: 'var(--muted)', limit: 3000};
+  const s = status(p), posted = log[p.id];
+  const limit = p.kind === 'Article' ? pl.articleLimit || pl.limit : pl.limit;
+  const len = [...(p.body || '')].length, tags = ((p.body || '').match(/#[\p{L}\p{N}_]+/gu) || []).length;
+  const over = len > limit || (pl.tags && tags > pl.tags);
+  const pillText = {done: `Posted ${posted ? fmtPosted(posted.postedAt) : ''}`, today: 'Today', overdue: 'Past due', upcoming: 'Scheduled'}[s];
+  const copyBtn = posted
+    ? (confirmIds.has(p.id) ? `<button class="btn confirm" data-act="copy" data-id="${esc(p.id)}">Already posted. Copy anyway?</button>`
+                            : `<button class="btn" data-act="copy" data-id="${esc(p.id)}">Copy again</button>`)
+    : `<button class="btn primary" data-act="copy" data-id="${esc(p.id)}">Copy ${p.kind === 'Article' ? 'article' : 'post'}</button>`;
+  return `<article class="card ${posted ? 'posted' : ''} ${p.image ? '' : 'no-img'} ${openIds.has(p.id) ? 'open' : ''}" id="post-${esc(p.id)}">
+    <div class="top" style="grid-column:1"><span class="plat" style="--pc:${pl.color}">${esc(pl.name)}</span>${p.kind === 'Article' ? '<span class="kind">Article</span>' : ''}<span class="pill ${s}">${pillText}</span></div>
+    <h4>${esc(p.title)}</h4>
+    <pre class="body-preview">${esc(p.body)}</pre>
+    ${p.notes ? `<div class="notes">${esc(p.notes)}</div>` : ''}
+    ${p.firstComment ? `<div class="fc"><b>First comment</b>${esc(p.firstComment)}</div>` : ''}
+    ${p.image ? `<div class="thumb"><img src="${esc(p.image)}" alt="Image for ${esc(p.title)}" loading="lazy"><button class="btn" data-act="img" data-id="${esc(p.id)}" ${downloads ? '' : 'hidden'}>Save image</button></div>` : ''}
+    <div class="foot">
+      ${copyBtn}
+      ${p.firstComment ? `<button class="btn" data-act="copyfc" data-id="${esc(p.id)}">Copy first comment</button>` : ''}
+      <button class="btn ghost" data-act="toggle" data-id="${esc(p.id)}">${openIds.has(p.id) ? 'Show less' : 'Show all'}</button>
+      <span class="count mono ${over ? 'over' : ''}">${len.toLocaleString()} / ${limit.toLocaleString()} chars${pl.tags ? ` · ${tags}/${pl.tags} hashtags` : ''}</span>
+      <span class="spacer"></span>
+      ${db ? (posted
+        ? `<button class="btn done" data-act="undo" data-id="${esc(p.id)}" title="Undo if you marked this by mistake">✓ Posted · Undo</button>`
+        : `<button class="btn" data-act="mark" data-id="${esc(p.id)}">Mark as posted</button>`) : ''}
+    </div>
+  </article>`;
+}
+
+function renderList() {
+  const shown = posts.filter(p => (filter === 'all' || p.platform === filter) && !(hidePosted && log[p.id]));
+  if (!posts.length) { $('#list').innerHTML = `<div class="state">No posts yet. Send Claude your content and it will add the next campaign here.</div>`; return; }
+  if (!shown.length) { $('#list').innerHTML = `<div class="state">Nothing to show with these filters. ${hidePosted ? 'Everything here has been posted.' : ''}</div>`; return; }
+  const weeks = new Map();
+  for (const p of shown) { const w = weekKey(dayOf(p)); if (!weeks.has(w)) weeks.set(w, []); weeks.get(w).push(p); }
+  $('#list').innerHTML = [...weeks].map(([w, ps]) => `<section class="week"><h3>Week of ${fmtDay(w)} · ${esc([...new Set(ps.map(p => p.campaign))].join(', '))}</h3>
+    ${ps.map((p, i) => { const d = dayOf(p), same = i > 0 && dayOf(ps[i-1]) === d;
+      return `<div class="row"><div class="date">${same ? '' : `<div class="d">${fmtDay(d)}</div>`}<div class="t">${esc(p.time)}</div></div>${card(p)}</div>`; }).join('')}
+  </section>`).join('');
+}
+
+function render() { if (!loaded.posts) return; renderSummary(); renderFilters(); renderList(); }
+
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; }
+  catch (e) {
+    const ta = document.createElement('textarea'); ta.className = 'cliphelper'; ta.value = text; document.body.appendChild(ta); ta.select();
+    let ok = false; try { ok = document.execCommand('copy'); } catch (e2) {}
+    ta.remove(); return ok;
+  }
+}
+
+document.addEventListener('click', async ev => {
+  const b = ev.target.closest('[data-act]'); if (!b) return;
+  const act = b.dataset.act, p = posts.find(x => x.id === b.dataset.id);
+  if (act === 'filter') { filter = b.dataset.f; try { localStorage.setItem('hub.filter', filter); } catch (e) {} render(); return; }
+  if (act === 'jump') { if (hidePosted || filter !== 'all') { filter = 'all'; render(); } document.getElementById('post-' + b.dataset.id)?.scrollIntoView({behavior: 'smooth', block: 'center'}); return; }
+  if (!p) return;
+  if (act === 'toggle') { openIds.has(p.id) ? openIds.delete(p.id) : openIds.add(p.id); renderList(); return; }
+  if (act === 'copy') {
+    if (log[p.id] && !confirmIds.has(p.id)) { confirmIds.add(p.id); renderList(); setTimeout(() => { confirmIds.delete(p.id); renderList(); }, 5000); return; }
+    confirmIds.delete(p.id);
+    const ok = await copyText(p.body);
+    toast(ok ? `Copied. Paste it into ${PLATFORMS[p.platform]?.name}.` : 'Copy was blocked. Tap "Show all" and select the text instead.');
+    if (!ok) { openIds.add(p.id); } renderList(); return;
+  }
+  if (act === 'copyfc') { const ok = await copyText(p.firstComment); toast(ok ? 'First comment copied' : 'Copy was blocked. Select the text instead.'); return; }
+  if (act === 'img') {
+    try { const blob = await (await fetch(p.image)).blob(); await downloads.save({filename: p.image.split('/').pop(), data: blob}); toast('Image saved'); }
+    catch (e) { if (e?.code !== 'declined') toast('Couldn\'t save the image. Press and hold (or right-click) it to save instead.'); }
+    return;
+  }
+  if (act === 'mark' || act === 'undo') {
+    b.disabled = true;
+    try {
+      if (act === 'mark') await db.collection('log').doc(p.id).set({postedAt: new Date().toISOString(), platform: p.platform, title: p.title});
+      else await db.collection('log').doc(p.id).delete();
+      toast(act === 'mark' ? 'Marked as posted' : 'Moved back to scheduled');
+    } catch (e) { b.disabled = false; toast(e?.code === 'invalid_argument' ? 'You have view-only access, so you can\'t change the posted log.' : 'Couldn\'t save. Check your connection and try again.'); }
+  }
+});
+document.addEventListener('change', ev => {
+  if (ev.target.id === 'hidePosted') { hidePosted = ev.target.checked; try { localStorage.setItem('hub.hidePosted', hidePosted ? '1' : '0'); } catch (e) {} render(); }
+});
+
+(async () => {
+  [db, downloads] = await Promise.all([window.claude?.use?.('db') ?? null, window.claude?.use?.('downloads') ?? null]);
+  if (!db) {
+    $('#list').innerHTML = `<div class="state">The content calendar couldn't load here. Open this page in claude.ai while signed in to your Midas Tech account.</div>`;
+    $('#next').innerHTML = `<span class="label">Up next</span><h2>Not available in this view</h2>`;
+    return;
+  }
+  const fail = e => { $('#list').innerHTML = `<div class="state">The calendar stopped updating (${esc(e?.code || 'error')}). Reload the page to reconnect.</div>`; };
+  db.collection('posts').orderBy('when').onSnapshot(s => { posts = s.docs.map(d => ({id: d.id, ...d.data()})); loaded.posts = true; render(); }, fail);
+  db.collection('log').onSnapshot(s => { log = Object.fromEntries(s.docs.map(d => [d.id, d.data()])); loaded.log = true; render(); }, fail);
+})();
+</script>

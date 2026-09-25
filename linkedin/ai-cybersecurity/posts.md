@@ -1,6 +1,8 @@
 # LinkedIn Posts — AI & Cybersecurity Campaign
 
 Five posts to promote the article **"AI Is Changing Cybersecurity Faster Than Most Businesses Realize"** over two weeks.
+> **The Content Hub page is the master schedule.** It also has the Instagram and Facebook versions and the posted log. See `../content-hub/`.
+
 Put the article link in the **first comment**, not the post body. LinkedIn shows posts with outside links to fewer people.
 
 | # | Post | Where | Image | Suggested timing |
@@ -9,7 +11,7 @@ Put the article link in the **first comment**, not the post body. LinkedIn shows
 | 2 | Company announcement | Midas Tech page | `ai-post-question.png` | Wed, week 1 · 10:00 a.m. |
 | 3 | Access red flags checklist | Midas Tech page | `ai-post-checklist.png` | Thu, week 1 · 12:00 p.m. |
 | 4 | Copilot story | Ali (personal) | none (text only) | Tue, week 2 · 8:30 a.m. |
-| 5 | Industry spotlight | Midas Tech page | `ai-post-question.png` | Thu, week 2 · 10:00 a.m. |
+| 5 | Industry spotlight | Midas Tech page | `ai-post-industry.png` | Thu, week 2 · 10:00 a.m. |
 
 ---
 

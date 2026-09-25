@@ -2972,137 +2972,75 @@
 
     // ── DETAIL VIEW ────────────────────────────────────────────────
     // ── EMAIL DRAFTS ─────────────────────────────────────────────────
-    // Source: Midas Tech 4-Email Outreach Sequence (Law + Accounting). Emails 1 & 2 have
-    // industry-specific wording; Emails 3 & 4 are already firm-type-neutral in the source.
+    // Midas Tech 4-email outreach sequence. Emails 1 and 2 are written per industry
+    // (law, accounting, healthcare, warehouse, general); 3 (quick checks) and 4 (close the loop) are shared.
     const EMAIL_TEMPLATES = {
-      law: {
-        1: { subject: "Complimentary IT & cybersecurity assessment — {{firm}}", body:
-`Hi {{first}},
-
-I'm Ali from Midas Tech, an Ontario-based IT company supporting small and mid-sized businesses.
-
-Law firms handle a lot of sensitive client information, so I wanted to offer {{firm}} a complimentary IT and cybersecurity assessment. We'd review areas such as Microsoft 365 security, backups, user access, and cyber-insurance readiness.
-
-There's no obligation, and we'll provide a short summary of anything that may need attention.
-
-Would you be open to a quick 15-minute conversation next week?
-
-Thanks,
-Ali Jaffar
-Midas Tech Inc.
-905-787-2038
-midastech.ca` },
-        2: { subject: "Re: Complimentary IT & cybersecurity assessment — {{firm}}", body:
-`Hi {{first}},
-
-Just a quick follow-up on my note from last week about a complimentary IT and cybersecurity assessment for {{firm}}.
-
-Most law firms we review find at least one quiet gap — often in M365 settings or backup recovery — and the summary we provide is yours to keep either way, even if we never work together.
-
-If now isn't the right time, no problem at all. Otherwise, I'm happy to grab 15 minutes whenever suits you.
-
-Thanks,
-Ali Jaffar
-Midas Tech Inc.
-905-787-2038
-midastech.ca` }
+      "law": {
+        "1": {
+          "subject": "Quick question about IT security at {{firm}}",
+          "body": "Hi {{first}},\n\nI'm Ali Jaffar, founder of Midas Tech. We're an IT and cybersecurity company in Richmond Hill, and we've been looking after Ontario businesses since 2010.\n\nLaw firms are a popular target right now, mostly through email: fake invoices, spoofed payment or trust-account instructions, and hijacked Microsoft 365 accounts. One bad email can put client confidentiality at risk.\n\nI'd like to offer {{firm}} a free, no-obligation IT security check. We look at your Microsoft 365 settings, backups, who has access to what, and cyber-insurance readiness. You get a short, plain-English summary to keep, whether or not we ever work together.\n\nWould 15 minutes next week work for a quick call?\n\nThanks,\nAli Jaffar\nMidas Tech Inc. | IT Services & Cybersecurity\n905-787-2038 | www.midastech.ca"
+        },
+        "2": {
+          "subject": "One thing worth checking at {{firm}}",
+          "body": "Hi {{first}},\n\nFollowing up on my note from last week.\n\nHere's one thing worth checking even if we never speak: is multi-factor authentication turned on for every Microsoft 365 account at {{firm}}, including shared mailboxes and accounts for people who have left? It's the gap we find most often at law firms, and it's usually a quick fix.\n\nIf you'd like a second pair of eyes on it, the free security check still stands. Happy to work around your court and client schedule.\n\nThanks,\nAli Jaffar\nMidas Tech Inc. | IT Services & Cybersecurity\n905-787-2038 | www.midastech.ca"
+        }
       },
-      accounting: {
-        1: { subject: "Complimentary IT & cybersecurity assessment — {{firm}}", body:
-`Hi {{first}},
-
-I'm reaching out from Midas Tech. We provide managed IT and cybersecurity services to Ontario businesses.
-
-Because accounting firms handle sensitive financial and client information, we're offering {{firm}} a complimentary IT assessment. It includes a review of Microsoft 365 security, backups, employee access and cyber-insurance readiness.
-
-There's no obligation, and you'll receive a short summary of our findings.
-
-Would you have 15 minutes next week for a quick introduction?
-
-Thanks,
-Ali Jaffar
-Midas Tech Inc.
-905-787-2038
-midastech.ca` },
-        2: { subject: "Re: Complimentary IT & cybersecurity assessment — {{firm}}", body:
-`Hi {{first}},
-
-Just a quick follow-up on my note from last week about a complimentary IT and cybersecurity assessment for {{firm}}.
-
-Most accounting firms we review find at least one quiet gap — often in M365 settings or backup recovery — and the summary we provide is yours to keep either way, even if we never work together.
-
-If now isn't the right time, no problem at all. Otherwise, I'm happy to grab 15 minutes whenever suits you.
-
-Thanks,
-Ali Jaffar
-Midas Tech Inc.
-905-787-2038
-midastech.ca` }
+      "accounting": {
+        "1": {
+          "subject": "Before tax season: a quick IT check for {{firm}}",
+          "body": "Hi {{first}},\n\nI'm Ali Jaffar, founder of Midas Tech. We're an IT and cybersecurity company in Richmond Hill, and we've been looking after Ontario businesses since 2010.\n\nAccounting firms see a jump in phishing every tax season: fake CRA notices, fake client documents and \"updated banking details\" emails. With client tax returns, SINs and banking information on file, one successful attack is a serious problem.\n\nI'd like to offer {{firm}} a free, no-obligation IT security check before the busy season. We review Microsoft 365 and email security, backups, access to your tax software and client portal, and cyber-insurance readiness. You get a short, plain-English summary to keep either way.\n\nWould 15 minutes next week work for a quick call?\n\nThanks,\nAli Jaffar\nMidas Tech Inc. | IT Services & Cybersecurity\n905-787-2038 | www.midastech.ca"
+        },
+        "2": {
+          "subject": "Two questions for {{firm}} before tax season",
+          "body": "Hi {{first}},\n\nFollowing up on my note from last week.\n\nTwo quick questions worth asking before the rush, whether or not we ever work together:\n\n1. Does everyone at {{firm}} use multi-factor authentication for email and your tax or portal software?\n2. When did someone last test restoring client files from backup?\n\nIf either answer is \"not sure\", our free security check covers both, and I'm happy to fit it around your schedule.\n\nThanks,\nAli Jaffar\nMidas Tech Inc. | IT Services & Cybersecurity\n905-787-2038 | www.midastech.ca"
+        }
       },
-      generic: {
-        1: { subject: "Complimentary IT & cybersecurity assessment — {{firm}}", body:
-`Hi {{first}},
-
-I'm Ali from Midas Tech, an Ontario-based IT company supporting small and mid-sized businesses.
-
-I wanted to offer {{firm}} a complimentary IT and cybersecurity assessment. We'd review areas such as Microsoft 365 security, backups, user access, and cyber-insurance readiness.
-
-There's no obligation, and we'll provide a short summary of anything that may need attention.
-
-Would you be open to a quick 15-minute conversation next week?
-
-Thanks,
-Ali Jaffar
-Midas Tech Inc.
-905-787-2038
-midastech.ca` },
-        2: { subject: "Re: Complimentary IT & cybersecurity assessment — {{firm}}", body:
-`Hi {{first}},
-
-Just a quick follow-up on my note from last week about a complimentary IT and cybersecurity assessment for {{firm}}.
-
-The summary we provide is yours to keep either way, even if we never work together.
-
-If now isn't the right time, no problem at all. Otherwise, I'm happy to grab 15 minutes whenever suits you.
-
-Thanks,
-Ali Jaffar
-Midas Tech Inc.
-905-787-2038
-midastech.ca` }
+      "healthcare": {
+        "1": {
+          "subject": "Keeping patient records safe at {{firm}}",
+          "body": "Hi {{first}},\n\nI'm Ali Jaffar, founder of Midas Tech. We're an IT and cybersecurity company in Richmond Hill, and we've been looking after Ontario businesses since 2010.\n\nClinics hold exactly what attackers want: patient records. Ontario's privacy law (PHIPA) expects you to protect them, and a ransomware attack can lock your EMR and stop you seeing patients for days.\n\nI'd like to offer {{firm}} a free, no-obligation IT security check. We review email and Microsoft 365 security, backups and how fast you could restore them, who can access patient data, and the computers at your front desk. You get a short, plain-English summary to keep either way.\n\nWould 15 minutes next week work for a quick call? I can work around clinic hours.\n\nThanks,\nAli Jaffar\nMidas Tech Inc. | IT Services & Cybersecurity\n905-787-2038 | www.midastech.ca"
+        },
+        "2": {
+          "subject": "If your systems went down tomorrow at {{firm}}",
+          "body": "Hi {{first}},\n\nFollowing up on my note from last week.\n\nA question worth asking even if we never speak: if your main computer or EMR went down tomorrow morning, how long would it take {{firm}} to start seeing patients again? Most clinics we talk to have backups but have never timed a restore.\n\nOur free security check includes a quick look at exactly that. Happy to find a time outside clinic hours.\n\nThanks,\nAli Jaffar\nMidas Tech Inc. | IT Services & Cybersecurity\n905-787-2038 | www.midastech.ca"
+        }
+      },
+      "warehouse": {
+        "1": {
+          "subject": "Keeping {{firm}} shipping if IT goes down",
+          "body": "Hi {{first}},\n\nI'm Ali Jaffar, founder of Midas Tech. We're an IT and cybersecurity company in Richmond Hill, and we've been looking after Ontario businesses since 2010.\n\nIn a warehouse, IT problems stop trucks. When the network, scanners or warehouse system go down, orders don't ship. We also see more fake supplier invoices and \"please update our banking details\" emails aimed at logistics teams.\n\nI'd like to offer {{firm}} a free, no-obligation IT security check. We review your network and Wi-Fi, backups, email security and who can approve payments, so you know where the weak spots are. You get a short, plain-English summary to keep either way.\n\nWould 15 minutes next week work for a quick call?\n\nThanks,\nAli Jaffar\nMidas Tech Inc. | IT Services & Cybersecurity\n905-787-2038 | www.midastech.ca"
+        },
+        "2": {
+          "subject": "One question about downtime at {{firm}}",
+          "body": "Hi {{first}},\n\nFollowing up on my note from last week.\n\nA question worth asking even if we never speak: if your server or internet went down during a busy shift, how long before {{firm}} could ship again? And does anyone confirm supplier banking changes by phone before paying?\n\nOur free security check looks at both. Happy to come by or do it over a call, whichever is easier.\n\nThanks,\nAli Jaffar\nMidas Tech Inc. | IT Services & Cybersecurity\n905-787-2038 | www.midastech.ca"
+        }
+      },
+      "generic": {
+        "1": {
+          "subject": "Quick question about IT security at {{firm}}",
+          "body": "Hi {{first}},\n\nI'm Ali Jaffar, founder of Midas Tech. We're an IT and cybersecurity company in Richmond Hill, and we've been looking after Ontario businesses since 2010.\n\nMost attacks on small businesses start with one email: a fake invoice, a fake login page or a hijacked Microsoft 365 account.\n\nI'd like to offer {{firm}} a free, no-obligation IT security check. We review Microsoft 365 and email security, backups, who has access to what, and cyber-insurance readiness. You get a short, plain-English summary to keep, whether or not we ever work together.\n\nWould 15 minutes next week work for a quick call?\n\nThanks,\nAli Jaffar\nMidas Tech Inc. | IT Services & Cybersecurity\n905-787-2038 | www.midastech.ca"
+        },
+        "2": {
+          "subject": "One thing worth checking at {{firm}}",
+          "body": "Hi {{first}},\n\nFollowing up on my note from last week.\n\nHere's one thing worth checking even if we never speak: is multi-factor authentication turned on for every email account at {{firm}}, including shared mailboxes and accounts for people who have left? It's the gap we find most often, and it's usually a quick fix.\n\nIf you'd like a second pair of eyes on it, the free security check still stands.\n\nThanks,\nAli Jaffar\nMidas Tech Inc. | IT Services & Cybersecurity\n905-787-2038 | www.midastech.ca"
+        }
       }
     };
-    const EMAIL_TEMPLATE_STEP3 = { subject: "Re: Complimentary IT & cybersecurity assessment — {{firm}}", body:
-`Hi {{first}},
-
-Just following up on my earlier email about the complimentary IT and cybersecurity assessment for {{firm}}. It's a simple review designed to identify possible gaps in security, backups, and Microsoft 365 — with no obligation on your end.
-
-If now isn't a good time, I completely understand. Otherwise, would a brief 15-minute call next week work for you?
-
-Thanks,
-Ali
-Midas Tech Inc.
-905-787-2038
-midastech.ca` };
-    const EMAIL_TEMPLATE_STEP4 = { subject: "Closing the loop — {{firm}}", body:
-`Hi {{first}},
-
-I don't want to keep filling your inbox, so this is my last note about the complimentary IT assessment I offered {{firm}}.
-
-The offer stands whenever timing is better — just keep my contact and reach out when it makes sense.
-
-Wishing you a great rest of the {{season}}.
-
-Thanks,
-Ali Jaffar
-Midas Tech Inc.
-905-787-2038
-midastech.ca` };
+    const EMAIL_TEMPLATE_STEP3 = {
+      "subject": "3 quick IT checks for {{firm}}",
+      "body": "Hi {{first}},\n\nI know you're busy, so here's something useful whether or not we ever talk. Three checks that take under an hour:\n\n1. Multi-factor authentication is on for every email account, including shared ones.\n2. Someone has restored a file from backup in the last three months, and it worked.\n3. Accounts for people who have left are switched off.\n\nIf any of those is a \"not sure\", that's exactly what our free security check covers. Want me to send over a couple of times?\n\nThanks,\nAli Jaffar\nMidas Tech Inc. | IT Services & Cybersecurity\n905-787-2038 | www.midastech.ca"
+    };
+    const EMAIL_TEMPLATE_STEP4 = {
+      "subject": "Should I close the loop?",
+      "body": "Hi {{first}},\n\nI haven't heard back, so I'll assume the timing isn't right and stop following up.\n\nIf anything changes, the free IT security check for {{firm}} is always available. Just reply to this email or call me at 905-787-2038.\n\nEnjoy the rest of the {{season}}.\n\nThanks,\nAli Jaffar\nMidas Tech Inc. | IT Services & Cybersecurity\n905-787-2038 | www.midastech.ca"
+    };
 
     function detectFirmType(lead) {
       const text = `${lead?.industry||""} ${lead?.title||""} ${lead?.company||""}`.toLowerCase();
-      if (/\b(law|legal|attorney|barrister|solicitor|counsel|llp)\b/.test(text)) return "law";
-      if (/\b(account|accounting|cpa|bookkeeping|bookkeeper|tax)\b/.test(text)) return "accounting";
+      if (/\b(law|legal|lawyers?|attorneys?|barristers?|solicitors?|counsel|llp|paralegal)\b/.test(text)) return "law";
+      if (/\b(account\w*|cpa|bookkeep\w*|tax|payroll|audit\w*)\b/.test(text)) return "accounting";
+      if (/\b(clinic|medical|health\w*|dental|dentist\w*|physio\w*|chiropract\w*|pharmac\w*|optometr\w*|doctors?|physicians?|nurs\w*|hospital|wellness|rehab\w*|veterinar\w*)\b/.test(text)) return "healthcare";
+      if (/\b(warehous\w*|logistics|distribution|freight|supply chain|3pl|fulfil\w*|fulfill\w*|transport\w*|trucking|courier|shipping)\b/.test(text)) return "warehouse";
       return "generic";
     }
     function getCurrentSeason() {
@@ -3117,9 +3055,22 @@ midastech.ca` };
       if (step === 4) return EMAIL_TEMPLATE_STEP4;
       return EMAIL_TEMPLATES[detectFirmType(lead)][step];
     }
+    // First name for the greeting: skips titles like "Dr." and falls back to "there"
+    // when the Name field holds a company ("Meretsky Law Firm") instead of a person.
+    function greetingName(lead) {
+      const name = String(lead?.name || "").trim();
+      const company = String(lead?.company || "").trim().toLowerCase();
+      if (!name || (company && name.toLowerCase() === company)) return "there";
+      if (/\b(inc|ltd|llp|llc|corp|corporation|company|group|firm|clinic|associates|partners|cpa|services|solutions|logistics|&)\b/i.test(name)) return "there";
+      const parts = name.replace(/[,]/g, " ").split(/\s+/).filter(Boolean);
+      const titles = /^(dr|mr|mrs|ms|miss|mx|prof|sir|madam)\.?$/i;
+      const first = parts.find(w => !titles.test(w)) || "";
+      if (!first || !/[a-z]/i.test(first)) return "there";
+      return first.charAt(0).toUpperCase() + first.slice(1);
+    }
     function fillEmailTemplate(str, lead) {
-      const first = String(lead?.name||"").trim().split(/\s+/)[0] || "there";
-      const firm  = String(lead?.company||"").trim() || lead?.name || "your firm";
+      const first = greetingName(lead);
+      const firm  = String(lead?.company||"").trim() || "your business";
       return str
         .replace(/\{\{first\}\}/g, first)
         .replace(/\{\{firm\}\}/g, firm)
@@ -3128,7 +3079,7 @@ midastech.ca` };
     function buildMailtoUrl(to, subject, body) {
       return `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     }
-    const FIRM_TYPE_LABELS = { law: "Law firm", accounting: "Accounting firm", generic: "General" };
+    const FIRM_TYPE_LABELS = { law: "Law firm", accounting: "Accounting firm", healthcare: "Healthcare clinic", warehouse: "Warehouse & logistics", generic: "General" };
     let emailDraftHistory = {}; // { [step]: { dateLabel } } — for whichever lead is open in the detail modal
 
     async function loadEmailDraftHistory(id) {
@@ -3151,7 +3102,7 @@ midastech.ca` };
     function renderEmailDraftSection(lead) {
       const wrap = document.getElementById("emailDraftsSection");
       if (!wrap || !lead) return;
-      const email = cleanEmail(lead.email);
+      const email = splitEmail(cleanEmail(lead.email)).address;
       if (!email) {
         wrap.innerHTML = `<div class="extras-heading">Email Drafts</div><p class="modal-sub" style="margin:4px 0 0;">No email address on file for this lead.</p>`;
         return;
@@ -3162,14 +3113,16 @@ midastech.ca` };
           ${[1,2,3,4].map(step => {
             const sent = emailDraftHistory[step];
             const badge = sent ? `<span class="email-sent-badge">✓ Sent ${esc(sent.dateLabel)}</span>` : "";
-            return `<button class="btn btn-secondary btn-sm" onclick="sendEmailDraft('${esc(lead.id)}', ${step})">Email ${step}${badge}</button>`;
+            const subj = fillEmailTemplate(getEmailTemplate(lead, step).subject, lead);
+            const name = ["", "Intro", "Follow-up", "Quick checks", "Close the loop"][step];
+            return `<button class="btn btn-secondary btn-sm" title="Subject: ${esc(subj)}" onclick="sendEmailDraft('${esc(lead.id)}', ${step})">${step}. ${name}${badge}</button>`;
           }).join("")}
         </div>`;
     }
     window.sendEmailDraft = async function (id, step) {
       const lead = allLeads[id];
       if (!lead) return;
-      const email = cleanEmail(lead.email);
+      const email = splitEmail(cleanEmail(lead.email)).address;
       if (!email) return showToast("No email address on file","error");
       const variant = detectFirmType(lead);
       const tpl = getEmailTemplate(lead, step);

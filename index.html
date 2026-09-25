@@ -1141,7 +1141,77 @@
     .li-pull-log .log-error   { color: #f85149; }
     .li-pull-log .log-info    { color: #58a6ff; }
     .li-pull-log .log-dim     { color: #8b949e; }
-  </style>
+  
+    /* ── All Leads: cleaner table, follow-ups, admin menu, phone layout ── */
+    .status-select.status-New, .status-select.status-Contacted, .status-select.status-Qualified,
+    .status-select.status-Proposal, .status-select.status-Closed, .status-select.status-Dead { font-weight: 700; border-radius: 999px; padding: 6px 10px; }
+    .status-select.status-New       { background: #f5ecdc; color: var(--gray-700); border-color: rgba(112,101,82,0.18); }
+    .status-select.status-Contacted { background: var(--blue-light); color: var(--blue); border-color: rgba(29,78,216,0.2); }
+    .status-select.status-Qualified { background: var(--green-light); color: var(--green); border-color: rgba(15,138,95,0.22); }
+    .status-select.status-Proposal  { background: var(--yellow-light); color: var(--yellow); border-color: rgba(183,121,31,0.24); }
+    .status-select.status-Closed    { background: var(--green); color: #fff; border-color: var(--green); }
+    .status-select.status-Dead      { background: var(--red-light); color: var(--red); border-color: rgba(194,65,59,0.22); }
+    .status-select option { background: var(--surface); color: var(--gray-800); }
+    #view-admin > .toolbar { position: relative; z-index: 30; }
+    .touch-flag { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: var(--yellow); }
+    .touch-flag::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #e0902a; flex: none; }
+    tr.needs-followup td.c-name { box-shadow: inset 3px 0 0 #e0902a; }
+    .c-last { white-space: normal; line-height: 1.4; }
+    .metric-card { position: relative; }
+    .metric-card:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+    .metric-card.active-filter { border-width: 2px; }
+    .metric-card.active-filter .label::after { content: " · showing"; color: var(--gold); letter-spacing: 0.06em; }
+    .metric-followup .value { color: var(--yellow); }
+    .filters-toggle { display: none; }
+    .filters-extra { display: contents; }
+    .admin-menu { position: relative; }
+    .admin-menu > summary { list-style: none; display: inline-flex; align-items: center; }
+    .admin-menu > summary::-webkit-details-marker { display: none; }
+    .admin-menu-list {
+      position: absolute; right: 0; top: calc(100% + 6px); z-index: 50; min-width: 220px;
+      display: flex; flex-direction: column; gap: 6px; padding: 8px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow-md);
+    }
+    .admin-menu-list .btn { width: 100%; justify-content: flex-start; text-align: left; }
+    .admin-menu-list #clearAllBtn { margin-top: 4px; }
+
+    @media (max-width: 700px) {
+      .metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; overflow: visible; }
+      .metric-card { min-width: 0; padding: 10px 12px; }
+      .metric-card .value { font-size: 22px; }
+      .metric-card .label { font-size: 9px; letter-spacing: 0.08em; }
+      .metric-card.active-filter .label::after { content: ""; }
+      .metric-followup { grid-column: 1 / -1; }
+      .toolbar { gap: 8px; }
+      .toolbar input[type="text"] { flex: 1 1 60%; width: auto; min-width: 0; }
+      .toolbar .filters-toggle { display: inline-flex; width: auto; }
+      .filters-extra { display: none; width: 100%; }
+      .filters-extra.open { display: grid; gap: 8px; }
+      .toolbar .spacer { display: none; }
+      .toolbar > .btn-primary { width: 100%; }
+      .admin-menu { width: 100%; }
+      .admin-menu > summary { width: 100%; justify-content: center; }
+      .admin-menu-list { left: 0; right: 0; }
+
+      /* Leads as cards */
+      .table-wrap { overflow: visible; padding-top: 12px; }
+      #leadsTable, #leadsTable tbody { display: block; table-layout: auto; }
+      #leadsTable thead { display: none; }
+      #leadsTable tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px; padding: 12px 14px; border-bottom: 1px solid rgba(77,64,43,0.08); }
+      #leadsTable td { display: block; padding: 0; border: none; background: none; white-space: normal; overflow: visible; }
+      #leadsTable tr:hover td { background: none; }
+      #leadsTable tr.group-row, #leadsTable tr.state-row, #leadsTable tr.limit-note { display: block; padding: 0; }
+      #leadsTable tr.group-row td, #leadsTable tr.limit-note td { padding: 10px 14px; }
+      #leadsTable tr.state-row td { padding: 32px 16px; }
+      #leadsTable .c-name { grid-column: 1; grid-row: 1; }
+      #leadsTable .c-status { grid-column: 2; grid-row: 1; }
+      #leadsTable .c-email, #leadsTable .c-phone { grid-column: 1 / -1; font-size: 13px; overflow-wrap: anywhere; }
+      #leadsTable .c-last { grid-column: 1; align-self: center; font-size: 12px; }
+      #leadsTable .c-actions { grid-column: 2; }
+      tr.needs-followup td.c-name { box-shadow: none; }
+      #leadsTable tr.needs-followup { box-shadow: inset 3px 0 0 #e0902a; }
+    }
+</style>
 </head>
 <body>
 
@@ -1165,12 +1235,13 @@
 
   <!-- ══ Metrics bar ══ -->
   <div class="metrics" id="metricsBar">
-    <div class="metric-card" onclick="filterByStatus('')"    id="mc-total"><div class="label">Total</div><div class="value" id="metricTotal">—</div></div>
-    <div class="metric-card" onclick="filterByStatus('New')" id="mc-New"><div class="label">New</div><div class="value" id="metricNew">—</div></div>
-    <div class="metric-card" onclick="filterByStatus('Contacted')" id="mc-Contacted"><div class="label">Contacted</div><div class="value" id="metricContacted">—</div></div>
-    <div class="metric-card" onclick="filterByStatus('Qualified')" id="mc-Qualified"><div class="label">Qualified</div><div class="value" id="metricQualified">—</div></div>
-    <div class="metric-card" onclick="filterByStatus('Proposal')" id="mc-Proposal"><div class="label">Proposal</div><div class="value" id="metricProposal">—</div></div>
-    <div class="metric-card" onclick="filterByStatus('Closed')" id="mc-Closed"><div class="label">Closed</div><div class="value" id="metricClosed">—</div></div>
+    <div class="metric-card active-filter" onclick="filterByStatus('')" id="mc-total" title="Show all leads"><div class="label">Total</div><div class="value" id="metricTotal">—</div></div>
+    <div class="metric-card" onclick="filterByStatus('New')" id="mc-New" title="Show only New leads"><div class="label">New</div><div class="value" id="metricNew">—</div></div>
+    <div class="metric-card" onclick="filterByStatus('Contacted')" id="mc-Contacted" title="Show only Contacted leads"><div class="label">Contacted</div><div class="value" id="metricContacted">—</div></div>
+    <div class="metric-card" onclick="filterByStatus('Qualified')" id="mc-Qualified" title="Show only Qualified leads"><div class="label">Qualified</div><div class="value" id="metricQualified">—</div></div>
+    <div class="metric-card" onclick="filterByStatus('Proposal')" id="mc-Proposal" title="Show only Proposal leads"><div class="label">Proposal</div><div class="value" id="metricProposal">—</div></div>
+    <div class="metric-card" onclick="filterByStatus('Closed')" id="mc-Closed" title="Show only Closed leads"><div class="label">Closed</div><div class="value" id="metricClosed">—</div></div>
+    <div class="metric-card metric-followup" onclick="filterByStatus('__followup')" id="mc-__followup" title="Open leads with no contact in 3+ days"><div class="label">Needs follow-up</div><div class="value" id="metricFollowup">—</div></div>
   </div>
 
   <!-- ══════════════════════════════
@@ -1179,40 +1250,46 @@
   <div class="view active" id="view-admin">
     <div class="toolbar">
       <input type="text" id="searchInput" placeholder="Search name, company, email…" autocomplete="off" oninput="applyFilters()">
+      <button class="btn btn-secondary filters-toggle" type="button" aria-expanded="false" aria-controls="leadFilters" onclick="toggleLeadFilters(this)">Filters<span id="filtersCount"></span></button>
+      <div class="filters-extra" id="leadFilters">
       <select id="filterStatus" onchange="applyFilters()">
         <option value="">All Statuses</option>
         <option>New</option><option>Contacted</option><option>Qualified</option>
         <option>Proposal</option><option>Closed</option><option>Dead</option>
+        <option value="__followup">Needs follow-up</option>
       </select>
       <select id="filterRep" onchange="applyFilters()"><option value="">All Reps</option></select>
       <select id="filterCountry" onchange="applyFilters()"><option value="">All Countries</option></select>
       <select id="filterTitle" onchange="applyFilters()"><option value="">All Titles</option></select>
+      </div>
       <div class="spacer"></div>
       <input type="file" id="csvInput" accept=".csv" onchange="handleCSV(event)">
-      <button class="btn btn-secondary" id="importCsvBtn" style="display:none" onclick="document.getElementById('csvInput').click()">Import CSV</button>
-      <button class="btn btn-secondary" id="importBatchesBtn" style="display:none" onclick="openImportBatches()">Delete Batch</button>
-      <button class="btn btn-secondary" id="recentlyClearedBtn" style="display:none" onclick="openRecentlyCleared()">Recently Cleared</button>
+      <details class="admin-menu" id="adminMenu" style="display:none">
+        <summary class="btn btn-secondary">Admin ▾</summary>
+        <div class="admin-menu-list">
+          <button class="btn btn-secondary" id="importCsvBtn" style="display:none" onclick="closeAdminMenu();document.getElementById('csvInput').click()">Import CSV</button>
+          <button class="btn btn-secondary" id="importBatchesBtn" style="display:none" onclick="closeAdminMenu();openImportBatches()">Delete an import batch</button>
+          <button class="btn btn-secondary" id="recentlyClearedBtn" style="display:none" onclick="closeAdminMenu();openRecentlyCleared()">Recently cleared</button>
+          <button class="btn btn-danger" id="clearAllBtn" style="display:none" onclick="closeAdminMenu();clearAllLeads()">Clear all leads…</button>
+        </div>
+      </details>
       <button class="btn btn-primary"   onclick="openAddLead()">+ Add Lead</button>
-      <button class="btn btn-danger" id="clearAllBtn" style="display:none" onclick="clearAllLeads()">Clear All</button>
     </div>
 
     <div class="table-wrap">
       <table id="leadsTable">
         <thead>
           <tr>
-            <th style="width:180px">Name<div class="col-resize"></div></th>
-            <th style="width:160px">Company<div class="col-resize"></div></th>
-            <th style="width:190px">Email<div class="col-resize"></div></th>
-            <th style="width:130px">Phone<div class="col-resize"></div></th>
-            <th style="width:120px">Status<div class="col-resize"></div></th>
-            <th style="width:130px">Company Assignment<div class="col-resize"></div></th>
-            <th style="width:70px; text-align:center">Contacts<div class="col-resize"></div></th>
-            <th style="width:110px">Last Contact<div class="col-resize"></div></th>
-            <th style="width:110px">Actions</th>
+            <th style="width:24%">Name<div class="col-resize"></div></th>
+            <th style="width:24%">Email<div class="col-resize"></div></th>
+            <th style="width:13%">Phone<div class="col-resize"></div></th>
+            <th style="width:13%">Status<div class="col-resize"></div></th>
+            <th style="width:15%">Last touch<div class="col-resize"></div></th>
+            <th style="width:11%">Actions</th>
           </tr>
         </thead>
         <tbody id="leadTableBody">
-          <tr class="state-row"><td colspan="9">Connecting…</td></tr>
+          <tr class="state-row"><td colspan="6">Connecting…</td></tr>
         </tbody>
       </table>
     </div>
@@ -1937,6 +2014,8 @@
       const importBatchesBtn = document.getElementById("importBatchesBtn");
       const recentlyClearedBtn = document.getElementById("recentlyClearedBtn");
       if (clearBtn) clearBtn.style.display = isAdminUser() ? "inline-flex" : "none";
+      const adminMenu = document.getElementById("adminMenu");
+      if (adminMenu) adminMenu.style.display = isAdminUser() ? "" : "none";
       if (adminBtn) adminBtn.style.display = isAdminUser() ? "inline-flex" : "none";
       if (importBtn) importBtn.style.display = isAdminUser() ? "inline-flex" : "none";
       if (importBatchesBtn) importBatchesBtn.style.display = isAdminUser() ? "inline-flex" : "none";
@@ -2002,7 +2081,7 @@
         err => {
           console.error(err);
           document.getElementById("leadTableBody").innerHTML =
-            `<tr class="state-row"><td colspan="9"><strong>Could not connect</strong><p>Check Firebase config and Firestore rules.</p></td></tr>`;
+            `<tr class="state-row"><td colspan="6"><strong>Could not connect</strong><p>Check Firebase config and Firestore rules.</p></td></tr>`;
         }
       );
     }
@@ -2416,7 +2495,7 @@
           if (unsubscribeArchiveOperations) { unsubscribeArchiveOperations(); unsubscribeArchiveOperations = null; }
           applyUserDisplay();
           document.getElementById("leadTableBody").innerHTML =
-            `<tr class="state-row"><td colspan="9"><strong>Sign in required</strong><p>Use your email and password to access leads.</p></td></tr>`;
+            `<tr class="state-row"><td colspan="6"><strong>Sign in required</strong><p>Use your email and password to access leads.</p></td></tr>`;
           document.getElementById("leadQueue").innerHTML =
             `<div class="empty-workspace"><div class="big">🔐</div><strong>Sign in to view your workspace</strong><p>Your assigned leads will appear here after login.</p></div>`;
           closeBootstrapAdminModal();
@@ -2509,7 +2588,20 @@
       document.getElementById("metricQualified").textContent = n("Qualified");
       document.getElementById("metricProposal").textContent  = n("Proposal");
       document.getElementById("metricClosed").textContent    = n("Closed");
+      document.getElementById("metricFollowup").textContent  = leads.filter(leadFollowUp).length;
     }
+
+    window.toggleLeadFilters = function (btn) {
+      const box = document.getElementById("leadFilters");
+      const open = !box.classList.contains("open");
+      box.classList.toggle("open", open);
+      btn.setAttribute("aria-expanded", String(open));
+    };
+    window.closeAdminMenu = function () { document.getElementById("adminMenu")?.removeAttribute("open"); };
+    document.addEventListener("click", e => {
+      const menu = document.getElementById("adminMenu");
+      if (menu?.open && !menu.contains(e.target)) menu.removeAttribute("open");
+    });
 
     window.filterByStatus = function(s) {
       document.getElementById("filterStatus").value = s;
@@ -2545,20 +2637,37 @@
                        (l.company||"").toLowerCase().includes(search) ||
                        email.toLowerCase().includes(search) ||
                        (l.title||"").toLowerCase().includes(search)) &&
-          (!status  || l.status === status) &&
+          (!status  || (status === "__followup" ? !!leadFollowUp(l) : l.status === status)) &&
           (!rep     || l.assignedTo === rep) &&
           (!country || (l.country||"") === country) &&
           (!title   || (l.title||l.industry||"").includes(title))
         );
       });
+      document.querySelectorAll(".metric-card").forEach(c => c.classList.toggle("active-filter", c.id === (status ? `mc-${status}` : "mc-total")));
+      const activeFilters = [status, rep, country, title].filter(Boolean).length;
+      const fc = document.getElementById("filtersCount");
+      if (fc) fc.textContent = activeFilters ? ` (${activeFilters})` : "";
       renderTable(leads);
     };
+
+    // Open leads with no contact yet, or none in the last 3 days (same rule as My Workspace).
+    function leadFollowUp(l) {
+      if (l.status === "Closed" || l.status === "Dead") return null;
+      if (!l.lastContacted) return { days: null };
+      const d = l.lastContacted.toDate ? l.lastContacted.toDate() : new Date(l.lastContacted);
+      const days = Math.floor((Date.now() - d.getTime()) / 864e5);
+      return days >= 3 ? { days } : null;
+    }
+    function relDays(d) {
+      const days = Math.floor((Date.now() - d.getTime()) / 864e5);
+      return days <= 0 ? "Today" : days === 1 ? "Yesterday" : `${days} days ago`;
+    }
 
     // ── RENDER TABLE ───────────────────────────────────────────────
     function renderTable(leads) {
       const tbody = document.getElementById("leadTableBody");
       if (!leads.length) {
-        tbody.innerHTML = `<tr class="state-row"><td colspan="9"><strong>No leads found</strong><p>Import a CSV or click + Add Lead.</p></td></tr>`;
+        tbody.innerHTML = `<tr class="state-row"><td colspan="6"><strong>No leads found</strong><p>Import a CSV or click + Add Lead.</p></td></tr>`;
         return;
       }
       const MAX_TABLE_ROWS = 1200;
@@ -2579,29 +2688,30 @@
           .map(s => `<option${l.status===s?" selected":""}>${s}</option>`).join("");
         const webBtn = l.website  ? `<button class="icon-btn" onclick="openUrl('${esc(l.website)}')"  title="Website">🌐</button>` : "";
         const liBtn  = l.linkedin ? `<button class="icon-btn" onclick="openUrl('${esc(l.linkedin)}')" title="LinkedIn">in</button>` : "";
-        return `<tr>
-          <td title="${esc(l.name||'')}">
+        const fu = leadFollowUp(l);
+        const touch = l.lastContacted?.toDate
+          ? `<div>${l.contactCount||0} contact${(l.contactCount||0)===1?"":"s"} · ${lastC}</div>${fu ? `<div class="touch-flag">Follow up · ${fu.days} day${fu.days===1?"":"s"} ago</div>` : `<div class="td-sub">${relDays(l.lastContacted.toDate())}</div>`}`
+          : (fu ? `<div class="touch-flag">Not contacted yet</div>` : `<div class="td-muted">—</div>`);
+        return `<tr class="${fu ? "needs-followup" : ""}">
+          <td class="c-name" title="${esc(l.name||'')}">
             <div class="td-name"><a href="#" onclick="openDetail('${l.id}');return false;" style="color:inherit;text-decoration:none">${esc(l.name||"—")}</a></div>
             ${(l.title||l.industry)?`<div class="td-sub">${esc(l.title||l.industry)}</div>`:""}
           </td>
-          <td class="td-muted" title="${esc(l.company||'')}">${esc(l.company||"—")}</td>
-          <td title="${email}">${email?`<a href="mailto:${esc(email)}" style="color:var(--blue);text-decoration:none;">${esc(email)}</a>`:"—"}</td>
-          <td class="td-muted">${phone?`<a href="tel:${esc(phone)}" style="color:inherit;text-decoration:none">${esc(phone)}</a>`:"—"}</td>
-          <td><select class="status-select" onchange="updateStatus('${l.id}',this.value)">${statusOpts}</select></td>
-          <td class="td-muted">Company level</td>
-          <td class="contact-count">${l.contactCount||0}</td>
-          <td class="td-muted">${lastC}</td>
-          <td><div class="actions">
+          <td class="c-email" title="${email}">${email?`<a href="mailto:${esc(email)}" style="color:var(--blue);text-decoration:none;">${esc(email)}</a>`:`<span class="td-muted">No email</span>`}</td>
+          <td class="c-phone td-muted">${phone?`<a href="tel:${esc(phone)}" style="color:inherit;text-decoration:none">${esc(phone)}</a>`:"—"}</td>
+          <td class="c-status"><select class="status-select status-${esc(l.status||"New")}" aria-label="Status for ${esc(l.name||"lead")}" onchange="this.className='status-select status-'+this.value;updateStatus('${l.id}',this.value)">${statusOpts}</select></td>
+          <td class="c-last">${touch}</td>
+          <td class="c-actions"><div class="actions">
             ${webBtn}${liBtn}
-            <button class="icon-btn" onclick="openActivity('${l.id}')" title="Log activity">📝</button>
-            <button class="icon-btn" onclick="openDetail('${l.id}')"  title="View details">👁</button>
+            <button class="icon-btn" onclick="openActivity('${l.id}')" title="Log activity" aria-label="Log activity">📝</button>
+            <button class="icon-btn" onclick="openDetail('${l.id}')"  title="View details" aria-label="View details">👁</button>
           </div></td>
         </tr>`;
       };
 
       const rowsHtml = Array.from(groups.values()).map(group => `
         <tr class="group-row">
-          <td colspan="9">
+          <td colspan="6">
             <div class="group-label">
               <div class="group-main">
                 <span>${esc(group.companyName)}</span>
@@ -2616,7 +2726,7 @@
         ${group.leads.map(renderLeadRow).join("")}
       `).join("");
       const limitNotice = leads.length > MAX_TABLE_ROWS
-        ? `<tr class="limit-note"><td colspan="9">Showing first ${MAX_TABLE_ROWS.toLocaleString()} of ${leads.length.toLocaleString()} filtered leads. Narrow the search or filters to see more.</td></tr>`
+        ? `<tr class="limit-note"><td colspan="6">Showing first ${MAX_TABLE_ROWS.toLocaleString()} of ${leads.length.toLocaleString()} filtered leads. Narrow the search or filters to see more.</td></tr>`
         : "";
       tbody.innerHTML = limitNotice + rowsHtml;
     }

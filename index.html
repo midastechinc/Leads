@@ -568,6 +568,8 @@
     .sp-field { display: grid; gap: 4px; font-size: 12px; font-weight: 700; color: var(--gray-600); }
     .sp-field input, .sp-field select, .sp-field textarea { border: 1px solid var(--border); border-radius: 10px; padding: 9px 11px; font: inherit; font-size: 14px; font-weight: 400; background: var(--surface); color: var(--gray-900); width: 100%; }
     .sp-field input:focus, .sp-field select:focus, .sp-field textarea:focus { outline: 2px solid var(--blue); outline-offset: 1px; }
+    .sp-month { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; margin: 6px 0 14px; }
+    .sp-month h3 { font-size: 22px; font-weight: 800; color: var(--gray-900); letter-spacing: -0.02em; }
     .sp-howto { border: 1px solid rgba(29,78,216,0.22); background: var(--blue-light); border-radius: 12px; padding: 8px 12px; }
     .sp-howto-toggle { border: none; background: none; padding: 2px 0; font: inherit; font-size: 13px; font-weight: 800; color: var(--blue); cursor: pointer; text-align: left; width: 100%; }
     .sp-howto ol { margin: 8px 0 4px; padding-left: 22px; display: grid; gap: 8px; font-size: 13px; color: var(--gray-800); line-height: 1.5; }
@@ -4234,7 +4236,8 @@ midastech.ca` };
                   ${spState.confirm.has("t" + id)
                     ? `<button class="btn btn-confirm btn-sm" type="button" data-sp="topic-delete" data-tid="${esc(id)}">Delete for good?</button>`
                     : `<button class="btn btn-ghost btn-sm" type="button" data-sp="topic-delete" data-tid="${esc(id)}">Delete</button>`}`,
-      }[st] || (posts.length ? `<button class="btn btn-secondary btn-sm" type="button" data-sp="topic-open" data-v="${esc(t.campaign)}">See posts in calendar</button>` : "");
+      }[st] || (posts.length ? `<button class="btn btn-secondary btn-sm" type="button" data-sp="topic-open" data-v="${esc(t.campaign)}">See posts in calendar</button>
+          ${spReminderPosts().some(p => p.campaign === t.campaign) ? `<button class="btn btn-secondary btn-sm" type="button" data-sp="ics-campaign" data-v="${esc(t.campaign)}">📅 Add this month's posts to my calendar</button>` : ""}` : "");
       return `<article class="sp-card sp-noimg ${st === "skipped" || st === "posted" ? "sp-posted" : ""}">
         <div class="sp-top"><span class="sp-plat">${t.source === "ali" ? "From Ali" : "Planned by Claude"}</span>${t.audience ? `<span class="sp-muted">${esc(t.audience)}</span>` : ""}<span class="sp-pill ${pillCls}">${SP_TOPIC_LABEL[st] || esc(st)}</span></div>
         <div class="sp-title">${esc(t.title)}</div>
@@ -4286,21 +4289,28 @@ midastech.ca` };
         const rows = socialPostsData.filter(p => spScheduled(p) && byPlatform(p) && !(spState.hidePosted && spIsPosted(p)))
           .sort((a, b) => spDate(a.scheduled_for) - spDate(b.scheduled_for));
         if (!rows.length) { list.innerHTML = empty(spState.hidePosted ? "Everything scheduled has been posted" : "Nothing scheduled yet"); return; }
-        const weeks = new Map();
+        const spMonthKey = d => `${d.getFullYear()}-${spPad(d.getMonth() + 1)}`;
+        const months = new Map();
         for (const p of rows) {
-          const d = spDate(p.scheduled_for), monday = new Date(d);
-          monday.setDate(d.getDate() - ((d.getDay() + 6) % 7));
-          const k = spDayKey(monday);
-          if (!weeks.has(k)) weeks.set(k, { monday, posts: [] });
-          weeks.get(k).posts.push(p);
+          const d = spDate(p.scheduled_for), mk = spMonthKey(d);
+          if (!months.has(mk)) months.set(mk, { label: d.toLocaleDateString("en-CA", { month: "long", year: "numeric" }), weeks: new Map() });
+          const monday = new Date(d); monday.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+          const wk = spDayKey(monday), weeks = months.get(mk).weeks;
+          if (!weeks.has(wk)) weeks.set(wk, { monday, posts: [] });
+          weeks.get(wk).posts.push(p);
         }
-        list.innerHTML = [...weeks.values()].map(({ monday, posts }) => {
-          const campaigns = [...new Set(posts.map(p => p.campaign).filter(Boolean))].join(", ");
-          return `<section class="sp-week"><div class="sp-week-title">Week of ${spFmtDay(monday)}${campaigns ? ` · ${esc(campaigns)}` : ""}</div>
-            ${posts.map((p, i) => {
-              const d = spDate(p.scheduled_for), same = i > 0 && spDayKey(spDate(posts[i - 1].scheduled_for)) === spDayKey(d);
-              return `<div class="sp-row"><div class="sp-date">${same ? "" : `<b>${spFmtDay(d)}</b>`}<span>${spFmtTime(d)}</span></div>${spCard(p)}</div>`;
-            }).join("")}</section>`;
+        list.innerHTML = [...months].map(([mk, { label, weeks }]) => {
+          const left = spReminderPosts().filter(p => spMonthKey(spDate(p.scheduled_for)) === mk).length;
+          return `<div class="sp-month"><h3>${esc(label)}</h3>
+            ${left ? `<button class="btn btn-secondary btn-sm" type="button" data-sp="ics-month" data-v="${mk}">📅 Add ${esc(label.split(" ")[0])} to my calendar <span class="sp-muted">(${left})</span></button>` : `<span class="sp-muted">All posted</span>`}</div>` +
+          [...weeks.values()].map(({ monday, posts }) => {
+            const campaigns = [...new Set(posts.map(p => p.campaign).filter(Boolean))].join(", ");
+            return `<section class="sp-week"><div class="sp-week-title">Week of ${spFmtDay(monday)}${campaigns ? ` · ${esc(campaigns)}` : ""}</div>
+              ${posts.map((p, i) => {
+                const d = spDate(p.scheduled_for), same = i > 0 && spDayKey(spDate(posts[i - 1].scheduled_for)) === spDayKey(d);
+                return `<div class="sp-row"><div class="sp-date">${same ? "" : `<b>${spFmtDay(d)}</b>`}<span>${spFmtTime(d)}</span></div>${spCard(p)}</div>`;
+              }).join("")}</section>`;
+          }).join("");
         }).join("");
         return;
       }
@@ -4376,7 +4386,7 @@ midastech.ca` };
     // ── Calendar reminders (.ics works with Outlook, Google Calendar and Apple Calendar) ──
     const SP_APP_URL = "https://midastechinc.github.io/Leads/";
     const spSlug = v => String(v || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || "post";
-    const spIcsText = v => String(v || "").replace(/\\/g, "\\\\").replace(/;/g, "\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+    const spIcsText = v => String(v || "").replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
     const spIcsTime = d => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
     function spIcsFold(line) {
       const out = []; let cur = "";
@@ -4386,6 +4396,13 @@ midastech.ca` };
     // Share-text posts go out with their article, so they don't get their own reminder.
     const spReminderPosts = () => socialPostsData.filter(p => spScheduled(p) && !spIsPosted(p) && !spSharedWith(p))
       .sort((a, b) => spDate(a.scheduled_for) - spDate(b.scheduled_for));
+    // Stable per post: campaign + headline + platform, plus the row id only when that key is shared,
+    // so reminders already imported keep their identity and duplicates never overwrite each other.
+    function spIcsUid(p) {
+      const key = x => `${spSlug(x.campaign)}-${spSlug(x.headline)}-${spSlug(x.platform)}`;
+      const k = key(p), shared = socialPostsData.some(x => x !== p && key(x) === k);
+      return `${k}${shared ? `-${spSlug(String(p.id))}` : ""}@midastech.ca`;
+    }
     function spIcs(posts) {
       const now = spIcsTime(new Date());
       const events = posts.map(p => {
@@ -4394,7 +4411,7 @@ midastech.ca` };
         const desc = [`${p.post_kind === "article" ? "Article" : "Post"} for ${spAccountLabel(p)}${p.campaign ? ` (${p.campaign})` : ""}.`,
           `Open Social Posts to copy the text and image: ${SP_APP_URL}`, "", ...steps].join("\n");
         return ["BEGIN:VEVENT",
-          `UID:${spSlug(p.campaign)}-${spSlug(p.headline)}-${spSlug(p.platform)}@midastech.ca`,
+          `UID:${spIcsUid(p)}`,
           `DTSTAMP:${now}`, `DTSTART:${spIcsTime(start)}`, `DTEND:${spIcsTime(end)}`,
           `SUMMARY:${spIcsText(`Post: ${p.headline} (${spAccountLabel(p)})`)}`,
           `DESCRIPTION:${spIcsText(desc)}`, `URL:${SP_APP_URL}`,
@@ -4443,6 +4460,13 @@ midastech.ca` };
           document.getElementById("sp-post-" + id)?.scrollIntoView({ behavior: "smooth", block: "center" }); return;
         }
         if (act.startsWith("topic-")) { await spTopicAction(act, b); return; }
+        if (act === "ics-month") {
+          const label = new Date(b.dataset.v + "-15T12:00").toLocaleDateString("en-CA", { month: "long", year: "numeric" });
+          spDownloadIcs(spReminderPosts().filter(p => { const d = spDate(p.scheduled_for); return `${d.getFullYear()}-${spPad(d.getMonth() + 1)}` === b.dataset.v; }),
+            `midas-tech-posts-${spSlug(label)}.ics`);
+          return;
+        }
+        if (act === "ics-campaign") { spDownloadIcs(spReminderPosts().filter(p => p.campaign === b.dataset.v), `midas-tech-posts-${spSlug(b.dataset.v)}.ics`); return; }
         if (act === "ics-all") { spDownloadIcs(spReminderPosts(), "midas-tech-posting-calendar.ics"); return; }
         if (!p) return;
         if (act === "expand") { spState.open.has(id) ? spState.open.delete(id) : spState.open.add(id); renderSocialPosts(); return; }

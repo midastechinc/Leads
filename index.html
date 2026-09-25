@@ -4071,7 +4071,8 @@ midastech.ca` };
       document.getElementById("spControls").innerHTML =
         `<div class="sp-tabs" role="tablist">${tabs.map(([k, n, c]) => `<button class="sp-tab" role="tab" type="button" data-sp="tab" data-v="${k}" aria-selected="${spState.tab === k}">${n}<span class="n">${c}</span></button>`).join("")}</div>
         ${spState.tab === "topics" ? `<button class="btn btn-primary btn-sm" type="button" data-sp="topic-new" style="margin-left:auto">+ Add a topic</button>` : plats.map(([k, n]) => `<button class="sp-chip" type="button" data-sp="platform" data-v="${k}" aria-pressed="${spState.platform === k}">${k !== "all" ? `<span class="sp-dot" style="--pc:${SP_PLATFORMS[k].color}"></span>` : ""}${esc(n)}</button>`).join("")}
-        ${spState.tab === "calendar" ? `<label class="sp-toggle"><input type="checkbox" id="spHidePosted" ${spState.hidePosted ? "checked" : ""}> Hide posted</label>` : ""}`;
+        ${spState.tab === "calendar" ? `<label class="sp-toggle"><input type="checkbox" id="spHidePosted" ${spState.hidePosted ? "checked" : ""}> Hide posted</label>
+          <button class="btn btn-secondary btn-sm" type="button" data-sp="ics-all">📅 Add all to my calendar</button>` : ""}`;
     }
 
     // ── "How to post" checklist shown on each card ──
@@ -4181,6 +4182,7 @@ midastech.ca` };
           <span class="sp-count ${over ? "over" : ""}">${len.toLocaleString()} / ${limit.toLocaleString()} chars${pl.tags ? ` · ${tagCount}/${pl.tags} hashtags` : ""}</span>
           <span class="spacer"></span>
           ${sched}
+          ${spScheduled(p) && !posted && !spSharedWith(p) ? `<button class="btn btn-ghost btn-sm" type="button" data-sp="ics-one" data-id="${esc(id)}">📅 Add to calendar</button>` : ""}
           ${s === "draft" && !spState.scheduling.has(id) ? `<button class="btn btn-secondary btn-sm" type="button" data-sp="schedule" data-id="${esc(id)}">Schedule</button>
               <a class="btn btn-ghost btn-sm" style="text-decoration:none" href="./midas-social-generator.html?draft=${encodeURIComponent(id)}" target="_blank" rel="noopener">Edit in Creator</a>` : ""}
           ${posted
@@ -4371,6 +4373,47 @@ midastech.ca` };
       } catch (err) { b.disabled = false; showToast("Couldn't save: " + (err.message || err), "error"); }
     }
 
+    // ── Calendar reminders (.ics works with Outlook, Google Calendar and Apple Calendar) ──
+    const SP_APP_URL = "https://midastechinc.github.io/Leads/";
+    const spSlug = v => String(v || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 60) || "post";
+    const spIcsText = v => String(v || "").replace(/\\/g, "\\\\").replace(/;/g, "\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+    const spIcsTime = d => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+    function spIcsFold(line) {
+      const out = []; let cur = "";
+      for (const ch of line) { if (new TextEncoder().encode(cur + ch).length > 73) { out.push(cur); cur = " " + ch; } else cur += ch; }
+      out.push(cur); return out.join("\r\n");
+    }
+    // Share-text posts go out with their article, so they don't get their own reminder.
+    const spReminderPosts = () => socialPostsData.filter(p => spScheduled(p) && !spIsPosted(p) && !spSharedWith(p))
+      .sort((a, b) => spDate(a.scheduled_for) - spDate(b.scheduled_for));
+    function spIcs(posts) {
+      const now = spIcsTime(new Date());
+      const events = posts.map(p => {
+        const start = spDate(p.scheduled_for), end = new Date(start.getTime() + 15 * 60000);
+        const steps = spHowTo(p).map((st, i) => `${i + 1}. ${st.replace(/<button[^>]*>[\s\S]*?<\/button>/g, "").replace(/<[^>]+>/g, "").replace(/&quot;/g, '"').replace(/&amp;/g, "&").replace(/\s+/g, " ").trim()}`);
+        const desc = [`${p.post_kind === "article" ? "Article" : "Post"} for ${spAccountLabel(p)}${p.campaign ? ` (${p.campaign})` : ""}.`,
+          `Open Social Posts to copy the text and image: ${SP_APP_URL}`, "", ...steps].join("\n");
+        return ["BEGIN:VEVENT",
+          `UID:${spSlug(p.campaign)}-${spSlug(p.headline)}-${spSlug(p.platform)}@midastech.ca`,
+          `DTSTAMP:${now}`, `DTSTART:${spIcsTime(start)}`, `DTEND:${spIcsTime(end)}`,
+          `SUMMARY:${spIcsText(`Post: ${p.headline} (${spAccountLabel(p)})`)}`,
+          `DESCRIPTION:${spIcsText(desc)}`, `URL:${SP_APP_URL}`,
+          "BEGIN:VALARM", "ACTION:DISPLAY", "TRIGGER:-PT15M", `DESCRIPTION:${spIcsText(`Time to post: ${p.headline}`)}`, "END:VALARM",
+          "END:VEVENT"].map(spIcsFold).join("\r\n");
+      });
+      return ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Midas Tech//Social Posts//EN", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
+        "X-WR-CALNAME:Midas Tech posting", ...events, "END:VCALENDAR"].join("\r\n") + "\r\n";
+    }
+    function spDownloadIcs(posts, filename) {
+      if (!posts.length) { showToast("Nothing left to add: every scheduled post is already posted", "error"); return; }
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([spIcs(posts)], { type: "text/calendar;charset=utf-8" }));
+      a.download = filename;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+      showToast(`Calendar file saved with ${posts.length} reminder${posts.length > 1 ? "s" : ""}. Open it to add them to your calendar.`, "success");
+    }
+
     let spBound = false;
     function spBindOnce() {
       if (spBound) return;
@@ -4400,6 +4443,7 @@ midastech.ca` };
           document.getElementById("sp-post-" + id)?.scrollIntoView({ behavior: "smooth", block: "center" }); return;
         }
         if (act.startsWith("topic-")) { await spTopicAction(act, b); return; }
+        if (act === "ics-all") { spDownloadIcs(spReminderPosts(), "midas-tech-posting-calendar.ics"); return; }
         if (!p) return;
         if (act === "expand") { spState.open.has(id) ? spState.open.delete(id) : spState.open.add(id); renderSocialPosts(); return; }
         if (act === "zoom") { lightbox.querySelector("img").src = b.src; lightbox.classList.add("active"); return; }
@@ -4419,6 +4463,7 @@ midastech.ca` };
           if (open) { spState.howtoOpen.delete(id); spState.howtoClosed.add(id); } else { spState.howtoClosed.delete(id); spState.howtoOpen.add(id); }
           renderSocialPosts(); return;
         }
+        if (act === "ics-one") { spDownloadIcs([p], `post-${spSlug(p.headline)}.ics`); return; }
         if (act === "copy-title") { const ok = await spCopy(p.headline || ""); showToast(ok ? "Title copied" : "Copy was blocked", ok ? "success" : "error"); return; }
         if (act === "copy-fc") { const ok = await spCopy(p.first_comment || ""); showToast(ok ? "First comment copied" : "Copy was blocked", ok ? "success" : "error"); return; }
         if (act === "image") {

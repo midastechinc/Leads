@@ -1211,6 +1211,49 @@
       tr.needs-followup td.c-name { box-shadow: none; }
       #leadsTable tr.needs-followup { box-shadow: inset 3px 0 0 #e0902a; }
     }
+
+    /* ── Lead detail window ── */
+    .lead-detail-modal { max-width: 640px; position: relative; }
+    .lead-detail-modal h2 { padding-right: 40px; }
+    .lead-detail-modal .modal-sub { margin-bottom: 14px; }
+    .ld-close { position: absolute; top: 16px; right: 16px; width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); font-size: 20px; line-height: 1; cursor: pointer; color: var(--gray-600); }
+    .ld-close:hover { border-color: rgba(29,78,216,0.3); color: var(--blue); }
+    .ld-summary { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+    .ld-chip { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 12px; background: var(--surface-2); border: 1px solid var(--border); font-size: 12px; color: var(--gray-500); }
+    .ld-chip b { color: var(--gray-800); }
+    .ld-chip .status-select { font-size: 12px; }
+    .ld-chip.ld-due { background: var(--yellow-light); border-color: rgba(183,121,31,0.28); color: var(--yellow); }
+    .ld-chip.ld-due b { color: var(--yellow); }
+    .ld-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 6px; }
+    .ld-action { display: inline-flex; align-items: center; gap: 6px; padding: 9px 13px; border-radius: 12px; border: 1px solid var(--border); background: linear-gradient(180deg, #fffdf9, #f5efe4); color: var(--gray-800); font: 700 13px/1 inherit; font-family: inherit; text-decoration: none; cursor: pointer; }
+    .ld-action:hover { border-color: rgba(29,78,216,0.3); color: var(--blue); }
+    .ld-action-primary { background: linear-gradient(135deg, var(--blue), #3b82f6); color: #fff; border-color: transparent; }
+    .ld-action-primary:hover { color: #fff; box-shadow: 0 8px 18px rgba(29,78,216,0.22); }
+    .ld-section-title { font-size: 11px; font-weight: 800; color: var(--gray-500); text-transform: uppercase; letter-spacing: 0.1em; margin: 18px 0 6px; }
+    .ld-list { margin: 0; border: 1px solid var(--border); border-radius: 14px; background: rgba(255,255,255,0.6); overflow: hidden; }
+    .ld-list > div { display: grid; grid-template-columns: 130px minmax(0, 1fr); gap: 12px; padding: 10px 14px; border-bottom: 1px solid rgba(77,64,43,0.07); }
+    .ld-list > div:last-child { border-bottom: none; }
+    .ld-list dt { font-size: 12px; font-weight: 700; color: var(--gray-500); }
+    .ld-list dd { margin: 0; font-size: 14px; color: var(--gray-800); overflow-wrap: anywhere; }
+    .ld-list a { color: var(--blue); text-decoration: none; }
+    .ld-list a:hover { text-decoration: underline; }
+    .ld-tag { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: var(--yellow-light); color: var(--yellow); font-size: 11px; font-weight: 700; vertical-align: 1px; }
+    .ld-extras { margin-top: 14px; }
+    .ld-extras summary { cursor: pointer; font-size: 13px; font-weight: 700; color: var(--blue); margin-bottom: 8px; list-style: none; }
+    .ld-extras summary::before { content: "▸ "; }
+    .ld-extras[open] summary::before { content: "▾ "; }
+    .ld-extras summary::-webkit-details-marker { display: none; }
+    .ld-extras summary span { color: var(--gray-400); font-weight: 600; }
+    .lead-detail-modal #emailDraftsSection .extras-heading { margin-top: 18px; }
+    .lead-detail-modal .ld-action:focus-visible, .lead-detail-modal .ld-extras summary:focus-visible, .ld-close:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+    @media (max-width: 640px) {
+      #detailModal.modal-overlay { padding: 0; align-items: flex-end; }
+      .lead-detail-modal { max-width: none; max-height: 94vh; border-radius: 22px 22px 0 0; padding: 20px 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
+      .ld-list > div { grid-template-columns: 1fr; gap: 2px; }
+      .ld-action { flex: 1 1 calc(50% - 8px); justify-content: center; }
+      .lead-detail-modal .modal-actions { position: sticky; bottom: -16px; background: var(--surface); padding: 12px 0 4px; margin-top: 12px; }
+      .lead-detail-modal .modal-actions .btn { flex: 1; }
+    }
 </style>
 </head>
 <body>
@@ -1530,15 +1573,16 @@
 
   <!-- ══ Lead Detail Modal ══ -->
   <div class="modal-overlay" id="detailModal">
-    <div class="modal modal-wide">
+    <div class="modal modal-wide lead-detail-modal" role="dialog" aria-modal="true" aria-labelledby="detailName">
+      <button class="ld-close" type="button" onclick="closeModal('detailModal')" aria-label="Close">×</button>
       <h2 id="detailName">Lead Details</h2>
       <p class="modal-sub" id="detailSub"></p>
-      <div class="detail-grid" id="detailGrid"></div>
+      <div id="detailGrid"></div>
       <div id="emailDraftsSection"></div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="closeModal('detailModal')">Close</button>
-        <button class="btn btn-secondary" id="detailEditBtn" onclick="openEditLead()">Edit Lead</button>
-        <button class="btn btn-primary" id="detailLogBtn">Log Activity</button>
+        <button class="btn btn-secondary" id="detailEditBtn" onclick="openEditLead()">Edit lead</button>
+        <button class="btn btn-primary" id="detailLogBtn">Log activity</button>
       </div>
     </div>
   </div>
@@ -3145,6 +3189,31 @@ midastech.ca` };
       }
     };
 
+    // "info@x.com (unverified)" -> { address: "info@x.com", note: "unverified" }
+    function splitEmail(raw) {
+      const s = String(raw || "").trim();
+      const m = s.match(/[^\s<>()"',;]+@[^\s<>()"',;]+\.[a-z]{2,}/i);
+      if (!m) return { address: "", note: s };
+      const note = s.replace(m[0], "").replace(/[()\[\]]/g, "").trim();
+      return { address: m[0].toLowerCase(), note };
+    }
+    // Only real web addresses (http(s)://… or domain.tld/…) count as links.
+    function realUrl(val) {
+      const u = String(extractUrl(val) || "").trim();
+      if (!u || /\s/.test(u)) return "";
+      if (/^https?:\/\/\S+\.\S+/i.test(u) || /^(www\.)?[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}(\/\S*)?$/i.test(u)) return ensureHttp(u);
+      return "";
+    }
+    // A LinkedIn URL, or a LinkedIn search when the field only holds a note like "search 'Acme'".
+    function linkedinLink(l) {
+      const url = realUrl(l.linkedin);
+      if (url) return { url, label: url.replace(/^https?:\/\/(www\.)?/i, "").replace(/\/$/, ""), search: false };
+      if (!l.linkedin) return null;
+      const q = String(l.linkedin).replace(/^\s*search\s*/i, "").replace(/['"‘’“”]/g, "").trim() || l.company;
+      if (!q) return null;
+      return { url: `https://www.linkedin.com/search/results/all/?keywords=${encodeURIComponent(q)}`, label: `Search LinkedIn for "${q}"`, search: true };
+    }
+
     window.openDetail = function (id) {
       const l = allLeads[id];
       if (!l) return;
@@ -3155,50 +3224,61 @@ midastech.ca` };
       document.getElementById("detailLogBtn").onclick   = ()=>{ closeModal("detailModal"); openActivity(id); };
       document.getElementById("detailEditBtn").style.display = "inline-flex";
 
-      const email = cleanEmail(l.email);
+      const { address: email, note: emailNote } = splitEmail(cleanEmail(l.email));
       const phone = cleanPhone(l.phone);
+      const site = realUrl(l.website);
+      const li = linkedinLink(l);
+      const fu = leadFollowUp(l);
+      const lastC = l.lastContacted?.toDate ? fmtDate(l.lastContacted.toDate()) : "";
+      const statusOpts = ["New","Contacted","Qualified","Proposal","Closed","Dead"]
+        .map(st => `<option${(l.status||"New")===st?" selected":""}>${st}</option>`).join("");
 
-      const core = [
-        { label:"Email",         value:email,    display: formatDetailValue(email), href:`mailto:${email}` },
-        { label:"Phone",         value:phone,    display: formatDetailValue(phone), href:`tel:${phone}` },
-        { label:"Company",       value:l.company, display: formatDetailValue(l.company) },
-        { label:"Title",         value:l.title||l.industry, display: formatDetailValue(l.title||l.industry) },
-        { label:"Status",        value:l.status, display: formatDetailValue(l.status) },
-        { label:"Assigned To",   value:l.assignedTo, display: formatDetailValue(l.assignedTo) },
-        { label:"Contacts Made", value:l.contactCount||0, display: formatDetailValue(l.contactCount||0) },
-        { label:"Last Contacted",value:l.lastContacted?.toDate ? fmtDate(l.lastContacted.toDate()) : "—", display:l.lastContacted?.toDate ? fmtDate(l.lastContacted.toDate()) : "—" },
-        { label:"Website",       value:l.website,  display: formatDetailValue(l.website),  onclick:l.website  ? `openUrl('${esc(l.website)}')` : null },
-        { label:"LinkedIn",      value:l.linkedin, display: formatDetailValue(l.linkedin), onclick:l.linkedin ? `openUrl('${esc(l.linkedin)}')` : null },
-        { label:"Country",       value:l.country, display: formatDetailValue(l.country) },
-        { label:"City",          value:l.city, display: formatDetailValue(l.city) },
-        { label:"Employees",     value:l.employeeRange, display: formatDetailValue(l.employeeRange) },
-      ].filter(f => f.value);
+      // Summary: status, owner, last touch
+      let html = `<div class="ld-summary">
+        <label class="ld-chip">Status
+          <select class="status-select status-${esc(l.status||"New")}" onchange="this.className='status-select status-'+this.value;updateStatus('${l.id}',this.value)">${statusOpts}</select>
+        </label>
+        <span class="ld-chip">Owner <b>${esc(l.assignedTo || "Unassigned")}</b></span>
+        <span class="ld-chip ${fu ? "ld-due" : ""}">${
+          lastC ? `Last touch <b>${esc(lastC)}</b> · ${l.contactCount||0} contact${(l.contactCount||0)===1?"":"s"}${fu ? " · follow up" : ""}`
+                : (fu ? "<b>Not contacted yet</b>" : "No contact logged")}</span>
+      </div>`;
 
+      // Quick actions
+      const act = [];
+      if (email) act.push(`<a class="ld-action" href="mailto:${esc(email)}">✉️ Email</a>`);
+      if (phone) act.push(`<a class="ld-action" href="tel:${esc(phone)}">📞 Call</a>`);
+      if (site)  act.push(`<a class="ld-action" href="#" onclick="openUrl('${esc(site)}');return false">🌐 Website</a>`);
+      if (li)    act.push(`<a class="ld-action" href="#" onclick="openUrl('${esc(li.url)}');return false">in ${li.search ? "Find on LinkedIn" : "LinkedIn"}</a>`);
+      if (act.length) html += `<div class="ld-actions">${act.join("")}</div>`;
+
+      // Contact details
+      const rows = [
+        ["Email", email ? `<a href="mailto:${esc(email)}">${esc(email)}</a>${emailNote ? ` <span class="ld-tag">${esc(emailNote)}</span>` : ""}` : ""],
+        ["Phone", phone ? `<a href="tel:${esc(phone)}">${esc(phone)}</a>` : ""],
+        ["Company", esc(l.company || "")],
+        ["Title", esc(l.title || l.industry || "")],
+        ["Website", site ? `<a href="#" onclick="openUrl('${esc(site)}');return false">${esc(site.replace(/^https?:\/\//i, "").replace(/\/$/, ""))}</a>` : esc(l.website || "")],
+        ["LinkedIn", li ? `<a href="#" onclick="openUrl('${esc(li.url)}');return false">${esc(li.label)}</a>` : ""],
+        ["Location", esc([l.city, l.state, l.country].filter(Boolean).join(", "))],
+        ["Employees", esc(formatDetailValue(l.employeeRange))],
+      ].filter(([, v]) => v);
+      html += `<div class="ld-section-title">Contact details</div>
+        <dl class="ld-list">${rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("")}</dl>`;
+
+      // Everything else from the CSV import, folded away; only real web addresses become links
       const SKIP = new Set(["id","name","company","email","phone","website","linkedin",
         "industry","title","status","assignedTo","contactCount","lastContacted",
         "createdAt","updatedAt","source","country","city","employeeRange","address","state"]);
       const extras = Object.entries(l).filter(([k,v]) =>
         !SKIP.has(k) && !shouldHideDetailField(k) && v !== null && v !== undefined && v !== "");
-
-      let html = core.map(f => {
-        let inner;
-        if (f.onclick) inner = `<a href="#" onclick="${f.onclick};return false">${esc(String(f.display ?? f.value))}</a>`;
-        else if (f.href && f.value) inner = `<a href="${esc(f.href)}">${esc(String(f.display ?? f.value))}</a>`;
-        else inner = esc(String(f.display ?? f.value));
-        return `<div class="detail-field"><div class="df-label">${esc(f.label)}</div><div class="df-value">${inner}</div></div>`;
-      }).join("");
-
       if (extras.length) {
-        html += `<div class="extras-heading">Additional CSV Data</div>`;
-        html += extras.map(([k,v]) => {
-          const pretty  = formatDetailValue(v);
-          const display = esc(pretty);
-          const isUrl   = !!extractUrl(v);
-          const inner   = isUrl
-            ? `<a href="#" onclick="openUrl('${esc(v)}');return false">${display}</a>`
-            : display;
-          return `<div class="detail-field"><div class="df-label">${esc(formatFieldLabel(k))}</div><div class="df-value">${inner}</div></div>`;
-        }).join("");
+        html += `<details class="ld-extras"><summary>More from the import <span>(${extras.length})</span></summary>
+          <dl class="ld-list">${extras.map(([k, v]) => {
+            const url = realUrl(v);
+            const shown = esc(formatDetailValue(v));
+            return `<div><dt>${esc(formatFieldLabel(k))}</dt><dd>${url ? `<a href="#" onclick="openUrl('${esc(url)}');return false">${shown}</a>` : shown}</dd></div>`;
+          }).join("")}</dl></details>`;
       }
 
       document.getElementById("detailGrid").innerHTML = html;

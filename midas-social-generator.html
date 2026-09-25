@@ -941,16 +941,15 @@ document.getElementById('topicSearch')?.addEventListener('input', (ev) => {
   renderTopicPills(ev.target.value || '');
 });
 
-const DEFAULT_1MIN_API_KEY = '701b0c6fd8611ec218626e14d65e9e21c556c7d429407299a174ee0bea007505';
 const SOCIAL_POST_IMAGE_BUCKET = 'social-post-images';
 
 // Load API key from Supabase on startup (async)
 loadSavedApiKey().then(savedApiKey => {
   const apiKeyInput = document.getElementById('apiKey');
   const rememberApiKey = document.getElementById('rememberApiKey');
-  const resolvedKey = savedApiKey || DEFAULT_1MIN_API_KEY;
-  if (apiKeyInput && resolvedKey) apiKeyInput.value = resolvedKey;
+  if (apiKeyInput && savedApiKey) apiKeyInput.value = savedApiKey;
   if (rememberApiKey) rememberApiKey.checked = true;
+  if (!savedApiKey) openSettingsForKey();
 });
 document.getElementById('rememberApiKey')?.addEventListener('change', persistApiKeyPreference);
 document.getElementById('apiKey')?.addEventListener('change', () => {
@@ -985,9 +984,18 @@ function showErr(m){const b=document.getElementById('errBox');b.innerHTML='⚠�
 function hideErr(){document.getElementById('errBox').classList.remove('on')}
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2500)}
 
+// Opens the Settings panel so the user can paste their 1min.ai key.
+function openSettingsForKey() {
+  const panel = document.getElementById('settingsPanel');
+  if (!panel) return;
+  panel.hidden = false;
+  document.getElementById('settingsToggle')?.setAttribute('aria-expanded', 'true');
+  document.getElementById('apiKey')?.focus();
+}
+
 function getApiKeyValue() {
   const input = document.getElementById('apiKey');
-  return (input?.value || '').trim() || DEFAULT_1MIN_API_KEY;
+  return (input?.value || '').trim();
 }
 
 function waitForLogoAssets() {
@@ -1119,7 +1127,7 @@ async function loadSavedApiKey() {
       return data.value;
     }
   } catch (_) {}
-  return local || DEFAULT_1MIN_API_KEY;
+  return local;
 }
 
 async function persistApiKeyPreference() {
@@ -3508,7 +3516,7 @@ async function run(){
   hideErr();
   const apiKey=getApiKeyValue();
   persistApiKeyPreference(); // async — fires and forgets, non-blocking
-  if(!apiKey){showErr('Please enter your 1min.ai API key.');return}
+  if(!apiKey){showErr('Add your 1min.ai API key in ⚙ Settings first.');openSettingsForKey();return}
 
   const model=document.querySelector('#modelChips .chip.on')?.dataset.model||'gpt-4o-mini';
   const tone=document.getElementById('postTone').value;

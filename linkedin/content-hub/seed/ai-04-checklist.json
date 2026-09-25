@@ -1,0 +1,13 @@
+{
+ "campaign": "AI & Cybersecurity",
+ "firstComment": "",
+ "id": "ai-04-checklist",
+ "platform": "li-midas",
+ "kind": "Post",
+ "when": "2026-10-01T12:00",
+ "time": "12:00 PM",
+ "title": "5 access red flags",
+ "image": "img/ai-post-checklist.png",
+ "notes": "",
+ "body": "🚩 5 access red flags we find in almost every new client environment:\n\n1️⃣ Staff can still open files they stopped needing years ago\n2️⃣ Old permissions keep piling up with every new hire and project\n3️⃣ Service accounts have admin rights \"just in case\"\n4️⃣ Sensitive files are scattered across OneDrive, SharePoint, email and a few more apps\n5️⃣ AI tools like Copilot can see data that was never properly locked down\n\nAny of these sound familiar? You're not alone, and they're all fixable.\n\nThe rule is simple: reduce unnecessary access and you reduce risk.\n\nWant to know where you stand? Book a free Access & Data Risk Review 👉 info@midastech.ca\n\n#Cybersecurity #DataSecurity #LeastPrivilege #Microsoft365 #ManagedIT"
+}

@@ -493,78 +493,90 @@
     .empty-workspace .big { font-size: 40px; margin-bottom: 12px; }
     .empty-workspace strong { display: block; font-size: 16px; color: var(--gray-600); margin-bottom: 6px; }
 
-    .social-post-list { display: grid; gap: 14px; }
-    .social-post-card {
+    /* ── Social Posts (posting calendar) ── */
+    .sp-summary { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 12px; margin-bottom: 18px; }
+    .sp-panel {
       background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(249,244,235,0.92));
-      border: 1px solid var(--border);
-      border-radius: 22px;
-      padding: 18px;
-      box-shadow: var(--shadow-sm);
-      display: grid;
-      gap: 12px;
+      border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px 18px;
+      box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: 8px; min-width: 0;
     }
-    .social-post-head {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 12px;
-      flex-wrap: wrap;
+    .sp-panel.sp-due { border-color: rgba(29,78,216,0.35); box-shadow: inset 4px 0 0 var(--blue), var(--shadow-sm); }
+    .sp-label { font-size: 11px; font-weight: 800; letter-spacing: 0.09em; text-transform: uppercase; color: var(--gray-500); }
+    .sp-next-title { font-size: 17px; font-weight: 800; color: var(--gray-900); line-height: 1.3; }
+    .sp-muted { font-size: 13px; color: var(--gray-500); }
+    .sp-big { font-size: 28px; font-weight: 800; color: var(--gray-900); letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1.1; }
+    .sp-bar { height: 8px; border-radius: 8px; background: var(--gray-100); overflow: hidden; }
+    .sp-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--blue), #3b82f6); border-radius: 8px; transition: width 0.4s; }
+    .sp-ok .sp-big { color: var(--green); }
+    .sp-bad .sp-big { color: var(--red); }
+    .sp-bad ul { margin: 0; padding-left: 18px; font-size: 12px; color: var(--gray-600); display: grid; gap: 4px; }
+
+    .sp-controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 16px; }
+    .sp-tabs { display: inline-flex; background: var(--gray-100); border-radius: 14px; padding: 4px; gap: 2px; }
+    .sp-tab { border: none; background: transparent; padding: 8px 14px; border-radius: 11px; font: inherit; font-size: 13px; font-weight: 700; color: var(--gray-600); cursor: pointer; }
+    .sp-tab[aria-selected="true"] { background: var(--surface); color: var(--gray-900); box-shadow: 0 2px 8px rgba(31,24,17,0.08); }
+    .sp-tab .n, .sp-chip .n { font-size: 11px; opacity: 0.65; margin-left: 4px; font-variant-numeric: tabular-nums; }
+    .sp-chip { border: 1px solid var(--border); background: var(--surface); border-radius: 999px; padding: 7px 12px; font: inherit; font-size: 12px; font-weight: 700; color: var(--gray-700); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+    .sp-chip[aria-pressed="true"] { background: var(--gray-900); border-color: var(--gray-900); color: #fff; }
+    .sp-toggle { margin-left: auto; display: inline-flex; gap: 8px; align-items: center; font-size: 13px; color: var(--gray-600); }
+    .sp-toggle input { accent-color: var(--blue); width: 16px; height: 16px; }
+    .sp-dot { width: 9px; height: 9px; border-radius: 3px; background: var(--pc, var(--gray-400)); flex: none; }
+
+    .sp-week { display: grid; gap: 12px; margin-bottom: 22px; }
+    .sp-week-title { font-size: 12px; font-weight: 800; letter-spacing: 0.09em; text-transform: uppercase; color: var(--gray-500); padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+    .sp-row { display: grid; grid-template-columns: 96px minmax(0,1fr); gap: 16px; }
+    .sp-date { padding-top: 16px; text-align: right; }
+    .sp-date b { display: block; font-size: 14px; color: var(--gray-900); }
+    .sp-date span { font-size: 12px; color: var(--gray-500); }
+
+    .sp-card {
+      background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(249,244,235,0.92));
+      border: 1px solid var(--border); border-radius: var(--radius-md); padding: 16px 18px; box-shadow: var(--shadow-sm);
+      display: grid; grid-template-columns: minmax(0,1fr) 150px; gap: 8px 18px; min-width: 0;
     }
-    .social-post-title { font-size: 18px; font-weight: 800; color: var(--gray-900); }
-    .social-post-meta {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      font-size: 11px;
-      color: var(--gray-500);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      font-weight: 700;
-    }
-    .social-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 6px 10px;
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      background: rgba(255,255,255,0.72);
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--gray-600);
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-    }
-    .social-post-caption {
-      font-size: 14px;
-      color: var(--gray-700);
-      white-space: pre-wrap;
-      line-height: 1.6;
-    }
-    .social-post-tags {
-      font-size: 12px;
-      color: var(--blue);
-      white-space: pre-wrap;
-      line-height: 1.5;
-    }
-    .social-post-actions {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-    .social-post-thumb {
-      width: 100%;
-      max-width: 320px;
-      border-radius: 16px;
-      border: 1px solid var(--border);
-      box-shadow: var(--shadow-sm);
-      overflow: hidden;
-      background: rgba(255,255,255,0.72);
-    }
-    .social-post-thumb img {
-      display: block;
-      width: 100%;
-      height: auto;
+    .sp-card.sp-noimg { grid-template-columns: minmax(0,1fr); }
+    .sp-card.sp-posted { background: var(--gray-50); box-shadow: none; }
+    .sp-card > * { grid-column: 1; min-width: 0; }
+    .sp-top { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .sp-plat { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 800; color: var(--gray-800); }
+    .sp-kind { font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: var(--blue); border: 1px solid currentColor; border-radius: 6px; padding: 1px 6px; }
+    .sp-pill { margin-left: auto; font-size: 11px; font-weight: 800; border-radius: 999px; padding: 3px 10px; background: var(--gray-100); color: var(--gray-600); }
+    .sp-pill.today { background: var(--blue); color: #fff; }
+    .sp-pill.overdue { background: var(--red-light); color: var(--red); }
+    .sp-pill.done { background: var(--green-light); color: var(--green); }
+    .sp-pill.draft { background: var(--yellow-light); color: var(--yellow); }
+    .sp-title { font-size: 17px; font-weight: 800; color: var(--gray-900); line-height: 1.3; }
+    .sp-caption { font-size: 14px; color: var(--gray-700); white-space: pre-wrap; line-height: 1.6; max-height: 7.8em; overflow: hidden; position: relative; }
+    .sp-caption::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2.6em; background: linear-gradient(rgba(250,246,238,0), #faf6ee); }
+    .sp-card.sp-open .sp-caption { max-height: none; }
+    .sp-card.sp-open .sp-caption::after { display: none; }
+    .sp-tags { font-size: 12px; color: var(--blue); line-height: 1.5; }
+    .sp-note { font-size: 12px; color: var(--yellow); background: var(--yellow-light); border-radius: 10px; padding: 8px 10px; }
+    .sp-warn { font-size: 12px; color: var(--red); background: var(--red-light); border-radius: 10px; padding: 8px 10px; }
+    .sp-fc { font-size: 13px; border: 1px dashed var(--gray-300); border-radius: 10px; padding: 8px 10px; white-space: pre-wrap; color: var(--gray-700); }
+    .sp-fc b { display: block; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--gray-500); }
+    .sp-thumb { grid-column: 2 !important; grid-row: 1 / span 5; align-self: start; display: grid; gap: 6px; }
+    .sp-thumb img { width: 100%; border-radius: 12px; border: 1px solid var(--border); display: block; background: #000; cursor: zoom-in; }
+    .sp-actions { grid-column: 1 / -1 !important; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding-top: 12px; margin-top: 4px; border-top: 1px solid var(--border); }
+    .sp-count { font-size: 12px; color: var(--gray-500); font-variant-numeric: tabular-nums; }
+    .sp-count.over { color: var(--red); font-weight: 800; }
+    .btn-confirm { background: var(--yellow-light); color: var(--yellow); border: 1px solid rgba(183,121,31,0.35); }
+    .btn-done { background: var(--green-light); color: var(--green); border: 1px solid rgba(15,138,95,0.2); }
+    .btn-ghost { background: transparent; color: var(--gray-500); border: 1px solid transparent; }
+    .sp-sched { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .sp-sched input { border: 1px solid var(--border); border-radius: 10px; padding: 7px 9px; font: inherit; font-size: 12px; background: var(--surface); color: var(--gray-800); }
+    .sp-lightbox { position: fixed; inset: 0; background: rgba(18,15,11,0.8); z-index: 1100; display: none; align-items: center; justify-content: center; padding: 24px; cursor: zoom-out; }
+    .sp-lightbox.active { display: flex; }
+    .sp-lightbox img { max-width: min(92vw, 900px); max-height: 88vh; border-radius: 14px; box-shadow: var(--shadow-lg); }
+    .sp-actions button:focus-visible, .sp-chip:focus-visible, .sp-tab:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+    @media (max-width: 900px) { .sp-summary { grid-template-columns: 1fr; } }
+    @media (max-width: 640px) {
+      .sp-row { grid-template-columns: 1fr; gap: 4px; }
+      .sp-date { padding-top: 0; text-align: left; display: flex; gap: 8px; align-items: baseline; }
+      .sp-date b { display: inline; }
+      .sp-card { grid-template-columns: minmax(0,1fr); }
+      .sp-thumb { grid-column: 1 !important; grid-row: auto; max-width: 280px; }
+      .sp-toggle { margin-left: 0; }
     }
 
     /* ── Modals ── */
@@ -1379,18 +1391,22 @@
       <div class="workspace-header">
         <div>
           <div class="workspace-title">Social Posts</div>
-          <div class="workspace-sub">Drafts saved from the LinkedIn Post Creator through shared Supabase storage.</div>
+          <div class="workspace-sub">Your posting calendar. Copy a post, share it on the platform, then mark it as posted.</div>
         </div>
-        <div class="social-post-actions">
-          <button class="btn btn-secondary" onclick="loadSocialPosts()">↻ Refresh Drafts</button>
-          <button class="btn btn-primary" onclick="window.open(getLeadTrackerPostCreatorBaseUrl(),'_blank','noopener')">Open Post Creator</button>
+        <div class="sp-sched">
+          <button class="btn btn-secondary" type="button" onclick="loadSocialPosts()">↻ Refresh</button>
+          <a class="btn btn-primary" href="./midas-social-generator.html" target="_blank" rel="noopener" style="text-decoration:none">Open Post Creator</a>
         </div>
       </div>
 
-      <div class="social-post-list" id="socialPostList">
-        <div class="empty-workspace"><div class="big">📣</div><strong>No saved posts yet</strong><p>Save a generated post from the LinkedIn Post Creator and it will appear here.</p></div>
+      <div class="sp-summary" id="spSummary" aria-live="polite"></div>
+      <div class="sp-controls" id="spControls"></div>
+
+      <div id="socialPostList">
+        <div class="empty-workspace"><div class="big">📣</div><strong>Loading posts…</strong></div>
       </div>
     </div>
+    <div class="sp-lightbox" id="spLightbox" role="dialog" aria-label="Image preview"><img alt=""></div>
   </div>
 
   <!-- ══ Log Activity Modal ══ -->
@@ -3921,22 +3937,76 @@ midastech.ca` };
       }
     };
 
+    // ── Social Posts: posting calendar ─────────────────────────
+    const SP_PLATFORMS = {
+      linkedin:  { name: "LinkedIn",  color: "#0A66C2", limit: 3000, articleLimit: 110000 },
+      instagram: { name: "Instagram", color: "#C13584", limit: 2200, tags: 30 },
+      facebook:  { name: "Facebook",  color: "#1877F2", limit: 63206 },
+      google:    { name: "Google",    color: "#34A853", limit: 1500 },
+    };
+    const spState = { tab: "calendar", platform: "all", hidePosted: false, open: new Set(), confirm: new Set(), scheduling: new Set() };
+    try {
+      spState.tab = localStorage.getItem("sp.tab") || "calendar";
+      spState.platform = localStorage.getItem("sp.platform") || "all";
+      spState.hidePosted = localStorage.getItem("sp.hidePosted") === "1";
+    } catch (e) {}
+
+    const spPad = n => String(n).padStart(2, "0");
+    const spDayKey = d => `${d.getFullYear()}-${spPad(d.getMonth() + 1)}-${spPad(d.getDate())}`;
+    const spDate = v => { const d = v ? new Date(v) : null; return d && !Number.isNaN(d.getTime()) ? d : null; };
+    const spFmtDay = d => d.toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric" });
+    const spFmtTime = d => d.toLocaleTimeString("en-CA", { hour: "numeric", minute: "2-digit" });
+    const spIsPosted = p => p.status === "posted" || !!p.posted_at;
+    const spPlatform = p => SP_PLATFORMS[String(p.platform || "").toLowerCase()] || { name: p.platform || "Other", color: "var(--gray-400)", limit: 3000 };
+    const spAccountLabel = p => { const pl = spPlatform(p); return p.account ? `${pl.name} · ${p.account}` : pl.name; };
+    const spFullText = p => [p.caption || "", p.hashtags || ""].filter(Boolean).join("\n\n").trim();
+    const spOpening = p => (String(p.caption || "").split("\n").find(l => l.trim()) || "").toLowerCase().replace(/[^\p{L}\p{N} ]/gu, "").replace(/\s+/g, " ").trim();
+    const spScheduled = p => !!spDate(p.scheduled_for);
+
+    function spStatus(p) {
+      if (spIsPosted(p)) return "done";
+      const d = spDate(p.scheduled_for);
+      if (!d) return "draft";
+      const k = spDayKey(d), t = spDayKey(new Date());
+      return k < t ? "overdue" : k === t ? "today" : "upcoming";
+    }
+
+    // Opening lines and images already used by scheduled or posted content.
+    function spDuplicates() {
+      const issues = [], byLine = new Map(), byImg = new Map(), similar = new Map();
+      const committed = socialPostsData.filter(p => spScheduled(p) || spIsPosted(p));
+      for (const p of committed) {
+        const line = spOpening(p);
+        if (line.length > 12) {
+          if (byLine.has(line)) issues.push(`"${p.headline}" opens the same way as "${byLine.get(line).headline}"`);
+          else byLine.set(line, p);
+        }
+        if (p.image_url) {
+          const k = `${p.platform}|${p.account || ""}|${p.image_url}`;
+          if (byImg.has(k)) issues.push(`Same image used twice on ${spAccountLabel(p)}: "${byImg.get(k).headline}" and "${p.headline}"`);
+          else byImg.set(k, p);
+        }
+      }
+      for (const p of socialPostsData) {
+        if (spScheduled(p) || spIsPosted(p)) continue;
+        const match = byLine.get(spOpening(p));
+        if (match) similar.set(p.id, match);
+      }
+      return { issues, similar, checked: committed.length };
+    }
+
     window.loadSocialPosts = async function() {
       const list = document.getElementById("socialPostList");
       const db2 = getLiClient();
       if (!list) return;
+      spBindOnce();
       if (!db2) {
         list.innerHTML = `<div class="empty-workspace"><div class="big">⚠️</div><strong>Supabase unavailable</strong><p>Check that the CDN script loaded correctly.</p></div>`;
         return;
       }
-
-      list.innerHTML = `<div class="li-loading"><div class="li-spinner"></div>Loading drafts…</div>`;
+      if (!socialPostsData.length) list.innerHTML = `<div class="li-loading"><div class="li-spinner"></div>Loading posts…</div>`;
       try {
-        const { data, error } = await db2
-          .from("social_posts")
-          .select("*")
-          .order("created_at", { ascending: false })
-          .limit(50);
+        const { data, error } = await db2.from("social_posts").select("*").order("created_at", { ascending: false }).limit(300);
         if (error) throw error;
         socialPostsData = data || [];
         renderSocialPosts();
@@ -3945,56 +4015,236 @@ midastech.ca` };
       }
     };
 
+    function spRenderSummary(dups) {
+      const cal = socialPostsData.filter(spScheduled).sort((a, b) => spDate(a.scheduled_for) - spDate(b.scheduled_for));
+      const done = cal.filter(spIsPosted).length;
+      const overdue = cal.filter(p => spStatus(p) === "overdue").length;
+      const next = cal.find(p => !spIsPosted(p));
+      let nextHtml;
+      if (next) {
+        const s = spStatus(next), d = spDate(next.scheduled_for);
+        nextHtml = `<div class="sp-panel ${s !== "upcoming" ? "sp-due" : ""}">
+          <span class="sp-label">Up next${s === "today" ? " · today" : s === "overdue" ? " · past due" : ""}</span>
+          <div class="sp-next-title">${esc(next.headline || "Untitled post")}</div>
+          <span class="sp-muted">${esc(spAccountLabel(next))} · ${spFmtDay(d)}, ${spFmtTime(d)}</span>
+          <div><button class="btn btn-primary btn-sm" type="button" data-sp="jump" data-id="${esc(next.id)}">Go to post</button></div>
+        </div>`;
+      } else {
+        nextHtml = `<div class="sp-panel"><span class="sp-label">Up next</span><div class="sp-next-title">Nothing scheduled</div>
+          <span class="sp-muted">Schedule a draft to add it to the calendar.</span></div>`;
+      }
+      const pct = cal.length ? Math.round(done / cal.length * 100) : 0;
+      const progress = `<div class="sp-panel"><span class="sp-label">Scheduled posts done</span>
+        <div class="sp-big">${done} / ${cal.length}</div><div class="sp-bar"><i style="width:${pct}%"></i></div>
+        <span class="sp-muted" ${overdue ? 'style="color:var(--red);font-weight:700"' : ""}>${overdue ? `${overdue} past its date and not marked posted` : cal.length && done === cal.length ? "All caught up" : `${cal.length - done} still to post`}</span></div>`;
+      const dup = dups.issues.length
+        ? `<div class="sp-panel sp-bad"><span class="sp-label">Duplicate check</span><div class="sp-big">${dups.issues.length} found</div>
+            <ul>${dups.issues.slice(0, 4).map(i => `<li>${esc(i)}</li>`).join("")}</ul></div>`
+        : `<div class="sp-panel sp-ok"><span class="sp-label">Duplicate check</span><div class="sp-big">None found</div>
+            <span class="sp-muted">${dups.checked} scheduled and posted items checked for repeated opening lines and images.${dups.similar.size ? ` ${dups.similar.size} draft${dups.similar.size > 1 ? "s" : ""} repeat${dups.similar.size > 1 ? "" : "s"} a post you already have.` : ""}</span></div>`;
+      document.getElementById("spSummary").innerHTML = nextHtml + progress + dup;
+    }
+
+    function spRenderControls() {
+      const count = pred => socialPostsData.filter(p => (spState.platform === "all" || String(p.platform).toLowerCase() === spState.platform) && pred(p)).length;
+      const tabs = [
+        ["calendar", "Calendar", count(spScheduled)],
+        ["drafts", "Drafts", count(p => !spScheduled(p) && !spIsPosted(p))],
+        ["posted", "Posted", count(spIsPosted)],
+      ];
+      const present = new Set(socialPostsData.map(p => String(p.platform || "").toLowerCase()));
+      const plats = [["all", "All platforms"], ...Object.entries(SP_PLATFORMS).filter(([k]) => present.has(k)).map(([k, v]) => [k, v.name])];
+      document.getElementById("spControls").innerHTML =
+        `<div class="sp-tabs" role="tablist">${tabs.map(([k, n, c]) => `<button class="sp-tab" role="tab" type="button" data-sp="tab" data-v="${k}" aria-selected="${spState.tab === k}">${n}<span class="n">${c}</span></button>`).join("")}</div>
+        ${plats.map(([k, n]) => `<button class="sp-chip" type="button" data-sp="platform" data-v="${k}" aria-pressed="${spState.platform === k}">${k !== "all" ? `<span class="sp-dot" style="--pc:${SP_PLATFORMS[k].color}"></span>` : ""}${esc(n)}</button>`).join("")}
+        ${spState.tab === "calendar" ? `<label class="sp-toggle"><input type="checkbox" id="spHidePosted" ${spState.hidePosted ? "checked" : ""}> Hide posted</label>` : ""}`;
+    }
+
+    function spCard(p, similar) {
+      const pl = spPlatform(p), s = spStatus(p), posted = spIsPosted(p), id = String(p.id);
+      const isArticle = p.post_kind === "article";
+      const limit = isArticle ? (pl.articleLimit || pl.limit) : pl.limit;
+      const text = spFullText(p), len = [...text].length;
+      const tagCount = (text.match(/#[\p{L}\p{N}_]+/gu) || []).length;
+      const over = len > limit || (pl.tags && tagCount > pl.tags);
+      const postedAt = spDate(p.posted_at);
+      const pill = { done: postedAt ? `Posted ${postedAt.toLocaleDateString("en-CA", { month: "short", day: "numeric" })}` : "Posted", today: "Today", overdue: "Past due", upcoming: "Scheduled", draft: p.auto_generated ? "Auto draft" : "Draft" }[s];
+      const img = p.image_url || p.attachment_image_url || "";
+      const copyBtn = posted
+        ? (spState.confirm.has(id) ? `<button class="btn btn-confirm btn-sm" type="button" data-sp="copy" data-id="${esc(id)}">Already posted. Copy anyway?</button>`
+                                   : `<button class="btn btn-secondary btn-sm" type="button" data-sp="copy" data-id="${esc(id)}">Copy again</button>`)
+        : `<button class="btn btn-primary btn-sm" type="button" data-sp="copy" data-id="${esc(id)}">Copy ${isArticle ? "article" : "post"}</button>`;
+      const sched = spState.scheduling.has(id)
+        ? `<span class="sp-sched"><input type="date" id="spDate-${esc(id)}" value="${spDayKey(new Date(Date.now() + 864e5))}"><input type="time" id="spTime-${esc(id)}" value="10:00">
+            <button class="btn btn-primary btn-sm" type="button" data-sp="schedule-save" data-id="${esc(id)}">Save</button>
+            <button class="btn btn-ghost btn-sm" type="button" data-sp="schedule-cancel" data-id="${esc(id)}">Cancel</button></span>`
+        : "";
+      return `<article class="sp-card ${posted ? "sp-posted" : ""} ${img ? "" : "sp-noimg"} ${spState.open.has(id) ? "sp-open" : ""}" id="sp-post-${esc(id)}">
+        <div class="sp-top"><span class="sp-plat"><span class="sp-dot" style="--pc:${pl.color}"></span>${esc(spAccountLabel(p))}</span>${isArticle ? '<span class="sp-kind">Article</span>' : ""}${p.campaign ? `<span class="sp-muted">${esc(p.campaign)}</span>` : ""}<span class="sp-pill ${s}">${pill}</span></div>
+        <div class="sp-title">${esc(p.headline || "Untitled post")}</div>
+        ${similar ? `<div class="sp-warn">Opens the same way as "${esc(similar.headline)}" (${esc(spAccountLabel(similar))}). Rewrite the first line before scheduling.</div>` : ""}
+        <div class="sp-caption">${esc(p.caption || "")}</div>
+        ${p.hashtags ? `<div class="sp-tags">${esc(p.hashtags)}</div>` : ""}
+        ${p.notes ? `<div class="sp-note">${esc(p.notes)}</div>` : ""}
+        ${p.first_comment ? `<div class="sp-fc"><b>First comment</b>${esc(p.first_comment)}</div>` : ""}
+        ${img ? `<div class="sp-thumb"><img src="${esc(img)}" alt="Image for ${esc(p.headline || "post")}" loading="lazy" data-sp="zoom" data-id="${esc(id)}">
+            <button class="btn btn-secondary btn-sm" type="button" data-sp="image" data-id="${esc(id)}">Save image</button></div>` : ""}
+        <div class="sp-actions">
+          ${copyBtn}
+          ${p.first_comment ? `<button class="btn btn-secondary btn-sm" type="button" data-sp="copy-fc" data-id="${esc(id)}">Copy first comment</button>` : ""}
+          <button class="btn btn-ghost btn-sm" type="button" data-sp="expand" data-id="${esc(id)}">${spState.open.has(id) ? "Show less" : "Show all"}</button>
+          <span class="sp-count ${over ? "over" : ""}">${len.toLocaleString()} / ${limit.toLocaleString()} chars${pl.tags ? ` · ${tagCount}/${pl.tags} hashtags` : ""}</span>
+          <span class="spacer"></span>
+          ${sched}
+          ${s === "draft" && !spState.scheduling.has(id) ? `<button class="btn btn-secondary btn-sm" type="button" data-sp="schedule" data-id="${esc(id)}">Schedule</button>
+              <a class="btn btn-ghost btn-sm" style="text-decoration:none" href="./midas-social-generator.html?draft=${encodeURIComponent(id)}" target="_blank" rel="noopener">Edit in Creator</a>` : ""}
+          ${posted
+            ? `<button class="btn btn-done btn-sm" type="button" data-sp="unpost" data-id="${esc(id)}" title="Undo if you marked this by mistake">✓ Posted · Undo</button>`
+            : `<button class="btn btn-secondary btn-sm" type="button" data-sp="post" data-id="${esc(id)}">Mark as posted</button>`}
+        </div>
+      </article>`;
+    }
+
     function renderSocialPosts() {
       const list = document.getElementById("socialPostList");
       if (!list) return;
-      if (!socialPostsData.length) {
-        list.innerHTML = `<div class="empty-workspace"><div class="big">📣</div><strong>No saved posts yet</strong><p>Save a generated post from the LinkedIn Post Creator and it will appear here.</p></div>`;
+      const dups = spDuplicates();
+      spRenderSummary(dups);
+      spRenderControls();
+      const byPlatform = p => spState.platform === "all" || String(p.platform || "").toLowerCase() === spState.platform;
+      const empty = (msg) => `<div class="empty-workspace"><div class="big">📣</div><strong>${msg}</strong><p>Save a post from the Post Creator, or schedule a draft, and it will show up here.</p></div>`;
+
+      if (spState.tab === "calendar") {
+        const rows = socialPostsData.filter(p => spScheduled(p) && byPlatform(p) && !(spState.hidePosted && spIsPosted(p)))
+          .sort((a, b) => spDate(a.scheduled_for) - spDate(b.scheduled_for));
+        if (!rows.length) { list.innerHTML = empty(spState.hidePosted ? "Everything scheduled has been posted" : "Nothing scheduled yet"); return; }
+        const weeks = new Map();
+        for (const p of rows) {
+          const d = spDate(p.scheduled_for), monday = new Date(d);
+          monday.setDate(d.getDate() - ((d.getDay() + 6) % 7));
+          const k = spDayKey(monday);
+          if (!weeks.has(k)) weeks.set(k, { monday, posts: [] });
+          weeks.get(k).posts.push(p);
+        }
+        list.innerHTML = [...weeks.values()].map(({ monday, posts }) => {
+          const campaigns = [...new Set(posts.map(p => p.campaign).filter(Boolean))].join(", ");
+          return `<section class="sp-week"><div class="sp-week-title">Week of ${spFmtDay(monday)}${campaigns ? ` · ${esc(campaigns)}` : ""}</div>
+            ${posts.map((p, i) => {
+              const d = spDate(p.scheduled_for), same = i > 0 && spDayKey(spDate(posts[i - 1].scheduled_for)) === spDayKey(d);
+              return `<div class="sp-row"><div class="sp-date">${same ? "" : `<b>${spFmtDay(d)}</b>`}<span>${spFmtTime(d)}</span></div>${spCard(p)}</div>`;
+            }).join("")}</section>`;
+        }).join("");
         return;
       }
+      const rows = spState.tab === "drafts"
+        ? socialPostsData.filter(p => !spScheduled(p) && !spIsPosted(p) && byPlatform(p))
+        : socialPostsData.filter(p => spIsPosted(p) && byPlatform(p)).sort((a, b) => (spDate(b.posted_at) || 0) - (spDate(a.posted_at) || 0));
+      if (!rows.length) { list.innerHTML = empty(spState.tab === "drafts" ? "No drafts waiting" : "Nothing marked as posted yet"); return; }
+      list.innerHTML = `<div class="sp-week">${rows.map(p => spCard(p, spState.tab === "drafts" ? dups.similar.get(p.id) : null)).join("")}</div>`;
+    }
 
-      list.innerHTML = socialPostsData.map(post => {
-        const created = post.created_at ? new Date(post.created_at) : null;
-        const createdLabel = created && !Number.isNaN(created.getTime()) ? created.toLocaleString() : "Unknown";
-        const img = post.image_url ? `<div class="social-post-thumb"><img src="${esc(post.image_url)}" alt="${esc(post.headline || "Saved post image")}"></div>` : "";
-        const caption = esc(post.caption || "");
-        const hashtags = esc(post.hashtags || "");
-        const topic = esc(post.source_topic || "General");
-        const audience = esc(post.target_audience || "Default audience");
-        const voice = esc(post.brand_voice || "Default voice");
-        const payload = JSON.stringify(post.post_payload || {});
-        return `
-          <div class="social-post-card">
-            <div class="social-post-head">
-              <div>
-                <div class="social-post-title">${esc(post.headline || "Untitled post")}</div>
-                <div class="social-post-meta">
-                  <span>${esc(post.platform || "unknown")}</span>
-                  <span>${esc(post.category || "general")}</span>
-                  <span>${createdLabel}</span>
-                </div>
-              </div>
-              <div class="social-post-actions">
-                <span class="social-pill">${esc(post.status || "draft")}</span>
-                <span class="social-pill">${esc(post.image_style || "alert")}</span>
-                <span class="social-pill">${esc(post.image_engine || "canvas")}</span>
-              </div>
-            </div>
-            ${img}
-            <div class="detail-grid">
-              <div class="detail-field"><div class="df-label">Topic</div><div class="df-value">${topic}</div></div>
-              <div class="detail-field"><div class="df-label">Audience</div><div class="df-value">${audience}</div></div>
-              <div class="detail-field full"><div class="df-label">Brand Voice</div><div class="df-value">${voice}</div></div>
-            </div>
-            <div class="social-post-caption">${caption}</div>
-            <div class="social-post-tags">${hashtags}</div>
-            <div class="social-post-actions">
-              <button class="btn btn-secondary btn-sm" onclick='navigator.clipboard.writeText(${JSON.stringify((post.caption || "") + "\n\n" + (post.hashtags || ""))})'>Copy Post</button>
-              <button class="btn btn-secondary btn-sm" onclick='window.open(${JSON.stringify(`${getLeadTrackerPostCreatorBaseUrl()}?draft=${encodeURIComponent(String(post.id))}`)},"_blank","noopener")'>Open Creator</button>
-              <button class="btn btn-secondary btn-sm" onclick='window.open(${JSON.stringify(post.image_url || "")},"_blank","noopener")' ${post.image_url ? "" : "disabled"}>Open Image</button>
-            </div>
-          </div>`;
-      }).join("");
+    async function spCopy(text) {
+      try { await navigator.clipboard.writeText(text); return true; }
+      catch (e) {
+        const ta = document.createElement("textarea");
+        ta.value = text; ta.style.position = "fixed"; ta.style.left = "-9999px";
+        document.body.appendChild(ta); ta.select();
+        let ok = false; try { ok = document.execCommand("copy"); } catch (e2) {}
+        ta.remove(); return ok;
+      }
+    }
+
+    // Writes to social_posts. If the posting columns haven't been added yet, falls back to status only.
+    async function spUpdate(id, fields, fallback) {
+      const db2 = getLiClient();
+      let { error } = await db2.from("social_posts").update(fields).eq("id", id);
+      if (error && fallback && /column/i.test(error.message || "")) {
+        ({ error } = await db2.from("social_posts").update(fallback).eq("id", id));
+        if (!error) showToast("Saved. Run the Supabase update SQL to also save dates.", "success");
+      }
+      if (error) throw error;
+      const row = socialPostsData.find(p => String(p.id) === String(id));
+      if (row) Object.assign(row, fields);
+      renderSocialPosts();
+    }
+
+    let spBound = false;
+    function spBindOnce() {
+      if (spBound) return;
+      spBound = true;
+      const view = document.getElementById("view-social");
+      const lightbox = document.getElementById("spLightbox");
+      lightbox.addEventListener("click", () => lightbox.classList.remove("active"));
+      document.addEventListener("keydown", e => { if (e.key === "Escape") lightbox.classList.remove("active"); });
+      view.addEventListener("change", e => {
+        if (e.target.id !== "spHidePosted") return;
+        spState.hidePosted = e.target.checked;
+        try { localStorage.setItem("sp.hidePosted", spState.hidePosted ? "1" : "0"); } catch (err) {}
+        renderSocialPosts();
+      });
+      view.addEventListener("click", async e => {
+        const b = e.target.closest("[data-sp]");
+        if (!b) return;
+        const act = b.dataset.sp, id = b.dataset.id;
+        const p = socialPostsData.find(x => String(x.id) === String(id));
+        if (act === "tab" || act === "platform") {
+          spState[act] = b.dataset.v;
+          try { localStorage.setItem("sp." + act, b.dataset.v); } catch (err) {}
+          renderSocialPosts(); return;
+        }
+        if (act === "jump") {
+          spState.tab = "calendar"; spState.platform = "all"; renderSocialPosts();
+          document.getElementById("sp-post-" + id)?.scrollIntoView({ behavior: "smooth", block: "center" }); return;
+        }
+        if (!p) return;
+        if (act === "expand") { spState.open.has(id) ? spState.open.delete(id) : spState.open.add(id); renderSocialPosts(); return; }
+        if (act === "zoom") { lightbox.querySelector("img").src = b.src; lightbox.classList.add("active"); return; }
+        if (act === "copy") {
+          if (spIsPosted(p) && !spState.confirm.has(id)) {
+            spState.confirm.add(id); renderSocialPosts();
+            setTimeout(() => { spState.confirm.delete(id); renderSocialPosts(); }, 5000);
+            return;
+          }
+          spState.confirm.delete(id);
+          const ok = await spCopy(spFullText(p));
+          showToast(ok ? `Copied. Paste it into ${spAccountLabel(p)}.` : "Copy was blocked. Tap Show all and select the text.", ok ? "success" : "error");
+          renderSocialPosts(); return;
+        }
+        if (act === "copy-fc") { const ok = await spCopy(p.first_comment || ""); showToast(ok ? "First comment copied" : "Copy was blocked", ok ? "success" : "error"); return; }
+        if (act === "image") {
+          const url = p.image_url || p.attachment_image_url;
+          try {
+            const blob = await (await fetch(url)).blob();
+            const a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = decodeURIComponent(url.split("/").pop().split("?")[0]) || "post-image.png";
+            document.body.appendChild(a); a.click(); a.remove();
+            setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+          } catch (err) { window.open(url, "_blank", "noopener"); }
+          return;
+        }
+        if (act === "schedule") { spState.scheduling.add(id); renderSocialPosts(); return; }
+        if (act === "schedule-cancel") { spState.scheduling.delete(id); renderSocialPosts(); return; }
+        b.disabled = true;
+        try {
+          if (act === "schedule-save") {
+            const d = document.getElementById("spDate-" + id).value, t = document.getElementById("spTime-" + id).value || "10:00";
+            if (!d) { showToast("Pick a date first", "error"); b.disabled = false; return; }
+            spState.scheduling.delete(id);
+            await spUpdate(id, { scheduled_for: new Date(`${d}T${t}`).toISOString(), status: "scheduled" });
+            showToast("Added to the calendar", "success");
+          } else if (act === "post") {
+            await spUpdate(id, { status: "posted", posted_at: new Date().toISOString() }, { status: "posted" });
+            showToast("Marked as posted", "success");
+          } else if (act === "unpost") {
+            await spUpdate(id, { status: spScheduled(p) ? "scheduled" : "draft", posted_at: null }, { status: spScheduled(p) ? "scheduled" : "draft" });
+            showToast("Moved back", "success");
+          }
+        } catch (err) {
+          b.disabled = false;
+          showToast("Couldn't save: " + (err.message || err), "error");
+        }
+      });
     }
 
     function setLiLoading(loading) {

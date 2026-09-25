@@ -565,6 +565,11 @@
     .btn-ghost { background: transparent; color: var(--gray-500); border: 1px solid transparent; }
     .sp-sched { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
     .sp-sched input { border: 1px solid var(--border); border-radius: 10px; padding: 7px 9px; font: inherit; font-size: 12px; background: var(--surface); color: var(--gray-800); }
+    .sp-field { display: grid; gap: 4px; font-size: 12px; font-weight: 700; color: var(--gray-600); }
+    .sp-field input, .sp-field select, .sp-field textarea { border: 1px solid var(--border); border-radius: 10px; padding: 9px 11px; font: inherit; font-size: 14px; font-weight: 400; background: var(--surface); color: var(--gray-900); width: 100%; }
+    .sp-field input:focus, .sp-field select:focus, .sp-field textarea:focus { outline: 2px solid var(--blue); outline-offset: 1px; }
+    .sp-angle { font-size: 14px; color: var(--gray-700); line-height: 1.5; }
+    .sp-topic-form { margin-bottom: 16px; border-color: rgba(29,78,216,0.35); }
     .sp-lightbox { position: fixed; inset: 0; background: rgba(18,15,11,0.8); z-index: 1100; display: none; align-items: center; justify-content: center; padding: 24px; cursor: zoom-out; }
     .sp-lightbox.active { display: flex; }
     .sp-lightbox img { max-width: min(92vw, 900px); max-height: 88vh; border-radius: 14px; box-shadow: var(--shadow-lg); }
@@ -3874,6 +3879,7 @@ midastech.ca` };
     let liAcceptedData = [];
     let liCatchUpData  = [];
     let socialPostsData = [];
+    let spTopics = null, spTopicsError = "";
     let liMsgFilter    = "all";   // "all" | "unread" | "inbound"
     let liLoaded       = false;
 
@@ -4009,6 +4015,9 @@ midastech.ca` };
         const { data, error } = await db2.from("social_posts").select("*").order("created_at", { ascending: false }).limit(300);
         if (error) throw error;
         socialPostsData = data || [];
+        const topicsRes = await db2.from("content_topics").select("*").order("target_month", { ascending: true });
+        spTopics = topicsRes.error ? null : (topicsRes.data || []);
+        spTopicsError = topicsRes.error ? (topicsRes.error.message || String(topicsRes.error)) : "";
         renderSocialPosts();
       } catch (err) {
         list.innerHTML = `<div class="empty-workspace"><div class="big">⚠️</div><strong>Could not load social posts</strong><p>${esc(err.message || err)}</p></div>`;
@@ -4051,12 +4060,13 @@ midastech.ca` };
         ["calendar", "Calendar", count(spScheduled)],
         ["drafts", "Drafts", count(p => !spScheduled(p) && !spIsPosted(p))],
         ["posted", "Posted", count(spIsPosted)],
+        ["topics", "Topics", spTopics ? spTopics.filter(t => !["posted", "skipped"].includes(spTopicStatus(t))).length : 0],
       ];
       const present = new Set(socialPostsData.map(p => String(p.platform || "").toLowerCase()));
       const plats = [["all", "All platforms"], ...Object.entries(SP_PLATFORMS).filter(([k]) => present.has(k)).map(([k, v]) => [k, v.name])];
       document.getElementById("spControls").innerHTML =
         `<div class="sp-tabs" role="tablist">${tabs.map(([k, n, c]) => `<button class="sp-tab" role="tab" type="button" data-sp="tab" data-v="${k}" aria-selected="${spState.tab === k}">${n}<span class="n">${c}</span></button>`).join("")}</div>
-        ${plats.map(([k, n]) => `<button class="sp-chip" type="button" data-sp="platform" data-v="${k}" aria-pressed="${spState.platform === k}">${k !== "all" ? `<span class="sp-dot" style="--pc:${SP_PLATFORMS[k].color}"></span>` : ""}${esc(n)}</button>`).join("")}
+        ${spState.tab === "topics" ? `<button class="btn btn-primary btn-sm" type="button" data-sp="topic-new" style="margin-left:auto">+ Add a topic</button>` : plats.map(([k, n]) => `<button class="sp-chip" type="button" data-sp="platform" data-v="${k}" aria-pressed="${spState.platform === k}">${k !== "all" ? `<span class="sp-dot" style="--pc:${SP_PLATFORMS[k].color}"></span>` : ""}${esc(n)}</button>`).join("")}
         ${spState.tab === "calendar" ? `<label class="sp-toggle"><input type="checkbox" id="spHidePosted" ${spState.hidePosted ? "checked" : ""}> Hide posted</label>` : ""}`;
     }
 
@@ -4105,6 +4115,85 @@ midastech.ca` };
       </article>`;
     }
 
+    // ── Topics: one campaign per month ──
+    const SP_TOPIC_LABEL = { idea: "Idea", approved: "Approved", written: "Written", scheduled: "Scheduled", posted: "Posted", skipped: "Skipped" };
+    const spTopicPosts = t => t.campaign ? socialPostsData.filter(p => p.campaign === t.campaign) : [];
+    function spTopicStatus(t) {
+      if (t.status === "skipped") return "skipped";
+      const posts = spTopicPosts(t);
+      if (posts.length) return posts.every(spIsPosted) ? "posted" : "scheduled";
+      return t.status || "idea";
+    }
+    // Queue Claude writes from: approved topics, Ali's own first, then by month.
+    const spWriteQueue = () => (spTopics || []).filter(t => spTopicStatus(t) === "approved")
+      .sort((a, b) => (a.source === "ali" ? 0 : 1) - (b.source === "ali" ? 0 : 1) || String(a.target_month).localeCompare(String(b.target_month)));
+    const spMonthLabel = v => { const d = v ? new Date(String(v).slice(0, 10) + "T12:00") : null; return d && !Number.isNaN(d.getTime()) ? d.toLocaleDateString("en-CA", { month: "long", year: "numeric" }) : "No month"; };
+
+    function spTopicForm() {
+      const next = new Date(); next.setMonth(next.getMonth() + 1);
+      return `<div class="sp-card sp-noimg sp-topic-form">
+        <div class="sp-title">Add a topic</div>
+        <span class="sp-muted">Your topics go to the front of the queue once you approve them. Add notes, a client story or a link to something you liked.</span>
+        <label class="sp-field">Topic<input id="spTopicTitle" maxlength="120" placeholder="e.g. Why clinics need offline backups"></label>
+        <label class="sp-field">Angle or hook<input id="spTopicAngle" maxlength="200" placeholder="The one idea the article should land"></label>
+        <div class="sp-sched">
+          <label class="sp-field">Month<input id="spTopicMonth" type="month" value="${next.getFullYear()}-${spPad(next.getMonth() + 1)}"></label>
+          <label class="sp-field">Audience<select id="spTopicAudience"><option>All</option><option>Healthcare clinics</option><option>Accounting firms</option><option>Warehouses</option></select></label>
+        </div>
+        <label class="sp-field">Notes for Claude<textarea id="spTopicNotes" rows="3" placeholder="Anything to include, links, examples"></textarea></label>
+        <div class="sp-actions"><button class="btn btn-primary btn-sm" type="button" data-sp="topic-save">Save and approve</button>
+          <button class="btn btn-ghost btn-sm" type="button" data-sp="topic-cancel">Cancel</button></div>
+      </div>`;
+    }
+
+    function spTopicCard(t) {
+      const st = spTopicStatus(t), posts = spTopicPosts(t), done = posts.filter(spIsPosted).length, id = String(t.id);
+      const pillCls = { idea: "", approved: "today", written: "draft", scheduled: "draft", posted: "done", skipped: "" }[st];
+      const actions = {
+        idea: `<button class="btn btn-primary btn-sm" type="button" data-sp="topic-approve" data-tid="${esc(id)}">Approve</button>
+               <button class="btn btn-ghost btn-sm" type="button" data-sp="topic-skip" data-tid="${esc(id)}">Skip</button>`,
+        approved: `<button class="btn btn-ghost btn-sm" type="button" data-sp="topic-unapprove" data-tid="${esc(id)}">Move back to ideas</button>`,
+        skipped: `<button class="btn btn-secondary btn-sm" type="button" data-sp="topic-restore" data-tid="${esc(id)}">Restore</button>
+                  ${spState.confirm.has("t" + id)
+                    ? `<button class="btn btn-confirm btn-sm" type="button" data-sp="topic-delete" data-tid="${esc(id)}">Delete for good?</button>`
+                    : `<button class="btn btn-ghost btn-sm" type="button" data-sp="topic-delete" data-tid="${esc(id)}">Delete</button>`}`,
+      }[st] || (posts.length ? `<button class="btn btn-secondary btn-sm" type="button" data-sp="topic-open" data-v="${esc(t.campaign)}">See posts in calendar</button>` : "");
+      return `<article class="sp-card sp-noimg ${st === "skipped" || st === "posted" ? "sp-posted" : ""}">
+        <div class="sp-top"><span class="sp-plat">${t.source === "ali" ? "From Ali" : "Planned by Claude"}</span>${t.audience ? `<span class="sp-muted">${esc(t.audience)}</span>` : ""}<span class="sp-pill ${pillCls}">${SP_TOPIC_LABEL[st] || esc(st)}</span></div>
+        <div class="sp-title">${esc(t.title)}</div>
+        ${t.angle ? `<div class="sp-angle">${esc(t.angle)}</div>` : ""}
+        ${t.notes ? `<div class="sp-note">${esc(t.notes)}</div>` : ""}
+        ${posts.length ? `<div class="sp-muted">${done} of ${posts.length} posts published</div><div class="sp-bar"><i style="width:${Math.round(done / posts.length * 100)}%"></i></div>` : ""}
+        ${actions ? `<div class="sp-actions">${actions}</div>` : ""}
+      </article>`;
+    }
+
+    function spRenderTopics(list) {
+      if (!spTopics) {
+        list.innerHTML = `<div class="empty-workspace"><div class="big">🗂️</div><strong>Topics aren't set up yet</strong><p>Run supabase/2026-09-content-topics.sql in the Supabase SQL Editor, then click Refresh.</p>${spTopicsError ? `<p class="sp-muted">${esc(spTopicsError)}</p>` : ""}</div>`;
+        return;
+      }
+      const queue = spWriteQueue();
+      const head = `<div class="sp-panel" style="margin-bottom:16px">
+        <span class="sp-label">How it works</span>
+        <span class="sp-muted"><b>Approve</b> the topics you want. Claude writes the next approved topic as 1 article plus 8–10 posts with images and adds them to the Calendar. Your own topics go first.</span>
+        <span class="sp-muted">${queue.length ? `Next for Claude to write: <b>${esc(queue[0].title)}</b> (${spMonthLabel(queue[0].target_month)}).` : "Nothing approved yet. Approve a topic so Claude knows what to write next."}</span>
+      </div>`;
+      const byMonth = new Map();
+      for (const t of spTopics) { const k = String(t.target_month || "").slice(0, 7); if (!byMonth.has(k)) byMonth.set(k, []); byMonth.get(k).push(t); }
+      list.innerHTML = (spState.addingTopic ? spTopicForm() : "") + head + `<section class="sp-week">${[...byMonth.values()].map(ts =>
+        ts.map((t, i) => `<div class="sp-row"><div class="sp-date">${i ? "" : `<b>${esc(spMonthLabel(t.target_month).split(" ")[0])}</b><span>${esc(String(t.target_month || "").slice(0, 4))}</span>`}</div>${spTopicCard(t)}</div>`).join("")
+      ).join("")}</section>`;
+    }
+
+    async function spTopicUpdate(id, fields) {
+      const { error } = await getLiClient().from("content_topics").update(fields).eq("id", id);
+      if (error) throw error;
+      const t = spTopics.find(x => String(x.id) === String(id));
+      if (t) Object.assign(t, fields);
+      renderSocialPosts();
+    }
+
     function renderSocialPosts() {
       const list = document.getElementById("socialPostList");
       if (!list) return;
@@ -4114,6 +4203,7 @@ midastech.ca` };
       const byPlatform = p => spState.platform === "all" || String(p.platform || "").toLowerCase() === spState.platform;
       const empty = (msg) => `<div class="empty-workspace"><div class="big">📣</div><strong>${msg}</strong><p>Save a post from the Post Creator, or schedule a draft, and it will show up here.</p></div>`;
 
+      if (spState.tab === "topics") { spRenderTopics(list); return; }
       if (spState.tab === "calendar") {
         const rows = socialPostsData.filter(p => spScheduled(p) && byPlatform(p) && !(spState.hidePosted && spIsPosted(p)))
           .sort((a, b) => spDate(a.scheduled_for) - spDate(b.scheduled_for));
@@ -4168,6 +4258,43 @@ midastech.ca` };
       renderSocialPosts();
     }
 
+    async function spTopicAction(act, b) {
+      const id = b.dataset.tid;
+      if (act === "topic-new") { spState.addingTopic = true; renderSocialPosts(); document.getElementById("spTopicTitle")?.focus(); return; }
+      if (act === "topic-cancel") { spState.addingTopic = false; renderSocialPosts(); return; }
+      if (act === "topic-open") { spState.tab = "calendar"; spState.platform = "all"; renderSocialPosts(); return; }
+      if (act === "topic-delete" && !spState.confirm.has("t" + id)) {
+        spState.confirm.add("t" + id); renderSocialPosts();
+        setTimeout(() => { spState.confirm.delete("t" + id); renderSocialPosts(); }, 5000);
+        return;
+      }
+      b.disabled = true;
+      try {
+        if (act === "topic-save") {
+          const title = document.getElementById("spTopicTitle").value.trim();
+          if (!title) { showToast("Give the topic a name first", "error"); b.disabled = false; return; }
+          const month = document.getElementById("spTopicMonth").value;
+          const row = { title, angle: document.getElementById("spTopicAngle").value.trim() || null,
+            audience: document.getElementById("spTopicAudience").value, notes: document.getElementById("spTopicNotes").value.trim() || null,
+            target_month: month ? month + "-01" : null, source: "ali", status: "approved" };
+          const { data, error } = await getLiClient().from("content_topics").insert(row).select("*");
+          if (error) throw error;
+          spTopics.push(...(data || [row]));
+          spTopics.sort((a, c) => String(a.target_month).localeCompare(String(c.target_month)));
+          spState.addingTopic = false; renderSocialPosts();
+          showToast("Topic added and approved", "success");
+        } else if (act === "topic-approve") { await spTopicUpdate(id, { status: "approved" }); showToast("Approved", "success"); }
+        else if (act === "topic-unapprove" || act === "topic-restore") { await spTopicUpdate(id, { status: "idea" }); }
+        else if (act === "topic-skip") { await spTopicUpdate(id, { status: "skipped" }); }
+        else if (act === "topic-delete") {
+          const { error } = await getLiClient().from("content_topics").delete().eq("id", id);
+          if (error) throw error;
+          spTopics = spTopics.filter(t => String(t.id) !== String(id)); spState.confirm.delete("t" + id);
+          renderSocialPosts(); showToast("Topic deleted", "success");
+        }
+      } catch (err) { b.disabled = false; showToast("Couldn't save: " + (err.message || err), "error"); }
+    }
+
     let spBound = false;
     function spBindOnce() {
       if (spBound) return;
@@ -4196,6 +4323,7 @@ midastech.ca` };
           spState.tab = "calendar"; spState.platform = "all"; renderSocialPosts();
           document.getElementById("sp-post-" + id)?.scrollIntoView({ behavior: "smooth", block: "center" }); return;
         }
+        if (act.startsWith("topic-")) { await spTopicAction(act, b); return; }
         if (!p) return;
         if (act === "expand") { spState.open.has(id) ? spState.open.delete(id) : spState.open.add(id); renderSocialPosts(); return; }
         if (act === "zoom") { lightbox.querySelector("img").src = b.src; lightbox.classList.add("active"); return; }

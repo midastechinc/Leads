@@ -568,6 +568,10 @@
     .sp-field { display: grid; gap: 4px; font-size: 12px; font-weight: 700; color: var(--gray-600); }
     .sp-field input, .sp-field select, .sp-field textarea { border: 1px solid var(--border); border-radius: 10px; padding: 9px 11px; font: inherit; font-size: 14px; font-weight: 400; background: var(--surface); color: var(--gray-900); width: 100%; }
     .sp-field input:focus, .sp-field select:focus, .sp-field textarea:focus { outline: 2px solid var(--blue); outline-offset: 1px; }
+    .sp-howto { border: 1px solid rgba(29,78,216,0.22); background: var(--blue-light); border-radius: 12px; padding: 8px 12px; }
+    .sp-howto-toggle { border: none; background: none; padding: 2px 0; font: inherit; font-size: 13px; font-weight: 800; color: var(--blue); cursor: pointer; text-align: left; width: 100%; }
+    .sp-howto ol { margin: 8px 0 4px; padding-left: 22px; display: grid; gap: 8px; font-size: 13px; color: var(--gray-800); line-height: 1.5; }
+    .sp-howto li .btn { margin-left: 4px; vertical-align: baseline; }
     .sp-angle { font-size: 14px; color: var(--gray-700); line-height: 1.5; }
     .sp-topic-form { margin-bottom: 16px; border-color: rgba(29,78,216,0.35); }
     .sp-lightbox { position: fixed; inset: 0; background: rgba(18,15,11,0.8); z-index: 1100; display: none; align-items: center; justify-content: center; padding: 24px; cursor: zoom-out; }
@@ -3950,7 +3954,7 @@ midastech.ca` };
       facebook:  { name: "Facebook",  color: "#1877F2", limit: 63206 },
       google:    { name: "Google",    color: "#34A853", limit: 1500 },
     };
-    const spState = { tab: "calendar", platform: "all", hidePosted: false, open: new Set(), confirm: new Set(), scheduling: new Set() };
+    const spState = { tab: "calendar", platform: "all", hidePosted: false, open: new Set(), confirm: new Set(), scheduling: new Set(), howtoOpen: new Set(), howtoClosed: new Set(), nextId: null };
     try {
       spState.tab = localStorage.getItem("sp.tab") || "calendar";
       spState.platform = localStorage.getItem("sp.platform") || "all";
@@ -4070,6 +4074,75 @@ midastech.ca` };
         ${spState.tab === "calendar" ? `<label class="sp-toggle"><input type="checkbox" id="spHidePosted" ${spState.hidePosted ? "checked" : ""}> Hide posted</label>` : ""}`;
     }
 
+    // ── "How to post" checklist shown on each card ──
+    const spBtn = (label, act, id, cls = "btn-secondary") => `<button class="btn ${cls} btn-xs" type="button" data-sp="${act}" data-id="${esc(String(id))}">${label}</button>`;
+    // The post LinkedIn's "Tell your network…" box should get: the next non-article post in the same campaign and account.
+    function spCompanion(p) {
+      if (p.post_kind !== "article" || !p.campaign) return null;
+      const at = spDate(p.scheduled_for);
+      return socialPostsData.filter(x => x !== p && x.campaign === p.campaign && x.platform === p.platform && (x.account || "") === (p.account || "") && x.post_kind !== "article" && spDate(x.scheduled_for) >= at)
+        .sort((a, b) => spDate(a.scheduled_for) - spDate(b.scheduled_for))[0] || null;
+    }
+    const spSharedWith = p => socialPostsData.find(a => a.post_kind === "article" && spCompanion(a) === p) || null;
+    function spHowTo(p) {
+      const article = spSharedWith(p);
+      if (article) return [
+        `This is the share text for the article <b>${esc(article.headline)}</b>. Don't post it separately: paste it into LinkedIn's <i>"Tell your network what your article is about"</i> box when you publish the article (the article's steps walk you through it). Change "Link in the comments" to "Full article below". ${spBtn("Copy post", "copy", p.id)}`,
+        `No first comment needed: the shared article already shows its link.`,
+        `On the article's card, click <b>Mark both as posted</b>.`];
+      const id = p.id, img = p.image_url || p.attachment_image_url, platform = String(p.platform || "").toLowerCase();
+      const imgStep = img ? [`Add the image. ${spBtn("Save image", "image", id)}`] : [];
+      const fcStep = p.first_comment ? [`Right after posting, add the first comment under your post. ${spBtn("Copy first comment", "copy-fc", id)}`] : [];
+      const done = [`Come back here and click <b>Mark as posted</b>.`];
+      if (p.post_kind === "article") {
+        const c = spCompanion(p);
+        return [
+          `On LinkedIn, click <b>Write article</b> (on the home page, under the Start a post box).`,
+          img ? `Upload the cover image. ${spBtn("Save image", "image", id)}` : null,
+          `Paste the title into the <b>Headline</b> box. ${spBtn("Copy title", "copy-title", id)}`,
+          `Paste the article into the body, then make each section title a <b>Heading</b>. ${spBtn("Copy article", "copy", id)}`,
+          `Click <b>Next</b>, then <b>Publish</b>.`,
+          c ? `LinkedIn asks <i>"Tell your network what your article is about"</i>. Paste the <b>${esc(c.headline)}</b> post there, but change "Link in the comments" to "Full article below". ${spBtn("Copy share text", "copy", c.id)} Set it to <b>Anyone</b> and click Post.` : `LinkedIn asks <i>"Tell your network what your article is about"</i>. Write one or two lines and click Post.`,
+          `Copy the article's web address from your browser. Other posts in this campaign need it where they say <b>[paste article link]</b>.`,
+          c ? `Click ${spBtn(`Mark both as posted`, "post-pair", id, "btn-primary")} (this article and ${esc(c.headline)}).` : done[0],
+        ].filter(Boolean);
+      }
+      if (platform === "linkedin") return [
+        p.account === "Midas Tech"
+          ? `Go to the <b>Midas Tech company page</b> (linkedin.com/company/midastech786) and click <b>Create → Start a post</b>, so it posts as the company, not you.`
+          : `On LinkedIn, click <b>Start a post</b> from your own profile (it should say <b>Ali Jaffar</b> at the top).`,
+        `Paste the post. ${spBtn("Copy post", "copy", id)}`,
+        ...imgStep,
+        `Check it says <b>Post to Anyone</b>, then click <b>Post</b>.`,
+        ...fcStep, ...done];
+      if (platform === "instagram") return [
+        img ? `Save the image to your phone. ${spBtn("Save image", "image", id)}` : `Instagram needs an image. Pick one before posting.`,
+        `Open Instagram as <b>@midastech.it</b>, tap <b>+</b>, choose <b>Post</b> and pick the image.`,
+        `Paste the caption. ${spBtn("Copy post", "copy", id)}`,
+        /link in bio/i.test(p.caption || "") ? `The caption says "link in bio": check <b>www.midastech.ca</b> is in the Instagram bio.` : null,
+        `Tap <b>Share</b>.`, ...done].filter(Boolean);
+      if (platform === "facebook") return [
+        `Open <b>facebook.com/MidasTech.ca</b> and make sure you're posting <b>as the page</b>, not your personal profile.`,
+        `Paste the post. ${spBtn("Copy post", "copy", id)}`,
+        ...imgStep, `Click <b>Post</b>.`, ...fcStep, ...done];
+      if (platform === "google") return [
+        `Open your <b>Google Business Profile</b> and choose <b>Add update</b>.`,
+        `Paste the post. ${spBtn("Copy post", "copy", id)}`, ...imgStep, `Click <b>Publish</b>.`, ...done];
+      return [`Paste the post. ${spBtn("Copy post", "copy", id)}`, ...imgStep, ...done];
+    }
+    function spHowToBlock(p, s) {
+      if (spIsPosted(p)) return "";
+      const id = String(p.id);
+      const auto = s === "today" || s === "overdue" || id === spState.nextId;
+      const open = spState.howtoOpen.has(id) || (auto && !spState.howtoClosed.has(id));
+      const placeholder = !spSharedWith(p) && /\[paste [^\]]*\]/i.test(`${p.caption || ""}\n${p.first_comment || ""}`);
+      return `${placeholder ? `<div class="sp-warn">This post still says <b>[paste article link]</b>. Replace it with the article's web address after pasting.</div>` : ""}
+        <div class="sp-howto">
+          <button class="sp-howto-toggle" type="button" data-sp="howto" data-id="${esc(id)}" aria-expanded="${open}">${open ? "▾" : "▸"} How to post this on ${esc(spAccountLabel(p))}</button>
+          ${open ? `<ol>${spHowTo(p).map(step => `<li>${step}</li>`).join("")}</ol>` : ""}
+        </div>`;
+    }
+
     function spCard(p, similar) {
       const pl = spPlatform(p), s = spStatus(p), posted = spIsPosted(p), id = String(p.id);
       const isArticle = p.post_kind === "article";
@@ -4097,9 +4170,11 @@ midastech.ca` };
         ${p.hashtags ? `<div class="sp-tags">${esc(p.hashtags)}</div>` : ""}
         ${p.notes ? `<div class="sp-note">${esc(p.notes)}</div>` : ""}
         ${p.first_comment ? `<div class="sp-fc"><b>First comment</b>${esc(p.first_comment)}</div>` : ""}
+        ${spHowToBlock(p, s)}
         ${img ? `<div class="sp-thumb"><img src="${esc(img)}" alt="Image for ${esc(p.headline || "post")}" loading="lazy" data-sp="zoom" data-id="${esc(id)}">
             <button class="btn btn-secondary btn-sm" type="button" data-sp="image" data-id="${esc(id)}">Save image</button></div>` : ""}
         <div class="sp-actions">
+          ${isArticle ? `<button class="btn btn-secondary btn-sm" type="button" data-sp="copy-title" data-id="${esc(id)}">Copy title</button>` : ""}
           ${copyBtn}
           ${p.first_comment ? `<button class="btn btn-secondary btn-sm" type="button" data-sp="copy-fc" data-id="${esc(id)}">Copy first comment</button>` : ""}
           <button class="btn btn-ghost btn-sm" type="button" data-sp="expand" data-id="${esc(id)}">${spState.open.has(id) ? "Show less" : "Show all"}</button>
@@ -4198,6 +4273,7 @@ midastech.ca` };
       const list = document.getElementById("socialPostList");
       if (!list) return;
       const dups = spDuplicates();
+      spState.nextId = String(socialPostsData.filter(p => spScheduled(p) && !spIsPosted(p)).sort((a, b) => spDate(a.scheduled_for) - spDate(b.scheduled_for))[0]?.id ?? "");
       spRenderSummary(dups);
       spRenderControls();
       const byPlatform = p => spState.platform === "all" || String(p.platform || "").toLowerCase() === spState.platform;
@@ -4338,6 +4414,12 @@ midastech.ca` };
           showToast(ok ? `Copied. Paste it into ${spAccountLabel(p)}.` : "Copy was blocked. Tap Show all and select the text.", ok ? "success" : "error");
           renderSocialPosts(); return;
         }
+        if (act === "howto") {
+          const open = b.getAttribute("aria-expanded") === "true";
+          if (open) { spState.howtoOpen.delete(id); spState.howtoClosed.add(id); } else { spState.howtoClosed.delete(id); spState.howtoOpen.add(id); }
+          renderSocialPosts(); return;
+        }
+        if (act === "copy-title") { const ok = await spCopy(p.headline || ""); showToast(ok ? "Title copied" : "Copy was blocked", ok ? "success" : "error"); return; }
         if (act === "copy-fc") { const ok = await spCopy(p.first_comment || ""); showToast(ok ? "First comment copied" : "Copy was blocked", ok ? "success" : "error"); return; }
         if (act === "image") {
           const url = p.image_url || p.attachment_image_url;
@@ -4361,6 +4443,10 @@ midastech.ca` };
             spState.scheduling.delete(id);
             await spUpdate(id, { scheduled_for: new Date(`${d}T${t}`).toISOString(), status: "scheduled" });
             showToast("Added to the calendar", "success");
+          } else if (act === "post-pair") {
+            const c = spCompanion(p), now = new Date().toISOString();
+            for (const row of [p, c].filter(Boolean)) await spUpdate(row.id, { status: "posted", posted_at: now }, { status: "posted" });
+            showToast(c ? "Article and share post marked as posted" : "Marked as posted", "success");
           } else if (act === "post") {
             await spUpdate(id, { status: "posted", posted_at: new Date().toISOString() }, { status: "posted" });
             showToast("Marked as posted", "success");

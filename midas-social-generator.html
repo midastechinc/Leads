@@ -421,20 +421,99 @@ body.lt-shell .toast{
   body.lt-shell .header-actions{width:100%}
   body.lt-shell .nav-btn{width:100%}
 }
+
+/* ── Social Studio layout (matches the lead tracker) ── */
+body.lt-shell{font-family:"Segoe UI","Inter","Aptos",sans-serif}
+body.lt-shell input,body.lt-shell select,body.lt-shell textarea,body.lt-shell button{font-family:inherit}
+[hidden]{display:none!important}
+.ss-header .hcopy{flex:1;min-width:220px}
+.ss-header .hcopy a{color:var(--lt-blue);font-weight:700;text-decoration:none}
+.ss-header .hcopy a:hover{text-decoration:underline}
+body.lt-shell .nav-btn{text-transform:none;letter-spacing:0;font-size:13px;cursor:pointer}
+.ss-h2{font-size:17px;font-weight:800;color:var(--lt-ink);letter-spacing:-.01em}
+body.lt-shell .lbl{font-size:11px;letter-spacing:.09em;color:#6a624f;display:block}
+.ss-settings{max-width:720px}
+.ss-settings-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px}
+.ss-settings .note{margin-top:2px}
+
+.ss-layout{display:grid;grid-template-columns:minmax(340px,420px) minmax(0,1fr);gap:22px;align-items:start}
+.ss-form{position:sticky;top:18px;margin-bottom:0;display:flex;flex-direction:column;gap:22px;padding:22px}
+.ss-step{display:flex;flex-direction:column;gap:12px}
+.ss-step-head{display:flex;align-items:center;gap:10px}
+.ss-num{width:26px;height:26px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--lt-blue);color:#fff;font-size:13px;font-weight:800;flex:none}
+body.lt-shell .mode-row{margin:0;background:var(--lt-sand-deep);padding:4px;border-radius:14px;gap:4px}
+body.lt-shell .mode-btn{border:none;background:transparent;box-shadow:none;padding:10px 8px;font-size:13px;color:#625846;border-radius:11px}
+body.lt-shell .mode-btn.on{background:var(--lt-surface);color:var(--lt-ink);box-shadow:0 2px 8px rgba(31,24,17,.08)}
+body.lt-shell .mode-btn:focus-visible,body.lt-shell .chip:focus-visible,.ss-more summary:focus-visible,.ss-saved summary:focus-visible{outline:2px solid var(--lt-blue);outline-offset:2px}
+body.lt-shell textarea#manualTopic{min-height:92px;font-size:14px;line-height:1.5}
+body.lt-shell .field-hint{margin-top:0}
+.ss-center{text-align:center;margin-top:-12px!important}
+body.lt-shell .chip{font-size:13px;font-weight:600;padding:8px 14px}
+body.lt-shell .chip.on{background:var(--lt-ink);border-color:var(--lt-ink);color:#fff}
+body.lt-shell .topic-dropdown-toggle{background:var(--lt-surface);border:1px solid var(--lt-border);color:var(--lt-ink);box-shadow:none}
+body.lt-shell .topic-dropdown-meta{color:#6a624f}
+body.lt-shell .topic-dropdown-panel{background:var(--lt-surface-2);border:1px solid var(--lt-border);box-shadow:none;max-height:340px;overflow:auto}
+body.lt-shell .topic-group-title{color:#6a624f}
+body.lt-shell .topic-group-title::after{background:var(--lt-border)}
+body.lt-shell .topic-search{background:var(--lt-surface);border:1px solid var(--lt-border);color:var(--lt-ink-soft)}
+body.lt-shell .topic-dropdown-panel .chip{font-size:12px;padding:6px 11px}
+.ss-more{border-top:1px solid var(--lt-border);padding-top:14px}
+.ss-more summary,.ss-saved summary{cursor:pointer;font-size:13px;font-weight:700;color:var(--lt-blue);list-style:none}
+.ss-more summary::before,.ss-saved summary::before{content:"▸ ";}
+.ss-more[open] summary::before,.ss-saved[open] summary::before{content:"▾ ";}
+.ss-more summary::-webkit-details-marker,.ss-saved summary::-webkit-details-marker{display:none}
+.ss-more-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+.ss-field{display:flex;flex-direction:column;gap:6px;font-size:12px;font-weight:700;color:#6a624f}
+.ss-wide{grid-column:1/-1}
+body.lt-shell .go{background:linear-gradient(135deg,var(--lt-blue),#3b82f6);color:#fff;box-shadow:0 12px 24px rgba(29,78,216,.22);letter-spacing:0;font-size:15px;margin:0;border-radius:14px}
+body.lt-shell .go:hover{box-shadow:0 16px 30px rgba(29,78,216,.28)}
+body.lt-shell .go .spin{border-color:rgba(255,255,255,.35);border-top-color:#fff}
+
+.ss-results{min-width:0}
+.ss-empty{text-align:center;padding:48px 28px;display:flex;flex-direction:column;align-items:center;gap:10px;border-style:dashed!important}
+.ss-empty-icon{font-size:34px}
+.ss-empty .note{max-width:440px;font-size:13px;line-height:1.6}
+.ss-results .posts-columns,.ss-saved .posts-columns{grid-template-columns:1fr;gap:18px}
+.ss-results .posts-grid,.ss-saved .posts-grid{grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px}
+.ss-results .pcard{max-width:640px}
+body.lt-shell .nc h4{color:var(--lt-ink)}
+body.lt-shell .nc p{color:#625846}
+body.lt-shell .sec{letter-spacing:.09em;color:#6a624f;font-size:11px;font-weight:800}
+body.lt-shell .sec::after{background:var(--lt-border)}
+body.lt-shell .pcard{border-radius:18px}
+body.lt-shell .ab{font-size:12px;color:var(--lt-ink-soft)}
+body.lt-shell .ab.p{background:linear-gradient(135deg,var(--lt-blue),#3b82f6);color:#fff;box-shadow:none}
+body.lt-shell .toast{background:var(--lt-ink);color:#fff}
+.ss-saved{margin-top:22px}
+.ss-saved summary{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.ss-saved[open] summary{margin-bottom:12px}
+body.lt-shell .saved-filters{background:var(--lt-surface-2);border-color:var(--lt-border)}
+body.lt-shell .saved-filters .filter-input,body.lt-shell .saved-filters .filter-select{background:var(--lt-surface);border-color:var(--lt-border);color:var(--lt-ink-soft)}
+
+@media(max-width:980px){
+  .ss-layout{grid-template-columns:1fr}
+  .ss-form{position:static}
+}
+@media(max-width:520px){
+  body.lt-shell .wrap{padding:0 14px 60px}
+  .ss-more-grid{grid-template-columns:1fr}
+  .ss-results .posts-grid,.ss-saved .posts-grid{grid-template-columns:1fr!important}
+  .ss-form{padding:18px}
+}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.pcard{opacity:1!important;transform:none!important}}
 </style>
 </head>
 <body class="lt-shell">
 <div class="wrap">
 
-<header>
+<header class="ss-header">
   <div class="hlogo"><img src="./midas-logo.png" alt="Midas Tech"></div>
   <div class="hcopy">
-    <strong>LeadTracker Social Studio</strong>
-    <span>Create campaign-ready posts that feel native to the LeadTracker workspace.</span>
-    <div style="font:600 12px Inter,sans-serif;color:rgba(0,174,239,0.9);margin-top:4px;letter-spacing:0.02em;">📞 905-787-2038&nbsp;&nbsp;|&nbsp;&nbsp;🌐 midastech.ca&nbsp;&nbsp;|&nbsp;&nbsp;✉️ info@midastech.ca</div>
+    <strong>Social Studio</strong>
+    <span>Write a quick one-off post with AI. Monthly campaigns live in <a href="./index.html">Social Posts → Topics</a>.</span>
   </div>
   <div class="header-actions">
-    <div class="htag">LeadTracker Connected</div>
+    <button class="nav-btn" type="button" id="settingsToggle" aria-expanded="false" aria-controls="settingsPanel">⚙ Settings</button>
     <a class="nav-btn" href="./index.html">← Back to LeadTracker</a>
   </div>
 </header>
@@ -444,191 +523,209 @@ body.lt-shell .toast{
     <strong id="draftBannerTitle">Lead context ready</strong>
     <span id="draftBannerMeta">Open from LeadTracker to prefill topic, audience, and campaign direction.</span>
   </div>
-  <a class="nav-btn" href="./index.html">Open Dashboard</a>
 </div>
 
-<!-- API + Model -->
-<div class="panel">
-  <div class="lbl">🔑 1min.ai API Key</div>
+<!-- Settings: API key + model (set once) -->
+<div class="panel ss-settings" id="settingsPanel" hidden>
+  <div class="ss-settings-head">
+    <div>
+      <div class="ss-h2">Settings</div>
+      <p class="note">You only need to set these once.</p>
+    </div>
+    <button class="mini-link" type="button" id="settingsClose">Close</button>
+  </div>
+  <label class="lbl" for="apiKey">1min.ai API key</label>
   <input type="password" id="apiKey" placeholder="Paste your 1min.ai API key...">
   <div class="mini-row">
     <label class="mini-check"><input type="checkbox" id="rememberApiKey" checked> Save to database</label>
     <button class="mini-link" type="button" onclick="clearSavedApiKey()">Clear saved key</button>
   </div>
-  <div class="lbl lbl-t">🤖 AI Model</div>
+  <div class="lbl lbl-t">AI model</div>
   <div class="chips" id="modelChips">
-    <div class="chip on" data-model="gpt-4o-mini">GPT-4o Mini ⚡ Fast</div>
-    <div class="chip" data-model="gpt-4o">GPT-4o 🧠 Smarter</div>
-    <div class="chip" data-model="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet ✨</div>
-    <div class="chip" data-model="gemini-1.5-flash">Gemini 1.5 Flash 🔮</div>
+    <div class="chip on" data-model="gpt-4o-mini">GPT-4o Mini (fast)</div>
+    <div class="chip" data-model="gpt-4o">GPT-4o (smarter)</div>
+    <div class="chip" data-model="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</div>
+    <div class="chip" data-model="gemini-1.5-flash">Gemini 1.5 Flash</div>
   </div>
-  <p class="note">🔒 Convenience mode stores the key only in this browser on this device. For true security, use a backend proxy and keep the key server-side.</p>
+  <p class="note">Each post you generate uses 1min.ai credits.</p>
 </div>
 
-<!-- Topic Source Toggle -->
-<div class="panel">
-  <div class="lbl">📌 Post Topic Source</div>
-  <div class="mode-row">
-    <div class="mode-btn on" id="modeAuto" onclick="setMode('auto')">🔍 Auto — Search Latest News</div>
-    <div class="mode-btn" id="modeManual" onclick="setMode('manual')">✏️ Manual — I'll Type the Topic</div>
-  </div>
+<div class="ss-layout">
+  <!-- Form -->
+  <section class="panel ss-form" aria-label="Create a post">
+    <div class="ss-step">
+      <div class="ss-step-head"><span class="ss-num">1</span><span class="ss-h2">What's the post about?</span></div>
+      <div class="mode-row" role="tablist">
+        <div class="mode-btn on" id="modeManual" role="tab" tabindex="0" onclick="setMode('manual')">✏️ I'll type a topic</div>
+        <div class="mode-btn" id="modeAuto" role="tab" tabindex="0" onclick="setMode('auto')">📰 Use latest news</div>
+      </div>
 
-  <!-- Auto mode -->
-  <div class="mode-section on" id="sectionAuto">
-    <div class="lbl">📡 News Topics (pick any)</div>
-    <div class="topic-dropdown">
-      <button class="topic-dropdown-toggle" id="topicDropdownToggle" type="button" aria-expanded="true">
-        <span class="topic-dropdown-copy">
-          <span>Choose topics</span>
-          <span class="topic-dropdown-meta" id="topicDropdownMeta">Loading topic groups...</span>
-        </span>
-        <span class="topic-dropdown-caret">▾</span>
-      </button>
-      <div class="topic-dropdown-panel on" id="topicDropdownPanel">
-        <div class="topic-search-row">
-          <input id="topicSearch" class="topic-search" type="search" placeholder="Search topics, like MFA, ransomware, law firms, or CTA...">
+      <div class="mode-section on" id="sectionManual">
+        <textarea id="manualTopic" rows="3" placeholder="e.g. Why accounting firms need MFA before tax season"></textarea>
+        <p class="field-hint">Be specific: name the industry, the threat, or the one message you want to get across.</p>
+      </div>
+
+      <div class="mode-section" id="sectionAuto">
+        <p class="field-hint" style="margin:0 0 10px">We'll search recent news on the topics you pick and write about the most relevant story.</p>
+        <div class="topic-dropdown">
+          <button class="topic-dropdown-toggle" id="topicDropdownToggle" type="button" aria-expanded="false">
+            <span class="topic-dropdown-copy">
+              <span>Choose news topics</span>
+              <span class="topic-dropdown-meta" id="topicDropdownMeta">Loading topic groups...</span>
+            </span>
+            <span class="topic-dropdown-caret">▾</span>
+          </button>
+          <div class="topic-dropdown-panel" id="topicDropdownPanel" hidden>
+            <div class="topic-search-row">
+              <input id="topicSearch" class="topic-search" type="search" placeholder="Search topics, like MFA, ransomware or law firms">
+            </div>
+            <div id="topicPills"></div>
+          </div>
         </div>
-        <div id="topicPills"></div>
+      </div>
+    </div>
+
+    <div class="ss-step">
+      <div class="ss-step-head"><span class="ss-num">2</span><span class="ss-h2">Who's it for?</span></div>
+      <div class="chips ss-industry" id="industryChips">
+        <div class="chip on" data-industry="general" data-audience="business_owners" tabindex="0">All businesses</div>
+        <div class="chip" data-industry="healthcare" data-audience="healthcare" tabindex="0">🏥 Healthcare</div>
+        <div class="chip" data-industry="accounting" data-audience="accounting" tabindex="0">📊 Accounting</div>
+        <div class="chip" data-industry="warehouses" data-audience="warehouses" tabindex="0">📦 Warehouses</div>
+      </div>
+    </div>
+
+    <div class="ss-step">
+      <div class="ss-step-head"><span class="ss-num">3</span><span class="ss-h2">How should it sound?</span></div>
+      <select id="postTone" aria-label="Post tone">
+        <option value="educational_urgent">Educational and urgent (best for leads)</option>
+        <option value="casual">Casual and friendly</option>
+        <option value="expert">Expert authority</option>
+        <option value="tips">Practical tips</option>
+        <option value="fear">What's at stake</option>
+      </select>
+    </div>
+
+    <details class="ss-more" id="moreOptions">
+      <summary>More options</summary>
+      <div class="ss-more-grid">
+        <label class="ss-field">Posts per platform
+          <select id="postCount">
+            <option value="1" selected>1 each (3 posts)</option>
+            <option value="2">2 each (6 posts)</option>
+          </select>
+        </label>
+        <label class="ss-field">Google post type
+          <select id="googlePostType">
+            <option value="standard" selected>Standard</option>
+            <option value="offer">Offer</option>
+          </select>
+        </label>
+        <label class="ss-field">Industry
+          <select id="industryFocus">
+            <option value="general" selected>General Ontario businesses</option>
+            <option value="accounting">Accounting firms and CPAs</option>
+            <option value="healthcare">Healthcare clinics</option>
+            <option value="warehouses">Warehouses and logistics</option>
+            <option value="law">Law firms</option>
+            <option value="dental">Dental clinics</option>
+            <option value="finance">Finance and bookkeeping</option>
+            <option value="retail">Retail and eCommerce</option>
+          </select>
+        </label>
+        <label class="ss-field">Audience
+          <select id="targetAudience">
+            <option value="business_owners" selected>Business owners and decision makers</option>
+            <option value="healthcare">Healthcare clinics and medical teams</option>
+            <option value="accounting">Accounting and finance firms</option>
+            <option value="operations">Operations and office managers</option>
+            <option value="warehouses">Warehouses and logistics teams</option>
+          </select>
+        </label>
+        <label class="ss-field ss-wide">Brand voice
+          <select id="brandVoice">
+            <option value="premium" selected>Trusted advisor</option>
+            <option value="friendly">Friendly local expert</option>
+            <option value="direct">Direct and straightforward</option>
+            <option value="thought_leader">Executive thought leadership</option>
+          </select>
+        </label>
+      </div>
+    </details>
+
+    <button class="go" id="genBtn" onclick="run()">✨ Write my posts</button>
+    <p class="field-hint ss-center">Writes one post each for Instagram, LinkedIn and Google.</p>
+  </section>
+
+  <!-- Results -->
+  <section class="ss-results" id="ssResults" aria-live="polite">
+    <div class="err" id="errBox"></div>
+    <div class="status" id="statusBar">
+      <div class="dot"></div>
+      <div class="stxt" id="stxt">Working...</div>
+      <div class="sstep" id="sstep">1/3</div>
+    </div>
+
+    <div class="panel ss-empty" id="ssEmpty">
+      <div class="ss-empty-icon">✨</div>
+      <div class="ss-h2">Your posts will appear here</div>
+      <p class="note">Pick a topic and click <b>Write my posts</b>. Then copy a post, or click <b>Save</b> to send it to <b>Social Posts → Drafts</b>, where you can schedule it.</p>
+    </div>
+
+    <div class="nsec" id="newsSec">
+      <div class="sec">Source</div>
+      <div id="newsCont"></div>
+    </div>
+
+    <div class="psec" id="postsSec">
+      <div class="sec">Your posts</div>
+      <div class="posts-columns">
+        <div class="platform-column">
+          <div class="sec sub">📸 Instagram</div>
+          <div class="posts-grid" id="postsGridIG"></div>
+        </div>
+        <div class="platform-column">
+          <div class="sec sub">💼 LinkedIn</div>
+          <div class="posts-grid" id="postsGridLI"></div>
+        </div>
+        <div class="platform-column">
+          <div class="sec sub">🌐 Google</div>
+          <div class="posts-grid" id="postsGridGO"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+</div>
+
+<details class="panel ss-saved">
+  <summary><span class="ss-h2">Saved posts</span> <span class="note">Also listed in Social Posts → Drafts</span></summary>
+  <div class="psec" id="savedPostsSec">
+    <div class="saved-filters">
+      <input id="savedPostsSearch" class="filter-input" type="search" placeholder="Search headline, notes, caption, hashtags...">
+      <select id="savedPostsPlatformFilter" class="filter-select">
+        <option value="all" selected>All platforms</option>
+        <option value="instagram">Instagram</option>
+        <option value="linkedin">LinkedIn</option>
+        <option value="google">Google</option>
+      </select>
+      <button type="button" class="filter-chip" id="savedPostsClearFilters">Clear filters</button>
+    </div>
+    <div class="posts-columns">
+      <div class="platform-column">
+        <div class="sec sub">📸 Instagram</div>
+        <div class="posts-grid" id="savedPostsGridIG"></div>
+      </div>
+      <div class="platform-column">
+        <div class="sec sub">💼 LinkedIn</div>
+        <div class="posts-grid" id="savedPostsGridLI"></div>
+      </div>
+      <div class="platform-column">
+        <div class="sec sub">🌐 Google</div>
+        <div class="posts-grid" id="savedPostsGridGO"></div>
       </div>
     </div>
   </div>
-
-  <!-- Manual mode -->
-  <div class="mode-section" id="sectionManual">
-    <div class="lbl">✏️ Your Post Topic</div>
-    <textarea id="manualTopic" rows="3" placeholder="Example: The importance of MFA for accounting firms&#10;Or: Recent ransomware attack on Ontario healthcare clinic&#10;Or: 5 ways to protect your business from phishing emails"></textarea>
-    <p class="note" style="margin-top:8px">💡 Be specific — mention the industry, threat type, or message you want to convey.</p>
-  </div>
-</div>
-
-<!-- Tone + Count -->
-<div class="g2">
-  <div class="panel" style="margin-bottom:0">
-    <div class="lbl">🎯 Post Tone</div>
-    <select id="postTone">
-      <option value="educational_urgent">🚨 Educational + Urgent (Best for leads)</option>
-      <option value="expert">🎯 Expert Authority</option>
-      <option value="casual">😊 Casual & Friendly</option>
-      <option value="fear">⚠️ Consequences Focus</option>
-      <option value="tips">💡 Practical Tips / Infographic</option>
-    </select>
-  </div>
-  <div class="panel" style="margin-bottom:0">
-    <div class="lbl">🌐 Google Post Type</div>
-    <select id="googlePostType">
-      <option value="standard" selected>Standard Post</option>
-      <option value="offer">Offer Post</option>
-    </select>
-    <p class="field-hint">Standard posts focus on risk, education, and authority. Offer posts feel time-sensitive and lead-gen focused.</p>
-  </div>
-</div>
-
-<div class="g2">
-  <div class="panel" style="margin-bottom:0">
-    <div class="lbl">📸 Posts Per Platform</div>
-    <select id="postCount">
-      <option value="1" selected>1 per platform (3 total)</option>
-      <option value="2">2 per platform (6 total)</option>
-    </select>
-  </div>
-</div>
-
-<div class="g2">
-  <div class="panel" style="margin-bottom:0">
-    <div class="lbl">👥 Target Audience</div>
-    <select id="targetAudience">
-      <option value="business_owners" selected>Business Owners & Decision Makers</option>
-      <option value="healthcare">Healthcare Clinics & Medical Teams</option>
-      <option value="accounting">Accounting & Finance Firms</option>
-      <option value="operations">Operations & Office Managers</option>
-      <option value="warehouses">Warehouses & Logistics Teams</option>
-    </select>
-  </div>
-  <div class="panel" style="margin-bottom:0">
-    <div class="lbl">🗣️ Brand Voice</div>
-    <select id="brandVoice">
-      <option value="premium" selected>Premium Trusted Advisor</option>
-      <option value="direct">Direct & Straightforward</option>
-      <option value="thought_leader">Executive Thought Leadership</option>
-      <option value="friendly">Friendly Local Expert</option>
-    </select>
-  </div>
-</div>
-
-<div class="panel">
-  <div class="lbl">🏷️ Industry Focus</div>
-  <select id="industryFocus">
-    <option value="general" selected>General Ontario SMBs</option>
-    <option value="accounting">Accounting Firms & CPAs</option>
-    <option value="healthcare">Healthcare Clinics & Medical Teams</option>
-    <option value="warehouses">Warehouses & Logistics Teams</option>
-    <option value="law">Law Firms & Legal Practices</option>
-    <option value="dental">Dental Clinics & Dental Offices</option>
-    <option value="finance">Finance & Bookkeeping Firms</option>
-    <option value="retail">Retail & eCommerce Businesses</option>
-  </select>
-  <p class="field-hint">Pick the vertical you want the post to speak to. This changes the hook, pain points, and visual direction.</p>
-</div>
-
-<button class="go" id="genBtn" onclick="run()">⚡ GENERATE CONTENT</button>
-
-<div class="err" id="errBox"></div>
-<div class="status" id="statusBar">
-  <div class="dot"></div>
-  <div class="stxt" id="stxt">Working...</div>
-  <div class="sstep" id="sstep">1/3</div>
-</div>
-
-<div class="nsec" id="newsSec">
-  <div class="sec">📡 Source Material</div>
-  <div id="newsCont"></div>
-</div>
-
-<div class="psec" id="postsSec">
-  <div class="sec">📝 Draft Posts</div>
-  <div class="posts-columns">
-    <div class="platform-column">
-      <div class="sec sub">📸 Instagram</div>
-      <div class="posts-grid" id="postsGridIG"></div>
-    </div>
-    <div class="platform-column">
-      <div class="sec sub">💼 LinkedIn</div>
-      <div class="posts-grid" id="postsGridLI"></div>
-    </div>
-    <div class="platform-column">
-      <div class="sec sub">🌐 Google Posts</div>
-      <div class="posts-grid" id="postsGridGO"></div>
-    </div>
-  </div>
-</div>
-
-<div class="psec" id="savedPostsSec">
-  <div class="sec">💾 Saved Posts</div>
-  <div class="saved-filters">
-    <input id="savedPostsSearch" class="filter-input" type="search" placeholder="Search headline, notes, caption, hashtags...">
-    <select id="savedPostsPlatformFilter" class="filter-select">
-      <option value="all" selected>All Platforms</option>
-      <option value="instagram">Instagram Only</option>
-      <option value="linkedin">LinkedIn Only</option>
-      <option value="google">Google Posts Only</option>
-    </select>
-    <button type="button" class="filter-chip" id="savedPostsClearFilters">Clear Filters</button>
-  </div>
-  <div class="posts-columns">
-    <div class="platform-column">
-      <div class="sec sub">📸 Instagram</div>
-      <div class="posts-grid" id="savedPostsGridIG"></div>
-    </div>
-    <div class="platform-column">
-      <div class="sec sub">💼 LinkedIn</div>
-      <div class="posts-grid" id="savedPostsGridLI"></div>
-    </div>
-    <div class="platform-column">
-      <div class="sec sub">🌐 Google Posts</div>
-      <div class="posts-grid" id="savedPostsGridGO"></div>
-    </div>
-  </div>
-</div>
+</details>
 
 </div><!-- wrap -->
 <div class="toast" id="toast"></div>
@@ -672,7 +769,7 @@ const LEADTRACKER_SUPABASE = {
 let leadTrackerSupabase = null;
 // ── Logos ─────────────────────────────────────────────────────────────────\r\nconst LOGO_SRC = './midas-logo.png';\r\nconst logoDark = new Image(); logoDark.src = LOGO_SRC;\r\nconst logoLight = new Image(); logoLight.src = LOGO_SRC;\r\n
 // ── Mode toggle ──────────────────────────────────────────────────────────────
-let currentMode = 'auto';
+let currentMode = 'manual';
 function setMode(m) {
   currentMode = m;
   document.getElementById('modeAuto').classList.toggle('on', m==='auto');
@@ -825,7 +922,7 @@ function renderTopicPills(filterText = '') {
 }
 
 renderTopicPills();
-setTopicDropdownOpen(true);
+setTopicDropdownOpen(false);
 document.getElementById('topicPills')?.addEventListener('click', (ev) => {
   const chip = ev.target.closest('.chip');
   if (!chip) return;
@@ -2656,6 +2753,7 @@ function applyLeadTrackerPrefill() {
   const company = params.get('company');
   const draft = params.get('draft');
 
+  if (mode === 'auto' && !topic) setMode('auto');
   if (mode === 'manual' || topic) {
     setMode('manual');
     const manualInput = document.getElementById('manualTopic');
@@ -2680,11 +2778,6 @@ function applyLeadTrackerPrefill() {
     showLeadTrackerBanner(
       `Saved draft ${draft} opened`,
       'You launched the studio from a LeadTracker draft. Review the details and generate fresh variants.'
-    );
-  } else {
-    showLeadTrackerBanner(
-      'LeadTracker Social Studio ready',
-      'Use this workspace to turn lead insights into campaign-ready LinkedIn and Instagram content.'
     );
   }
 }
@@ -3457,7 +3550,7 @@ async function run(){
 
   const btn=document.getElementById('genBtn');
   btn.disabled=true;
-  btn.innerHTML='<div class="spin"></div>&nbsp; '+( useWebSearch?'SEARCHING NEWS...':'WRITING CONTENT...');
+  btn.innerHTML='<div class="spin"></div>&nbsp; '+( useWebSearch?'Searching the news…':'Writing your posts…');
 
     document.getElementById('newsSec').classList.remove('on');
     document.getElementById('postsSec').classList.remove('on');
@@ -4078,7 +4171,7 @@ Final Output Check:
     showErr(err.message+'<br><small>Check your 1min.ai key and credit balance.</small>');
   }
   btn.disabled=false;
-  btn.innerHTML='⚡ GENERATE CONTENT';
+  btn.innerHTML='✨ Write my posts';
 }
 
 function getCard(i){return document.querySelectorAll('.pcard')[i]}
@@ -4975,6 +5068,41 @@ async function saveToLeadTracker(i){
     showErr(`Could not save to Lead Tracker.<br><small>${err.message||err}</small>`);
   }
 }
+
+// ── Layout helpers: settings drawer, audience buttons, empty results state ──
+(function initStudioLayout() {
+  const panel = document.getElementById('settingsPanel');
+  const toggle = document.getElementById('settingsToggle');
+  const setSettings = open => { if (!panel) return; panel.hidden = !open; toggle?.setAttribute('aria-expanded', String(open)); if (open) document.getElementById('apiKey')?.focus(); };
+  toggle?.addEventListener('click', () => setSettings(panel.hidden));
+  document.getElementById('settingsClose')?.addEventListener('click', () => setSettings(false));
+
+  // Audience buttons set both the industry and the audience dropdowns under More options.
+  const chips = [...document.querySelectorAll('#industryChips .chip')];
+  const industry = document.getElementById('industryFocus'), audience = document.getElementById('targetAudience');
+  const syncChips = () => chips.forEach(c => c.classList.toggle('on', c.dataset.industry === industry?.value));
+  const pick = c => { if (industry) industry.value = c.dataset.industry; if (audience) audience.value = c.dataset.audience; syncChips(); };
+  chips.forEach(c => {
+    c.setAttribute('role', 'button');
+    c.addEventListener('click', () => pick(c));
+    c.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); pick(c); } });
+  });
+  industry?.addEventListener('change', syncChips);
+  syncChips();
+
+  document.querySelectorAll('.mode-btn').forEach(b => b.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); b.click(); } }));
+
+  // Hide the "posts will appear here" card once anything shows in the results column.
+  const empty = document.getElementById('ssEmpty');
+  const watched = ['postsSec', 'newsSec', 'statusBar', 'errBox'].map(id => document.getElementById(id)).filter(Boolean);
+  const update = () => { if (empty) empty.hidden = watched.some(el => el.classList.contains('on')); };
+  const obs = new MutationObserver(() => {
+    const wasHidden = empty?.hidden; update();
+    if (empty && !wasHidden && empty.hidden && window.innerWidth < 980) document.getElementById('ssResults')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  watched.forEach(el => obs.observe(el, { attributes: true, attributeFilter: ['class'] }));
+  update();
+})();
 </script>
 </body>
 </html>

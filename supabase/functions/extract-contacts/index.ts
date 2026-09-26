@@ -9,9 +9,11 @@
 // next to this file. Setup: docs/screenshot-reader-setup.md
 //
 // On Railway it also relays Social Studio's 1min.ai requests (POST /1min/chat-with-ai
-// and /1min/features), so the 1min.ai key (ONEMIN_API_KEY) stays on the server too.
+// and /1min/features), so the 1min.ai key (ONEMIN_API_KEY) stays on the server too,
+// and researches leads on the web (POST /research, see research.ts).
 import Anthropic from "npm:@anthropic-ai/sdk";
 import { createRemoteJWKSet, jwtVerify } from "npm:jose@5";
+import { type LeadInput, ResearchError, researchLead } from "./research.ts";
 
 const FIREBASE_PROJECT_ID = Deno.env.get("FIREBASE_PROJECT_ID") ?? "midas-leads-a8b13";
 const FIREBASE_JWKS = createRemoteJWKSet(new URL(
@@ -111,6 +113,38 @@ async function relayOneMin(req: Request, endpoint: string): Promise<Response> {
   }
 }
 
+async function handleResearch(req: Request): Promise<Response> {
+  let lead: LeadInput;
+  try {
+    lead = ((await req.json()) as { lead?: LeadInput }).lead ?? {};
+  } catch {
+    return json(req, 400, { error: "The request wasn't valid JSON." });
+  }
+  if (!String(lead.name ?? "").trim() && !String(lead.company ?? "").trim()) {
+    return json(req, 400, { error: "The lead needs a name or a company to research." });
+  }
+  try {
+    const { result, stats } = await researchLead(client, lead);
+    console.log("research done:", JSON.stringify({ company: lead.company, ...stats }));
+    return json(req, 200, { result, stats });
+  } catch (err) {
+    if (err instanceof ResearchError) return json(req, err.status, { error: err.message });
+    if (err instanceof Anthropic.RateLimitError) {
+      return json(req, 429, { error: "The research service is busy. Wait a minute and try again." });
+    }
+    if (err instanceof Anthropic.AuthenticationError || err instanceof Anthropic.PermissionDeniedError) {
+      console.error("Anthropic key problem:", err.message);
+      return json(req, 500, { error: "The research service's API key isn't working. Check ANTHROPIC_API_KEY on the server." });
+    }
+    if (err instanceof Anthropic.APIError) {
+      console.error("Anthropic API error:", err.status, err.message);
+      return json(req, 502, { error: "The research service had a problem. Try again in a moment." });
+    }
+    console.error("research failed:", err);
+    return json(req, 500, { error: "Something went wrong researching this lead." });
+  }
+}
+
 async function signedInUser(req: Request): Promise<string | null> {
   const token = req.headers.get("x-firebase-token");
   if (!token) return null;
@@ -137,8 +171,10 @@ Deno.serve(PORT ? { port: Number(PORT) } : {}, async (req) => {
     return json(req, 401, { error: "Sign in to the lead tracker again, then retry." });
   }
 
-  const oneMin = new URL(req.url).pathname.match(/^\/1min\/([a-z-]+)\/?$/);
+  const path = new URL(req.url).pathname;
+  const oneMin = path.match(/^\/1min\/([a-z-]+)\/?$/);
   if (oneMin) return relayOneMin(req, oneMin[1]);
+  if (/^\/research\/?$/.test(path)) return handleResearch(req);
 
   let body: { image?: string; mediaType?: string; company?: string; website?: string };
   try {

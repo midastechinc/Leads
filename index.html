@@ -3641,15 +3641,17 @@
         const slices = [];
         for (let y = 0; y < h; y += step) {
           const sh = Math.min(sliceH, h - y);
-          const scale = Math.min(1, SHOT_MAX_SIDE / Math.max(w, sh));
+          // Small screenshots are enlarged (up to 2x) so tiny text is easier to read.
+          const scale = Math.min(2, SHOT_MAX_SIDE / Math.max(w, sh));
           const canvas = document.createElement("canvas");
           canvas.width = Math.round(w * scale);
           canvas.height = Math.round(sh * scale);
           const ctx = canvas.getContext("2d");
+          ctx.imageSmoothingQuality = "high";
           ctx.fillStyle = "#fff";
           ctx.fillRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(img, 0, y, w, sh, 0, 0, canvas.width, canvas.height);
-          slices.push(canvas.toDataURL("image/jpeg", 0.85));
+          slices.push(canvas.toDataURL("image/jpeg", 0.92));
           if (y + sh >= h) break;
         }
         return slices;
@@ -3705,13 +3707,13 @@
         }
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || "Something went wrong reading the screenshot. Try again.");
-        return data.people || [];
+        return data;
       }
       const client = getLiClient();
       if (!client) throw new Error("The screenshot reader couldn't load. Refresh the page and try again.");
       const { data, error } = await client.functions.invoke("extract-contacts", { body, headers: { "x-firebase-token": token } });
       if (error) throw new Error(await shotErrorMessage(error));
-      return data?.people || [];
+      return data || {};
     }
 
     window.readScreenshot = async function () {
@@ -3730,7 +3732,8 @@
           callScreenshotReader({ image: dataUrl, mediaType: "image/jpeg", company, website }, token)));
         // Slices overlap, so the same person can appear twice. Merge them by email, then by name.
         const merged = [];
-        results.flat().forEach(p => {
+        shotState.problem = results.map(res => res.problem).filter(Boolean)[0] || "";
+        results.flatMap(res => res.people || []).forEach(p => {
           const email = String(p.email || "").toLowerCase(), name = norm(p.name || "");
           const same = merged.find(m => (email && String(m.email).toLowerCase() === email) || (name && norm(m.name) === name));
           if (!same) return merged.push({ ...p });
@@ -3784,7 +3787,8 @@
       if (!people.length) {
         box.innerHTML = "";
         document.getElementById("shotSaveBtn").hidden = true;
-        return setShotStatus("No people were found in that screenshot. Try one that shows names, emails or phone numbers.", true);
+        const why = shotState.problem ? ` ${shotState.problem.replace(/\.?$/, ".")}` : "";
+        return setShotStatus(`No people were found in that screenshot.${why} Tip: zoom the web page in (Ctrl +) before taking the screenshot, or crop it to the part with the people.`, true);
       }
       setShotStatus("");
       const field = (i, k, label) => `<input type="text" data-i="${i}" data-k="${k}" value="${esc(people[i][k] || "")}" placeholder="${label}" aria-label="${label}">`;

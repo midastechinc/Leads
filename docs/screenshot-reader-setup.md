@@ -11,7 +11,34 @@ The Anthropic API key stays on your Supabase server. The browser never sees it. 
 
 Until the function is deployed, the button shows: *"The screenshot reader isn't set up on the server yet."* The rest of the app still works.
 
-## One-time setup (self-hosted Supabase, Docker)
+You can run the reader in either of two places. Pick one:
+- **Railway (easiest).** Railway builds it straight from GitHub. There's no server to log in to.
+- **Your self-hosted Supabase server.** It runs next to your other Supabase services. You need SSH access.
+
+## Option A: Railway
+
+1. **Get an API key.** In the Claude Console (console.anthropic.com), go to **API keys** and create a key named `lead-tracker-screenshots`. Add a few dollars of credit under **Billing**.
+2. **Create the service.** Sign in at railway.com with GitHub. Click **New Project**, then **Deploy from GitHub repo**, and pick `midastechinc/Leads`. If the repo isn't listed, click **Configure GitHub App** and give Railway access to it.
+3. **Point it at the reader.** Open the new service and go to **Settings**:
+   - Set **Root Directory** to `/supabase/functions/extract-contacts`. Railway then finds the `Dockerfile` there.
+   - Set **Watch Paths** to `/supabase/functions/extract-contacts/**`, so changes to the rest of the app don't rebuild it.
+4. **Add the settings.** In the **Variables** tab, add:
+   ```
+   ANTHROPIC_API_KEY=sk-ant-...
+   FIREBASE_PROJECT_ID=midas-leads-a8b13
+   ALLOWED_ORIGINS=https://midastechinc.github.io
+   ```
+   Railway sets `PORT` itself, so don't add it.
+5. **Give it an address.** Under **Settings → Networking**, click **Generate Domain**. If it asks for a port, use `8080`. Wait for the deploy to show **Active**.
+6. **Check it.** Open the address in your browser. It should show `{"ok":true,"service":"extract-contacts"}`.
+7. **Connect the app.** In `index.html`, put the address in `SHOT_READER_URL`, for example `const SHOT_READER_URL = "https://extract-contacts-production.up.railway.app";`, and publish. You can also send the address to Claude and it will make the change.
+
+Railway charges for the resources the service uses. A small service like this sits within the Hobby plan's included usage; check railway.com/pricing for current prices. Claude API costs are separate, see **Cost** below.
+
+## Option B: self-hosted Supabase (Docker)
+
+Skip this section if you used Railway. Leave `SHOT_READER_URL` empty in `index.html`, and the app will call the Supabase function.
+
 
 These steps assume the standard `supabase/docker` setup on the server behind `supabase.midastech.support`.
 

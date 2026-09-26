@@ -3568,6 +3568,9 @@
     // ── ADD PEOPLE FROM A SCREENSHOT ───────────────────────────────
     // The image goes to the extract-contacts Supabase Edge Function (supabase/functions/extract-contacts),
     // which asks Claude to list the people in it. Nothing is saved until the rep reviews the list.
+    // Address of the reader when it runs as its own service (Railway), e.g. "https://extract-contacts-production.up.railway.app".
+    // Leave empty to use the extract-contacts function on the Supabase server.
+    const SHOT_READER_URL = "";
     const SHOT_MAX_SIDE = 1568;   // Claude reads images up to about this size without downscaling
     const SHOT_MAX_SLICES = 4;    // long team pages are cut into pieces so the text stays readable
     let shotState = { slices: [], people: [], previewUrl: "" };
@@ -3688,6 +3691,29 @@
       return "Something went wrong reading the screenshot. Try again.";
     }
 
+    async function callScreenshotReader(body, token) {
+      if (SHOT_READER_URL) {
+        let res;
+        try {
+          res = await fetch(SHOT_READER_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "x-firebase-token": token },
+            body: JSON.stringify(body)
+          });
+        } catch {
+          throw new Error("Couldn't reach the screenshot reader. Check your connection and try again.");
+        }
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || "Something went wrong reading the screenshot. Try again.");
+        return data.people || [];
+      }
+      const client = getLiClient();
+      if (!client) throw new Error("The screenshot reader couldn't load. Refresh the page and try again.");
+      const { data, error } = await client.functions.invoke("extract-contacts", { body, headers: { "x-firebase-token": token } });
+      if (error) throw new Error(await shotErrorMessage(error));
+      return data?.people || [];
+    }
+
     window.readScreenshot = async function () {
       if (!shotState.slices.length) return;
       const btn = document.getElementById("shotReadBtn");
@@ -3696,20 +3722,12 @@
         ? `Reading ${shotState.slices.length} parts of a long screenshot… this can take up to a minute.`
         : "Reading the screenshot… this usually takes 10–30 seconds.");
       try {
-        const client = getLiClient();
-        if (!client) throw new Error("The screenshot reader couldn't load. Refresh the page and try again.");
         if (!auth.currentUser) throw new Error("Sign in again, then retry.");
         const token = await auth.currentUser.getIdToken();
         const company = document.getElementById("shotCompany").value.trim();
         const website = document.getElementById("shotWebsite").value.trim();
-        const results = await Promise.all(shotState.slices.map(async dataUrl => {
-          const { data, error } = await client.functions.invoke("extract-contacts", {
-            body: { image: dataUrl, mediaType: "image/jpeg", company, website },
-            headers: { "x-firebase-token": token }
-          });
-          if (error) throw new Error(await shotErrorMessage(error));
-          return data?.people || [];
-        }));
+        const results = await Promise.all(shotState.slices.map(dataUrl =>
+          callScreenshotReader({ image: dataUrl, mediaType: "image/jpeg", company, website }, token)));
         // Slices overlap, so the same person can appear twice. Merge them by email, then by name.
         const merged = [];
         results.flat().forEach(p => {

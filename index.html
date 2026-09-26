@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>Midas Tech — Lead Tracker</title>
   <script>
     if (window.location.protocol === "file:") {
@@ -1175,7 +1175,7 @@
     .admin-menu-list .btn { width: 100%; justify-content: flex-start; text-align: left; }
     .admin-menu-list #clearAllBtn { margin-top: 4px; }
 
-    @media (max-width: 700px) {
+    @media (max-width: 900px) {
       .metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; overflow: visible; }
       .metric-card { min-width: 0; padding: 10px 12px; }
       .metric-card .value { font-size: 22px; }
@@ -1183,7 +1183,7 @@
       .metric-card.active-filter .label::after { content: ""; }
       .metric-followup { grid-column: 1 / -1; }
       .toolbar { gap: 8px; }
-      .toolbar input[type="text"] { flex: 1 1 60%; width: auto; min-width: 0; }
+      .toolbar input[type="text"] { flex: 1 1 60%; width: auto; min-width: 0; max-width: none; }
       .toolbar .filters-toggle { display: inline-flex; width: auto; }
       .filters-extra { display: none; width: 100%; }
       .filters-extra.open { display: grid; gap: 8px; }
@@ -1246,7 +1246,7 @@
     .ld-extras summary span { color: var(--gray-400); font-weight: 600; }
     .lead-detail-modal #emailDraftsSection .extras-heading { margin-top: 18px; }
     .lead-detail-modal .ld-action:focus-visible, .lead-detail-modal .ld-extras summary:focus-visible, .ld-close:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
-    @media (max-width: 640px) {
+    @media (max-width: 900px) {
       #detailModal.modal-overlay { padding: 0; align-items: flex-end; }
       .lead-detail-modal { max-width: none; max-height: 94vh; border-radius: 22px 22px 0 0; padding: 20px 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
       .ld-list > div { grid-template-columns: 1fr; gap: 2px; }
@@ -1254,19 +1254,71 @@
       .lead-detail-modal .modal-actions { position: sticky; bottom: -16px; background: var(--surface); padding: 12px 0 4px; margin-top: 12px; }
       .lead-detail-modal .modal-actions .btn { flex: 1; }
     }
+
+    /* ── Phones: bottom tab bar, compact header, no zoom on inputs, sheet-style pop-ups ── */
+    .vt-ico { margin-right: 6px; }
+    @media (max-width: 1200px) { .h1-brand { display: none; } .view-tab { white-space: nowrap; } }
+    @media (max-width: 900px) {
+      body { padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px)); }
+      /* backdrop-filter would make the header the containing block for the fixed tab bar */
+      header { backdrop-filter: none; -webkit-backdrop-filter: none; flex-wrap: nowrap; align-items: center; gap: 10px; padding: calc(10px + env(safe-area-inset-top, 0px)) 14px 10px; min-height: 0; }
+      header h1 { font-size: 14px; letter-spacing: 0.03em; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .h1-brand { display: none; }
+      .header-right { width: auto; flex: none; }
+      .user-badge { width: auto !important; padding: 4px 6px; gap: 6px; }
+      .user-badge strong { max-width: 72px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .user-badge button { padding: 5px 9px; }
+      .view-tabs {
+        position: fixed; left: 0; right: 0; bottom: 0; z-index: 300; width: auto !important;
+        display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px;
+        padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px)); border-radius: 0; border: none;
+        border-top: 1px solid rgba(255,255,255,0.1);
+        background: linear-gradient(180deg, rgba(35,31,25,0.98), rgba(24,21,17,0.99));
+        box-shadow: 0 -8px 24px rgba(0,0,0,0.18);
+      }
+      .view-tab { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 7px 2px; border-radius: 12px; font-size: 11px; line-height: 1.1; min-height: 52px; text-align: center; }
+      .vt-ico { margin: 0; font-size: 18px; line-height: 1; }
+      .toast { bottom: calc(80px + env(safe-area-inset-bottom, 0px)); left: 16px; right: 16px; max-width: none; }
+
+      /* Stop iPhones zooming in when a field is tapped */
+      input, select, textarea { font-size: 16px !important; }
+
+      /* My Workspace already has its own counters */
+      body[data-view="workspace"] #metricsBar { display: none !important; }
+      .ws-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; width: 100%; }
+      .ws-stat { min-width: 0; padding: 10px 6px; border-radius: 14px; }
+      .ws-stat .n { font-size: 20px; }
+      .ws-stat .l { font-size: 9px; letter-spacing: 0.04em; }
+
+      /* Social Posts tabs share the width */
+      .sp-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); width: 100%; }
+      .sp-tab { padding: 8px 4px; font-size: 12px; }
+
+      /* LinkedIn */
+      .li-admin-bar { flex-direction: column; align-items: stretch; padding: 14px 16px; }
+      .li-admin-bar .btn-linkedin-ghost { width: 100%; }
+      .li-stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); overflow: visible; }
+      .li-stat { min-width: 0; }
+
+      /* Pop-ups open as sheets from the bottom, with their buttons always visible */
+      .modal-overlay { padding: 0; align-items: flex-end; }
+      .modal-overlay .modal { max-width: none; width: 100%; max-height: 92vh; border-radius: 22px 22px 0 0; padding: 20px 16px calc(16px + env(safe-area-inset-bottom, 0px)); }
+      .modal-overlay .modal-actions { position: sticky; bottom: calc(-16px - env(safe-area-inset-bottom, 0px)); z-index: 2; background: var(--surface); margin: 14px -16px 0; padding: 12px 16px calc(8px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--border); }
+      .modal-overlay .modal-actions .btn { flex: 1; }
+    }
 </style>
 </head>
-<body>
+<body data-view="admin">
 
   <!-- ══ Header ══ -->
   <header>
-    <h1>Midas Tech &mdash; Lead Tracker</h1>
+    <h1><span class="h1-brand">Midas Tech &mdash; </span>Lead Tracker</h1>
     <div class="header-right">
       <div class="view-tabs">
-        <button class="view-tab active" onclick="switchView('admin')">All Leads</button>
-        <button class="view-tab" onclick="switchView('workspace')">My Workspace</button>
-        <button class="view-tab" id="linkedinTab" onclick="switchView('linkedin')">🔗 LinkedIn</button>
-        <button class="view-tab" onclick="switchView('social')">📣 Social Posts</button>
+        <button class="view-tab active" onclick="switchView('admin')"><span class="vt-ico" aria-hidden="true">👥</span><span class="vt-label">All Leads</span></button>
+        <button class="view-tab" onclick="switchView('workspace')"><span class="vt-ico" aria-hidden="true">🗂️</span><span class="vt-label">My Workspace</span></button>
+        <button class="view-tab" id="linkedinTab" onclick="switchView('linkedin')"><span class="vt-ico" aria-hidden="true">🔗</span><span class="vt-label">LinkedIn</span></button>
+        <button class="view-tab" onclick="switchView('social')"><span class="vt-ico" aria-hidden="true">📣</span><span class="vt-label">Social Posts</span></button>
       </div>
       <div class="user-badge">
         <strong id="userDisplay">—</strong>
@@ -2602,6 +2654,7 @@
     // ── VIEW SWITCH ────────────────────────────────────────────────
     window.switchView = function (v) {
       activeView = v;
+      document.body.dataset.view = v;
       document.querySelectorAll(".view").forEach(el => el.classList.remove("active"));
       document.querySelectorAll(".view-tab").forEach(el => el.classList.remove("active"));
       document.getElementById(`view-${v}`).classList.add("active");

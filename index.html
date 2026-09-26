@@ -4197,11 +4197,34 @@
       rsState.notes = String(result.notes || "").trim();
       const groupKey = getCompanyGroupKey(l.company || "");
       const known = Object.values(allLeads);
-      rsState.people = (result.other_people || []).filter(p => String(p.name || "").trim()).map(p => {
-        const email = String(p.email || "").toLowerCase();
-        const dupe = known.some(k => (email && String(k.email || "").toLowerCase().includes(email)) ||
-          (norm(k.name || "") === norm(p.name) && getCompanyGroupKey(k.company || "") === groupKey));
-        return { ...p, dupe, selected: false };
+      // Each person found is either new (added as a contact) or already in the tracker, in which case
+      // the details research found are filled into their record where it's missing them.
+      const selfEmail = splitEmail(cleanEmail(l.email)).address;
+      rsState.people = (result.other_people || []).filter(p => String(p.name || "").trim())
+        // The lead being researched sometimes shows up in its own "other people" list.
+        .filter(p => norm(p.name) !== norm(l.name || "") && !(selfEmail && String(p.email || "").trim().toLowerCase() === selfEmail))
+        .map(p => {
+        const email = String(p.email || "").trim().toLowerCase();
+        const match = known.find(k => k.id !== l.id && (
+          (email && String(k.email || "").toLowerCase().includes(email)) ||
+          (norm(k.name || "") === norm(p.name) && getCompanyGroupKey(k.company || "") === groupKey)));
+        if (!match) return { ...p, mode: "new", selected: true };
+        const have = {
+          email: splitEmail(cleanEmail(match.email)).address, phone: cleanPhone(match.phone),
+          title: String(match.title || "").trim(), linkedin: String(match.linkedin || "").trim()
+        };
+        // Missing details are filled in (ticked). Details that differ from the tracker are only
+        // replaced if the rep ticks them.
+        const fills = {}, replaces = {}, differs = [];
+        [["email", email], ["phone", String(p.phone || "").trim()], ["title", String(p.title || "").trim()], ["linkedin", String(p.linkedin || "").trim()]]
+          .forEach(([key, val]) => {
+            if (!val) return;
+            if (!have[key]) fills[key] = val;
+            else if (!rsSame(key, have[key], val)) { replaces[key] = val; differs.push(`${key === "linkedin" ? "LinkedIn" : key}: ${have[key]}`); }
+          });
+        const canEdit = canCurrentUserManageLeadAssignment(match);
+        const mode = !canEdit ? "same" : Object.keys(fills).length ? "update" : Object.keys(replaces).length ? "replace" : "same";
+        return { ...p, match, fills, replaces, differs, canEdit, mode, selected: mode === "update" };
       });
 
       const rowsHtml = rsState.rows.map((r, i) => `
@@ -4228,11 +4251,19 @@
       const peopleHtml = rsState.people.length ? `
         <div class="rs-h">Other people at ${esc(l.company || "this company")}</div>
         <div class="rs-list">
-          ${rsState.people.map((p, i) => `<label class="rs-item" style="cursor:${p.dupe ? "default" : "pointer"}">
-            ${p.dupe ? "<span>✓</span>" : `<input type="checkbox" data-rs-person="${i}">`}
-            <span><b>${esc(p.name)}</b>${p.title ? ` · ${esc(p.title)}` : ""}${p.dupe ? ` <span class="rs-tag">Already in the tracker</span>` : ""}
-              <div class="rs-meta">${[p.email, p.phone].filter(Boolean).map(esc).join(" · ")} ${rsSourceLink(p.source)}</div></span>
-          </label>`).join("")}
+          ${rsState.people.map((p, i) => {
+            const fillNames = Object.keys(p.fills || {}).map(k => k === "linkedin" ? "LinkedIn" : k);
+            const tag = p.mode === "new" ? `<span class="rs-tag">New contact</span>`
+              : p.mode === "update" ? `<span class="rs-tag">In the tracker · add ${esc(fillNames.join(", "))}</span>`
+              : p.mode === "replace" ? `<span class="rs-tag warn">In the tracker · tick to replace ${esc(Object.keys(p.replaces).map(k => k === "linkedin" ? "LinkedIn" : k).join(", "))}</span>`
+              : `<span class="rs-tag" style="background:rgba(100,116,139,0.10);color:var(--gray-500)">${p.match && !p.canEdit ? "In the tracker · assigned to another rep" : "Already in the tracker · nothing new"}</span>`;
+            return `<label class="rs-item" style="cursor:${p.mode === "same" ? "default" : "pointer"}">
+            ${p.mode === "same" ? "<span>✓</span>" : `<input type="checkbox" data-rs-person="${i}" ${p.selected ? "checked" : ""}>`}
+            <span><b>${esc(p.name)}</b>${p.title ? ` · ${esc(p.title)}` : ""} ${tag}
+              <div class="rs-meta">${[p.email, p.phone].filter(Boolean).map(esc).join(" · ")} ${rsSourceLink(p.source)}</div>
+              ${p.differs?.length ? `<div class="rs-meta">${p.mode === "replace" ? "Tracker now has" : "Kept, the tracker has a different"} ${esc(p.differs.join("; "))}</div>` : ""}</span>
+          </label>`;
+          }).join("")}
         </div>` : "";
 
       const nothing = !rsState.rows.length && !rsState.points.length && !rsState.people.length;
@@ -4245,10 +4276,22 @@
         <div class="rs-foot">Searched the web ${stats.searches || 0} time${stats.searches === 1 ? "" : "s"} and read ${stats.fetches || 0} page${stats.fetches === 1 ? "" : "s"}. Check the sources before you rely on anything here.</div>`;
 
       const body = document.getElementById("rsBody");
-      body.querySelectorAll("[data-rs-row]").forEach(cb => cb.addEventListener("change", () => { rsState.rows[cb.dataset.rsRow].selected = cb.checked; }));
+      body.querySelectorAll("[data-rs-row]").forEach(cb => cb.addEventListener("change", () => { rsState.rows[cb.dataset.rsRow].selected = cb.checked; updateResearchSaveBtn(); }));
       body.querySelectorAll("[data-rs-val]").forEach(inp => inp.addEventListener("input", () => { rsState.rows[inp.dataset.rsVal].val = inp.value; }));
-      body.querySelectorAll("[data-rs-person]").forEach(cb => cb.addEventListener("change", () => { rsState.people[cb.dataset.rsPerson].selected = cb.checked; }));
+      body.querySelectorAll("[data-rs-person]").forEach(cb => cb.addEventListener("change", () => { rsState.people[cb.dataset.rsPerson].selected = cb.checked; updateResearchSaveBtn(); }));
       document.getElementById("rsSaveBtn").hidden = nothing && !rsState.notes;
+      updateResearchSaveBtn();
+    }
+
+    function updateResearchSaveBtn() {
+      const fields = rsState.rows.filter(r => r.selected && !r.same).length;
+      const added = rsState.people.filter(p => p.selected && p.mode === "new").length;
+      const updated = rsState.people.filter(p => p.selected && (p.mode === "update" || p.mode === "replace")).length;
+      const parts = [];
+      if (fields) parts.push(`${fields} detail${fields === 1 ? "" : "s"}`);
+      if (added) parts.push(`${added} new ${added === 1 ? "contact" : "contacts"}`);
+      if (updated) parts.push(`${updated} contact update${updated === 1 ? "" : "s"}`);
+      document.getElementById("rsSaveBtn").textContent = parts.length ? `Save ${parts.join(" + ")}` : "Save research notes";
     }
 
     window.saveResearch = async function () {
@@ -4273,7 +4316,11 @@
       btn.disabled = true;
       try {
         await updateDoc(doc(db, "leads", l.id), update);
-        const chosen = rsState.people.filter(p => p.selected);
+        const chosen = rsState.people.filter(p => p.selected && p.mode === "new");
+        const updates = rsState.people.filter(p => p.selected && (p.mode === "update" || p.mode === "replace"));
+        for (const p of updates) {
+          await updateDoc(doc(db, "leads", p.match.id), { ...(p.mode === "replace" ? p.replaces : p.fills), updatedAt: serverTimestamp() });
+        }
         const d = companyDefaults(getCompanyGroupKey(l.company || ""));
         for (const p of chosen) {
           await addDoc(collection(db, "leads"), {
@@ -4287,7 +4334,11 @@
           });
         }
         const fields = Object.keys(update).filter(k => k !== "research" && k !== "updatedAt").length;
-        showToast(`Saved ${fields} update${fields === 1 ? "" : "s"}${chosen.length ? ` and added ${chosen.length} ${chosen.length === 1 ? "person" : "people"}` : ""}`, "success");
+        const bits = fields ? [`saved ${fields} detail${fields === 1 ? "" : "s"}`] : [];
+        if (chosen.length) bits.push(`added ${chosen.length} ${chosen.length === 1 ? "contact" : "contacts"}`);
+        if (updates.length) bits.push(`updated ${updates.length} existing ${updates.length === 1 ? "contact" : "contacts"}`);
+        const msg = bits.join(", ");
+        showToast(msg ? msg[0].toUpperCase() + msg.slice(1) : "Saved the research notes", "success");
         closeModal("researchModal");
         openDetail(l.id);
       } catch (e) {

@@ -112,6 +112,20 @@ If it fails, run `docker compose logs -f functions` while you try again. The fun
   People at a new company are assigned to you. Every saved lead is marked `source: "screenshot"`.
 - **Cost.** A screenshot usually costs a few cents. A long page split into 4 pieces costs about 4 times as much. You can see the actual spend under **Usage** in the Claude Console.
 
+## Lead research (🔎 Research)
+
+The same Railway service also answers `POST /research` (code in `research.ts`). The lead window and each person in My Workspace have a **🔎 Research** button.
+
+- **What it does.** Claude (`claude-opus-5`, medium effort) uses web search and web fetch to look for the lead's public business details: the company website and team pages, professional directories and news. It never logs in to LinkedIn; profile links come from search results.
+- **What you get back.** Every value has the page it came from. Emails are labelled **Found on a web page** or **Guessed from the company's email pattern**. Guesses start unticked, and if you save one it's stored with a "(guessed)" note.
+- **Before anything is saved:**
+  - Values that match what you have are shown greyed out.
+  - Changes start ticked, and you can edit them before saving.
+  - Talking points are saved to the lead and shown in its window under **Research**.
+  - Other people it finds can be added as contacts; anyone already in the tracker is marked.
+- **Cost.** Each search is billed on top of the Claude tokens, and the review screen shows how many searches were run. A lead usually takes a handful of searches and page reads. Actual spend is under **Usage** in the Claude Console.
+- **Setup.** Nothing extra. It uses the same `ANTHROPIC_API_KEY`, and needs web search enabled for your organization in the Claude Console (it is by default).
+
 ## Changing the settings
 
 | Setting | Default | What it does |

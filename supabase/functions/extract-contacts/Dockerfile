@@ -4,6 +4,6 @@ FROM denoland/deno:2.9.7
 WORKDIR /app
 RUN chown deno:deno /app
 USER deno
-COPY --chown=deno:deno index.ts .
+COPY --chown=deno:deno *.ts ./
 RUN deno cache index.ts
 CMD ["run", "--allow-net", "--allow-env", "--allow-read", "index.ts"]

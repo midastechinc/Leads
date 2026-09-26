@@ -17,7 +17,7 @@ I'm Ali Jaffar, founder of Midas Tech. We're an IT and cybersecurity company in 
 
 Law firms are a popular target right now, mostly through email: fake invoices, spoofed payment or trust-account instructions, and hijacked Microsoft 365 accounts. One bad email can put client confidentiality at risk.
 
-I'd like to offer Doe Legal LLP a free, no-obligation IT security check. We look at your Microsoft 365 settings, backups, who has access to what, and cyber-insurance readiness. You get a short, plain-English summary to keep, whether or not we ever work together.
+I'd like to offer Doe Legal LLP a free, no-obligation IT security check. We look at your Microsoft 365 settings, backups, who has access to what, and cyber-insurance readiness.
 
 Would 15 minutes next week work for a quick call?
 
@@ -34,7 +34,7 @@ Hi Jane,
 
 Following up on my note from last week.
 
-Here's one thing worth checking even if we never speak: is multi-factor authentication turned on for every Microsoft 365 account at Doe Legal LLP, including shared mailboxes and accounts for people who have left? It's the gap we find most often at law firms, and it's usually a quick fix.
+Here's one thing worth checking: is multi-factor authentication turned on for every Microsoft 365 account at Doe Legal LLP, including shared mailboxes and accounts for people who have left? It's the gap we find most often at law firms, and it's usually a quick fix.
 
 If you'd like a second pair of eyes on it, the free security check still stands. Happy to work around your court and client schedule.
 
@@ -55,7 +55,7 @@ I'm Ali Jaffar, founder of Midas Tech. We're an IT and cybersecurity company in 
 
 Accounting firms see a jump in phishing every tax season: fake CRA notices, fake client documents and "updated banking details" emails. With client tax returns, SINs and banking information on file, one successful attack is a serious problem.
 
-I'd like to offer Doe CPA a free, no-obligation IT security check before the busy season. We review Microsoft 365 and email security, backups, access to your tax software and client portal, and cyber-insurance readiness. You get a short, plain-English summary to keep either way.
+I'd like to offer Doe CPA a free, no-obligation IT security check before the busy season. We review Microsoft 365 and email security, backups, access to your tax software and client portal, and cyber-insurance readiness.
 
 Would 15 minutes next week work for a quick call?
 
@@ -72,7 +72,7 @@ Hi Jane,
 
 Following up on my note from last week.
 
-Two quick questions worth asking before the rush, whether or not we ever work together:
+Two quick questions worth asking before the rush:
 
 1. Does everyone at Doe CPA use multi-factor authentication for email and your tax or portal software?
 2. When did someone last test restoring client files from backup?
@@ -96,7 +96,7 @@ I'm Ali Jaffar, founder of Midas Tech. We're an IT and cybersecurity company in 
 
 Clinics hold exactly what attackers want: patient records. Ontario's privacy law (PHIPA) expects you to protect them, and a ransomware attack can lock your EMR and stop you seeing patients for days.
 
-I'd like to offer Doe Family Clinic a free, no-obligation IT security check. We review email and Microsoft 365 security, backups and how fast you could restore them, who can access patient data, and the computers at your front desk. You get a short, plain-English summary to keep either way.
+I'd like to offer Doe Family Clinic a free, no-obligation IT security check. We review email and Microsoft 365 security, backups and how fast you could restore them, who can access patient data, and the computers at your front desk.
 
 Would 15 minutes next week work for a quick call? I can work around clinic hours.
 
@@ -113,7 +113,7 @@ Hi Jane,
 
 Following up on my note from last week.
 
-A question worth asking even if we never speak: if your main computer or EMR went down tomorrow morning, how long would it take Doe Family Clinic to start seeing patients again? Most clinics we talk to have backups but have never timed a restore.
+A question worth asking: if your main computer or EMR went down tomorrow morning, how long would it take Doe Family Clinic to start seeing patients again? Most clinics we talk to have backups but have never timed a restore.
 
 Our free security check includes a quick look at exactly that. Happy to find a time outside clinic hours.
 
@@ -134,7 +134,7 @@ I'm Ali Jaffar, founder of Midas Tech. We're an IT and cybersecurity company in 
 
 In a warehouse, IT problems stop trucks. When the network, scanners or warehouse system go down, orders don't ship. We also see more fake supplier invoices and "please update our banking details" emails aimed at logistics teams.
 
-I'd like to offer Doe Logistics a free, no-obligation IT security check. We review your network and Wi-Fi, backups, email security and who can approve payments, so you know where the weak spots are. You get a short, plain-English summary to keep either way.
+I'd like to offer Doe Logistics a free, no-obligation IT security check. We review your network and Wi-Fi, backups, email security and who can approve payments, so you know where the weak spots are.
 
 Would 15 minutes next week work for a quick call?
 
@@ -151,7 +151,7 @@ Hi Jane,
 
 Following up on my note from last week.
 
-A question worth asking even if we never speak: if your server or internet went down during a busy shift, how long before Doe Logistics could ship again? And does anyone confirm supplier banking changes by phone before paying?
+A question worth asking: if your server or internet went down during a busy shift, how long before Doe Logistics could ship again? And does anyone confirm supplier banking changes by phone before paying?
 
 Our free security check looks at both. Happy to come by or do it over a call, whichever is easier.
 
@@ -172,7 +172,7 @@ I'm Ali Jaffar, founder of Midas Tech. We're an IT and cybersecurity company in 
 
 Most attacks on small businesses start with one email: a fake invoice, a fake login page or a hijacked Microsoft 365 account.
 
-I'd like to offer Doe Inc. a free, no-obligation IT security check. We review Microsoft 365 and email security, backups, who has access to what, and cyber-insurance readiness. You get a short, plain-English summary to keep, whether or not we ever work together.
+I'd like to offer Doe Inc. a free, no-obligation IT security check. We review Microsoft 365 and email security, backups, who has access to what, and cyber-insurance readiness.
 
 Would 15 minutes next week work for a quick call?
 
@@ -189,7 +189,7 @@ Hi Jane,
 
 Following up on my note from last week.
 
-Here's one thing worth checking even if we never speak: is multi-factor authentication turned on for every email account at Doe Inc., including shared mailboxes and accounts for people who have left? It's the gap we find most often, and it's usually a quick fix.
+Here's one thing worth checking: is multi-factor authentication turned on for every email account at Doe Inc., including shared mailboxes and accounts for people who have left? It's the gap we find most often, and it's usually a quick fix.
 
 If you'd like a second pair of eyes on it, the free security check still stands.
 
@@ -206,7 +206,7 @@ Midas Tech Inc. | IT Services & Cybersecurity
 ```
 Hi Jane,
 
-I know you're busy, so here's something useful whether or not we ever talk. Three checks that take under an hour:
+I know you're busy, so I'll keep this short. Here are three checks that take under an hour:
 
 1. Multi-factor authentication is on for every email account, including shared ones.
 2. Someone has restored a file from backup in the last three months, and it worked.

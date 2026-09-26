@@ -38,11 +38,34 @@ These steps assume the standard `supabase/docker` setup on the server behind `su
    docker compose up -d --force-recreate functions
    ```
 
-5. **Check the network.** The server has to reach `api.anthropic.com` and `www.googleapis.com` over HTTPS. The second one is where Firebase publishes the keys used to check sign-in tokens. If you firewall outbound traffic, allow both.
+5. **Check the network.** The server has to reach these hosts over HTTPS:
+   - `api.anthropic.com`: Claude.
+   - `www.googleapis.com`: the keys used to check Firebase sign-in tokens.
+   - `registry.npmjs.org`: the function's libraries. They download once, the first time the function runs.
 
-6. **Try it.** Open a lead, press **📷 Add people from a screenshot**, paste a screenshot and press **Read screenshot**.
+   If you firewall outbound traffic, allow all three.
+
+6. **Check it from the server.** Replace `ANON_KEY` with the `ANON_KEY` value from `.env`:
+   ```bash
+   curl -s -X POST https://supabase.midastech.support/functions/v1/extract-contacts \
+     -H "apikey: ANON_KEY" -H "Authorization: Bearer ANON_KEY" -H "Content-Type: application/json" -d '{}'
+   ```
+   The expected answer is `{"error":"Sign in to the lead tracker again, then retry."}`. It means the function is running and turning away callers who aren't signed in. If you get anything else, see Troubleshooting below.
+
+7. **Try it.** Open a lead, press **📷 Add people from a screenshot**, paste a screenshot and press **Read screenshot**.
 
 If it fails, run `docker compose logs -f functions` while you try again. The function logs API key and API errors there.
+
+## Troubleshooting
+
+| What you see | What to do |
+|---|---|
+| `Function not found` or 404 | The folder must be `volumes/functions/extract-contacts/` and hold `index.ts`. Re-run step 4. |
+| `Invalid JWT` or 401 without the "Sign in" message | The `ANON_KEY` in the command is wrong. Copy it again from `.env`. |
+| Logs mention `npm:` or can't download a package | The server can't reach `registry.npmjs.org`, or the edge runtime image is old. Update the `functions` image tag in `docker-compose.yml` to the one in the current Supabase `docker/docker-compose.yml`, then run `docker compose pull functions` and repeat step 4. |
+| "The screenshot reader's API key isn't working" | `ANTHROPIC_API_KEY` is missing or wrong. Check it with `docker compose exec functions printenv ANTHROPIC_API_KEY`, which prints the key. Also check that the Claude Console account has credit. |
+| "Sign in to the lead tracker again" when you're signed in | Sign out of the lead tracker and back in. If that doesn't help, check that `FIREBASE_PROJECT_ID` is `midas-leads-a8b13`. |
+| The browser shows a CORS error | `ALLOWED_ORIGINS` must include the exact site address, `https://midastechinc.github.io`. |
 
 ## How it behaves
 

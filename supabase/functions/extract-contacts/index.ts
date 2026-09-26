@@ -7,6 +7,9 @@
 //
 // Runs on self-hosted Supabase, or on its own (e.g. Railway) with the Dockerfile
 // next to this file. Setup: docs/screenshot-reader-setup.md
+//
+// On Railway it also relays Social Studio's 1min.ai requests (POST /1min/chat-with-ai
+// and /1min/features), so the 1min.ai key (ONEMIN_API_KEY) stays on the server too.
 import Anthropic from "npm:@anthropic-ai/sdk";
 import { createRemoteJWKSet, jwtVerify } from "npm:jose@5";
 
@@ -18,7 +21,11 @@ const FIREBASE_JWKS = createRemoteJWKSet(new URL(
 const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") ?? "https://midastechinc.github.io")
   .split(",").map((o) => o.trim()).filter(Boolean);
 const IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
-const MAX_IMAGE_BASE64_CHARS = 6_500_000; // ~4.8 MB decoded; the app sends a resized JPEG well under this
+const MAX_IMAGE_BASE64_CHARS = 6_500_000;
+const ONEMIN_API_KEY = Deno.env.get("ONEMIN_API_KEY") ?? "";
+const ONEMIN_BASE_URL = Deno.env.get("ONEMIN_BASE_URL") ?? "https://api.1min.ai/api";
+const ONEMIN_ENDPOINTS = new Set(["chat-with-ai", "features"]);
+const MAX_ONEMIN_BODY_CHARS = 1_000_000; // ~4.8 MB decoded; the app sends a resized JPEG well under this
 
 const client = new Anthropic(); // reads ANTHROPIC_API_KEY
 
@@ -80,6 +87,30 @@ function json(req: Request, status: number, body: unknown): Response {
   });
 }
 
+// Forwards a Social Studio request to 1min.ai with the server's key and passes the answer back.
+async function relayOneMin(req: Request, endpoint: string): Promise<Response> {
+  if (!ONEMIN_ENDPOINTS.has(endpoint)) return json(req, 404, { error: "Unknown 1min.ai endpoint." });
+  if (!ONEMIN_API_KEY) {
+    return json(req, 500, { error: "The 1min.ai key isn't set on the server. Add ONEMIN_API_KEY in Railway." });
+  }
+  const body = await req.text();
+  if (body.length > MAX_ONEMIN_BODY_CHARS) return json(req, 413, { error: "That request is too large." });
+  try {
+    const upstream = await fetch(`${ONEMIN_BASE_URL}/${endpoint}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "API-KEY": ONEMIN_API_KEY },
+      body,
+    });
+    return new Response(await upstream.text(), {
+      status: upstream.status,
+      headers: { ...cors(req), "Content-Type": upstream.headers.get("content-type") ?? "application/json" },
+    });
+  } catch (err) {
+    console.error("1min.ai relay failed:", err);
+    return json(req, 502, { error: "Couldn't reach 1min.ai. Try again in a moment." });
+  }
+}
+
 async function signedInUser(req: Request): Promise<string | null> {
   const token = req.headers.get("x-firebase-token");
   if (!token) return null;
@@ -105,6 +136,9 @@ Deno.serve(PORT ? { port: Number(PORT) } : {}, async (req) => {
   if (!(await signedInUser(req))) {
     return json(req, 401, { error: "Sign in to the lead tracker again, then retry." });
   }
+
+  const oneMin = new URL(req.url).pathname.match(/^\/1min\/([a-z-]+)\/?$/);
+  if (oneMin) return relayOneMin(req, oneMin[1]);
 
   let body: { image?: string; mediaType?: string; company?: string; website?: string };
   try {

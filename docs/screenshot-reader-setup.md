@@ -29,6 +29,8 @@ You can run the reader in either of two places. Pick one:
    ALLOWED_ORIGINS=https://midastechinc.github.io
    ```
    Railway sets `PORT` itself, so don't add it.
+
+   For Social Studio, also add `ONEMIN_API_KEY=` followed by your 1min.ai key. The same service passes Social Studio's 1min.ai requests on to 1min.ai with this key, so the key never reaches the browser. Only signed-in lead tracker users can use it.
 5. **Give it an address.** Under **Settings → Networking**, click **Generate Domain**. If it asks for a port, use `8080`. Wait for the deploy to show **Active**.
 6. **Check it.** Open the address in your browser. It should show `{"ok":true,"service":"extract-contacts"}`.
 7. **Connect the app.** In `index.html`, put the address in `SHOT_READER_URL`, for example `const SHOT_READER_URL = "https://extract-contacts-production.up.railway.app";`, and publish. You can also send the address to Claude and it will make the change.
@@ -115,6 +117,7 @@ If it fails, run `docker compose logs -f functions` while you try again. The fun
 | Setting | Default | What it does |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | none (required) | Claude API key |
+| `ONEMIN_API_KEY` | none | 1min.ai key used for Social Studio's requests (Railway only) |
 | `FIREBASE_PROJECT_ID` | `midas-leads-a8b13` | Which Firebase project's sign-ins are accepted |
 | `ALLOWED_ORIGINS` | `https://midastechinc.github.io` | Comma-separated sites allowed to call the function from a browser |
 

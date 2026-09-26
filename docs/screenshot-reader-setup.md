@@ -114,19 +114,21 @@ If it fails, run `docker compose logs -f functions` while you try again. The fun
 
 ## Lead research (🔎 Research)
 
-The same Railway service also answers `POST /research` (code in `research.ts`). There are two kinds of research:
-- **Person research** (🔎 on a person in All Leads or My Workspace, or **Research person** in the lead window) looks up that one person only: title, email, phone, LinkedIn and talking points.
-- **Company research** (🔎 **Research** on a company in All Leads, **Research company** in My Workspace, or **Research the whole company** in the lead window) looks up the company's details. It checks every person you already have there, flagging anyone who seems to have left, and finds additional decision makers. The review list has **Select all / None** for the people it found.
+Clicking 🔎 Research (on a person, or on a company for the whole company) opens a window with three options:
 
-- **What it does.** Claude (`claude-opus-5`, medium effort) uses web search and web fetch to look for the lead's public business details: the company website and team pages, professional directories and news. It never logs in to LinkedIn; profile links come from search results.
-- **What you get back.** Every value has the page it came from. Emails are labelled **Found on a web page** or **Guessed from the company's email pattern**. Guesses start unticked, and if you save one it's stored with a "(guessed)" note.
-- **Before anything is saved:**
-  - Values that match what you have are shown greyed out.
-  - Changes start ticked, and you can edit them before saving.
-  - Talking points are saved to the lead and shown in its window under **Research**.
-  - Other people it finds can be added as contacts; anyone already in the tracker is marked.
-- **Cost.** Each search is billed on top of the Claude tokens. The review screen shows an estimate of what that run cost (at list prices: $5 / $25 per million input / output tokens and $10 per 1,000 searches; set in `PRICE` in `research.ts`), and the estimate is saved with the research. A lead usually takes a handful of searches and page reads. Actual spend is under **Usage** in the Claude Console.
-- **Setup.** Nothing extra. It uses the same `ANTHROPIC_API_KEY`, and needs web search enabled for your organization in the Claude Console (it is by default).
+1. **Free quick search.** Buttons open ready-made searches in new tabs: LinkedIn profile, email address, phone, the company's team page, Google Maps, news, and the Law Society directory for law firms. No AI, no cost.
+2. **Research with 1min.ai.** Uses 1min.ai's web-search chat (`gpt-4o-mini`) through the same Railway service that holds `ONEMIN_API_KEY`. It uses your 1min.ai credits, with no Claude charge. The answer is less thorough than Claude's.
+3. **Research with Claude (cheap).** `POST /research` on the Railway service (`research.ts`). It uses Claude Sonnet 5 at low effort:
+   - up to 3 searches for a person and 5 for a company
+   - pages capped at 6,000 tokens each
+   - the conversation cached between turns
+
+   It usually costs a few cents, and the review window shows the estimated cost of each run (prices are in `PRICE` in `research.ts`).
+
+Both AI options show what they found with sources:
+- **Person research** looks up only that person.
+- **Company research** checks everyone you have at the company, flags people who may have left, and finds more. Its People list has **Select all / None**.
+- Guessed emails start unticked, and nothing is saved until you choose.
 
 ## Changing the settings
 

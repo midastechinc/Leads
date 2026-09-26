@@ -27,13 +27,18 @@ export interface CompanyInput {
 
 const MAX_PEOPLE_IN_PROMPT = 40;
 
-// List prices for the cost estimate shown to the rep (Claude Opus 5, per token, and per web search).
-// Keep in sync with anthropic.com/pricing if the model or prices change.
+// Research runs on the cheaper Claude Sonnet 5 at low effort, with few searches and capped page
+// sizes, to keep each run to a few cents. Page reads (web fetch) have no per-use charge.
+const MODEL = "claude-sonnet-5";
+const MAX_PAGE_TOKENS = 6000;
+
+// List prices for the cost estimate shown to the rep (Claude Sonnet 5, per token, and per web search).
+// Keep in sync with platform.claude.com/docs/en/about-claude/pricing if the model or prices change.
 const PRICE = {
-  input: 5 / 1_000_000,
-  output: 25 / 1_000_000,
-  cacheWrite: 6.25 / 1_000_000,
-  cacheRead: 0.5 / 1_000_000,
+  input: 2 / 1_000_000,
+  output: 10 / 1_000_000,
+  cacheWrite: 2.5 / 1_000_000,
+  cacheRead: 0.2 / 1_000_000,
   search: 10 / 1_000,
 };
 
@@ -48,7 +53,7 @@ Rules for the answer:
 - Every non-empty value needs a source URL where you saw it. Use the page URL, not a search engine URL (a search results URL is acceptable only for LinkedIn profile links).
 - email_status: "found" only if the exact address appears on a web page; "pattern_guess" if you built it from the company's visible email pattern (say which pattern and where you saw it in notes); otherwise "not_found" with an empty email.
 - talking_points: up to 4 short, recent and specific facts a salesperson could mention (new office, hiring, merger, news, services offered), each with a source. No generic statements.
-- Be efficient: search and read only what you need.`;
+- Be efficient: every search costs money. Use as few searches and page reads as you can; stop once you have the answer.`;
 
 const PERSON_SYSTEM = `You research B2B sales leads for Midas Tech, a managed IT and cybersecurity provider in Richmond Hill, Ontario.
 Research ONE person: find their current public business contact details and role, then call save_person_research exactly once.
@@ -190,22 +195,20 @@ async function runResearch(
 
   for (let turn = 0; turn < maxTurns; turn++) {
     // Streamed: a long research turn can outlast the SDK's non-streaming time limit.
+    // Top-level cache_control caches the growing conversation, so re-sent turns cost 0.1x.
     const response = await client.beta.messages.stream({
-      model: "claude-opus-5",
-      max_tokens: 32000,
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
-      thinking: { type: "adaptive" },
-      output_config: { effort: "medium" },
+      model: MODEL,
+      max_tokens: 16000,
+      cache_control: { type: "ephemeral" },
+      output_config: { effort: "low" },
       system,
       tools: [
         { type: "web_search_20260209", name: "web_search", max_uses: maxUses },
-        { type: "web_fetch_20260209", name: "web_fetch", max_uses: maxUses },
-        tool,
+        { type: "web_fetch_20260209", name: "web_fetch", max_uses: maxUses + 2, max_content_tokens: MAX_PAGE_TOKENS },
+        tool as Anthropic.Beta.Messages.BetaTool,
       ],
       messages,
-    // `fallbacks` is newer than some SDK type definitions; the API accepts it with the beta header above.
-    } as Anthropic.Beta.Messages.MessageCreateParamsNonStreaming).finalMessage();
+    }).finalMessage();
 
     const usage = response.usage as unknown as {
       input_tokens?: number; output_tokens?: number;
@@ -245,9 +248,9 @@ async function runResearch(
 }
 
 export function researchLead(client: Anthropic, lead: LeadInput) {
-  return runResearch(client, PERSON_SYSTEM, PERSON_TOOL, describePerson(lead), 6, 8);
+  return runResearch(client, PERSON_SYSTEM, PERSON_TOOL, describePerson(lead), 3, 6);
 }
 
 export function researchCompany(client: Anthropic, input: CompanyInput) {
-  return runResearch(client, COMPANY_SYSTEM, COMPANY_TOOL, describeCompany(input), 12, 12);
+  return runResearch(client, COMPANY_SYSTEM, COMPANY_TOOL, describeCompany(input), 5, 8);
 }

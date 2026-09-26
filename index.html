@@ -1312,6 +1312,19 @@
     .ld-note-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
     .ld-note-count { font-size: 12px; font-weight: 700; color: #0a66c2; font-variant-numeric: tabular-nums; margin-right: auto; }
     .ld-note-hint { margin: 8px 0 0; font-size: 12px; color: var(--gray-500); }
+
+    .group-actions { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+    .add-contact-btn { border: 1px dashed rgba(29,78,216,0.35); background: rgba(255,255,255,0.7); color: var(--blue); border-radius: 999px; padding: 5px 11px; font: 700 11px/1 inherit; font-family: inherit; cursor: pointer; white-space: nowrap; }
+    .add-contact-btn:hover { background: var(--blue-light); border-style: solid; }
+    .add-contact-btn:focus-visible, .ld-person:focus-visible, .ld-add-person:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+    .ld-count { display: inline-block; margin-left: 4px; padding: 1px 7px; border-radius: 999px; background: var(--gray-100); color: var(--gray-600); font-size: 10px; letter-spacing: 0; }
+    .ld-people { display: grid; gap: 6px; }
+    .ld-person { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; text-align: left; padding: 9px 12px; border: 1px solid var(--border); border-radius: 12px; background: rgba(255,255,255,0.7); cursor: pointer; font-family: inherit; }
+    .ld-person:hover { border-color: rgba(29,78,216,0.3); }
+    .ld-person b { display: block; font-size: 14px; color: var(--gray-900); }
+    .ld-person small { display: block; font-size: 12px; color: var(--gray-500); }
+    .ld-add-person { padding: 10px 12px; border: 1px dashed rgba(29,78,216,0.35); border-radius: 12px; background: transparent; color: var(--blue); font: 700 13px inherit; font-family: inherit; cursor: pointer; text-align: left; }
+    .ld-add-person:hover { background: var(--blue-light); }
 </style>
 </head>
 <body data-view="admin">
@@ -1716,8 +1729,8 @@
   <!-- ══ Add Lead Modal ══ -->
   <div class="modal-overlay" id="addLeadModal">
     <div class="modal modal-wide">
-      <h2>Add Lead</h2>
-      <p class="modal-sub">Only name is required.</p>
+      <h2 id="addLeadTitle">Add Lead</h2>
+      <p class="modal-sub" id="addLeadSub">Only name is required.</p>
       <div class="form-row">
         <div class="form-group"><label>Full Name *</label><input type="text" id="newName" placeholder="John Doe"></div>
         <div class="form-group"><label>Company</label><input type="text" id="newCompany" placeholder="ABC Inc"></div>
@@ -2820,8 +2833,11 @@
                 <span>${esc(group.companyName)}</span>
                 <small>${group.leads.length} lead${group.leads.length!==1?"s":""}</small>
               </div>
-              <span class="rep-badge" onclick="openAssignCompany('${esc(group.groupKey)}')" title="Assign this company">
-                <span class="rep-dot"></span>${esc(getCompanyAssignmentLabel(group.leads))}
+              <span class="group-actions">
+                ${group.groupKey !== "__no_company__" ? `<button class="add-contact-btn" type="button" onclick="openAddContact('${esc(group.groupKey)}')" title="Add another person at ${esc(group.companyName)}">+ Add contact</button>` : ""}
+                <span class="rep-badge" onclick="openAssignCompany('${esc(group.groupKey)}')" title="Assign this company">
+                  <span class="rep-dot"></span>${esc(getCompanyAssignmentLabel(group.leads))}
+                </span>
               </span>
             </div>
           </td>
@@ -3312,6 +3328,21 @@
       html += `<div class="ld-section-title">Contact details</div>
         <dl class="ld-list">${rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("")}</dl>`;
 
+      // Other people at the same company
+      const groupKey = getCompanyGroupKey(l.company || "");
+      if (groupKey !== "__no_company__") {
+        const others = getCompanyLeads(groupKey).filter(p => p.id !== l.id)
+          .sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
+        html += `<div class="ld-section-title">People at ${esc(l.company)} <span class="ld-count">${others.length + 1}</span></div>
+          <div class="ld-people">
+            ${others.map(p => `<button class="ld-person" type="button" onclick="openDetail('${p.id}')">
+                <span><b>${esc(p.name || "Unnamed")}</b>${(p.title || p.industry) ? `<small>${esc(p.title || p.industry)}</small>` : ""}</span>
+                <span class="status-badge status-${esc(p.status || "New")}">${esc(p.status || "New")}</span>
+              </button>`).join("")}
+            <button class="ld-add-person" type="button" onclick="openAddContact('${esc(groupKey)}')">+ Add another person at ${esc(l.company)}</button>
+          </div>`;
+      }
+
       // LinkedIn invite note
       const note = linkedinNote(l);
       const liTarget = li ? li.url : `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent([l.name, l.company].filter(Boolean).join(" "))}`;
@@ -3430,13 +3461,36 @@
     };
 
     // ── ADD LEAD ───────────────────────────────────────────────────
+    // Company-level details copied onto a new contact added from an existing company.
+    let addLeadCompanyExtras = null;
     window.openAddLead = function () {
+      addLeadCompanyExtras = null;
+      document.getElementById("addLeadTitle").textContent = "Add Lead";
+      document.getElementById("addLeadSub").textContent = "Only name is required.";
       ["newName","newCompany","newEmail","newPhone","newWebsite","newLinkedin","newTitle","newIndustry"].forEach(id =>
         document.getElementById(id).value = "");
       populateRepSelect(document.getElementById("newAssigned"), currentUser);
       document.getElementById("addLeadModal").classList.add("active");
       setTimeout(()=>document.getElementById("newName").focus(), 100);
     };
+    // Opens Add Lead for another person at an existing company, with the company details filled in.
+    window.openAddContact = function (groupKey) {
+      const people = getCompanyLeads(groupKey);
+      if (!people.length) return openAddLead();
+      const pick = key => people.map(p => p[key]).find(v => v !== null && v !== undefined && String(v).trim() !== "") || "";
+      const company = pick("company");
+      openAddLead();
+      closeModal("detailModal");
+      document.getElementById("addLeadTitle").textContent = `Add contact at ${company}`;
+      document.getElementById("addLeadSub").textContent = "Company details are filled in. Add the person's name, email, phone and title.";
+      document.getElementById("newCompany").value  = company;
+      document.getElementById("newWebsite").value  = pick("website");
+      document.getElementById("newIndustry").value = pick("industry");
+      populateRepSelect(document.getElementById("newAssigned"), getCompanyAssignedRep(people) || pick("assignedTo") || currentUser);
+      addLeadCompanyExtras = {};
+      ["city", "state", "country", "address", "employeeRange"].forEach(k => { const v = pick(k); if (v) addLeadCompanyExtras[k] = v; });
+    };
+
     window.submitAddLead = async function () {
       const name = document.getElementById("newName").value.trim();
       if (!name) return showToast("Name is required","error");
@@ -3451,8 +3505,10 @@
           industry:   document.getElementById("newIndustry").value.trim(),
           assignedTo: document.getElementById("newAssigned").value.trim() || currentUser,
           status:"New", contactCount:0, lastContacted:null,
-          createdAt:serverTimestamp(), updatedAt:serverTimestamp(), source:"manual"
+          createdAt:serverTimestamp(), updatedAt:serverTimestamp(), source:"manual",
+          ...(addLeadCompanyExtras || {})
         });
+        addLeadCompanyExtras = null;
         showToast("Lead added","success"); closeModal("addLeadModal");
       } catch(e) { console.error(e); showToast("Failed","error"); }
     };

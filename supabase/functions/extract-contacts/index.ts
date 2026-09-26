@@ -5,7 +5,8 @@
 // send the signed-in lead tracker user's Firebase ID token in the
 // `x-firebase-token` header, so only lead tracker users can spend credits.
 //
-// Setup: docs/screenshot-reader-setup.md
+// Runs on self-hosted Supabase, or on its own (e.g. Railway) with the Dockerfile
+// next to this file. Setup: docs/screenshot-reader-setup.md
 import Anthropic from "npm:@anthropic-ai/sdk";
 import { createRemoteJWKSet, jwtVerify } from "npm:jose@5";
 
@@ -88,8 +89,12 @@ async function signedInUser(req: Request): Promise<string | null> {
   }
 }
 
-Deno.serve(async (req) => {
+// Railway and similar hosts pass the port to listen on in PORT; Supabase doesn't.
+const PORT = Deno.env.get("PORT");
+
+Deno.serve(PORT ? { port: Number(PORT) } : {}, async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors(req) });
+  if (req.method === "GET") return json(req, 200, { ok: true, service: "extract-contacts" });
   if (req.method !== "POST") return json(req, 405, { error: "Use POST." });
 
   if (!(await signedInUser(req))) {

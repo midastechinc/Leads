@@ -272,3 +272,37 @@ IT Services & Cybersecurity
 905-787-2038
 midastech.ca
 ```
+
+## LinkedIn invite notes (max 200 characters)
+
+Shown in **Lead details → LinkedIn invite note** with a Copy button. Paste it into LinkedIn's *Connect → Add a note* box.
+
+**Law firms** (177 characters)
+
+```
+Hi Jane, I'm Ali from Midas Tech, an IT and cybersecurity company in Richmond Hill. We help law firms keep email, Microsoft 365 and client data secure. Would be glad to connect.
+```
+
+**Accounting firms** (179 characters)
+
+```
+Hi Jane, I'm Ali from Midas Tech, an IT and cybersecurity company in Richmond Hill. We help accounting firms keep email, client files and portals secure. Would be glad to connect.
+```
+
+**Healthcare clinics** (170 characters)
+
+```
+Hi Jane, I'm Ali from Midas Tech, an IT and cybersecurity company in Richmond Hill. We help clinics keep patient data, email and backups secure. Would be glad to connect.
+```
+
+**Warehouses & logistics** (188 characters)
+
+```
+Hi Jane, I'm Ali from Midas Tech, an IT and cybersecurity company in Richmond Hill. We help warehouses and logistics teams keep systems running and payments safe. Would be glad to connect.
+```
+
+**All other businesses** (182 characters)
+
+```
+Hi Jane, I'm Ali from Midas Tech, an IT and cybersecurity company in Richmond Hill. We help Ontario businesses keep email, Microsoft 365 and backups secure. Would be glad to connect.
+```

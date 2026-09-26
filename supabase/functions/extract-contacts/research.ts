@@ -27,6 +27,16 @@ export interface CompanyInput {
 
 const MAX_PEOPLE_IN_PROMPT = 40;
 
+// List prices for the cost estimate shown to the rep (Claude Opus 5, per token, and per web search).
+// Keep in sync with anthropic.com/pricing if the model or prices change.
+const PRICE = {
+  input: 5 / 1_000_000,
+  output: 25 / 1_000_000,
+  cacheWrite: 6.25 / 1_000_000,
+  cacheRead: 0.5 / 1_000_000,
+  search: 10 / 1_000,
+};
+
 const COMMON_RULES = `How to research:
 - Start with the company's own website (team, about, contact pages), then professional directories (e.g. Law Society of Ontario, CPA Ontario, college registers), business listings and news.
 - Find LinkedIn profile URLs through web search results only. Do not try to fetch linkedin.com pages.
@@ -176,7 +186,7 @@ async function runResearch(
   maxTurns: number,
 ) {
   const messages: Anthropic.Beta.Messages.BetaMessageParam[] = [{ role: "user", content: prompt }];
-  let searches = 0, fetches = 0, inputTokens = 0, outputTokens = 0, nudged = false;
+  let searches = 0, fetches = 0, inputTokens = 0, outputTokens = 0, cacheWrite = 0, cacheRead = 0, nudged = false;
 
   for (let turn = 0; turn < maxTurns; turn++) {
     // Streamed: a long research turn can outlast the SDK's non-streaming time limit.
@@ -199,13 +209,18 @@ async function runResearch(
 
     const usage = response.usage as unknown as {
       input_tokens?: number; output_tokens?: number;
+      cache_creation_input_tokens?: number; cache_read_input_tokens?: number;
       server_tool_use?: { web_search_requests?: number; web_fetch_requests?: number };
     };
     inputTokens += usage.input_tokens ?? 0;
     outputTokens += usage.output_tokens ?? 0;
+    cacheWrite += usage.cache_creation_input_tokens ?? 0;
+    cacheRead += usage.cache_read_input_tokens ?? 0;
     searches += usage.server_tool_use?.web_search_requests ?? 0;
     fetches += usage.server_tool_use?.web_fetch_requests ?? 0;
-    const stats = { searches, fetches, inputTokens, outputTokens };
+    const costUsd = inputTokens * PRICE.input + outputTokens * PRICE.output +
+      cacheWrite * PRICE.cacheWrite + cacheRead * PRICE.cacheRead + searches * PRICE.search;
+    const stats = { searches, fetches, inputTokens, outputTokens, costUsd: Math.round(costUsd * 10000) / 10000 };
 
     if (response.stop_reason === "refusal") {
       throw new ResearchError("This couldn't be researched. Try again or research it by hand.", 422);

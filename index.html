@@ -1450,7 +1450,9 @@
     .rs-item { display: grid; grid-template-columns: 22px 1fr; gap: 10px; padding: 9px 12px; border: 1px solid var(--border); border-radius: 12px; background: rgba(255,255,255,0.75); font-size: 13px; color: var(--gray-800); }
     .rs-item input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--blue); }
     .rs-note { padding: 10px 12px; border-radius: 12px; background: #fff4e5; color: #8a4b00; font-size: 13px; }
-    .rs-foot { font-size: 12px; color: var(--gray-500); margin-top: 14px; }
+    .rs-foot { font-size: 12px; color: var(--gray-500); margin-top: 6px; }
+    .rs-cost { margin-top: 14px; padding: 9px 12px; border-radius: 12px; background: rgba(22,163,74,0.08); color: var(--gray-800); font-size: 13px; }
+    .rs-cost span { color: var(--gray-500); font-size: 11px; }
     .ld-research { display: flex; flex-direction: column; gap: 6px; }
     .ld-research li { font-size: 13px; color: var(--gray-800); margin-left: 18px; }
     .ld-research a { color: var(--blue); font-size: 12px; }
@@ -3767,7 +3769,7 @@
           <div class="ld-research">
             ${rs.talkingPoints?.length ? `<ul>${rs.talkingPoints.map(t => `<li>${esc(t.point)}${realUrl(t.source) ? ` <a href="#" onclick="openUrl('${esc(realUrl(t.source))}');return false">source</a>` : ""}</li>`).join("")}</ul>` : ""}
             ${rs.notes ? `<small>${esc(rs.notes)}</small>` : ""}
-            <small>${when ? `Researched ${esc(when)}` : "Researched"}${rs.by ? ` by ${esc(rs.by)}` : ""}</small>
+            <small>${when ? `Researched ${esc(when)}` : "Researched"}${rs.by ? ` by ${esc(rs.by)}` : ""}${typeof rs.costUsd === "number" ? ` · cost about ${formatResearchCost(rs.costUsd)}` : ""}</small>
           </div>`;
       });
 
@@ -4436,6 +4438,7 @@
       rsState.people = people;
       rsState.points = (result.talking_points || []).filter(t => String(t.point || "").trim());
       rsState.notes = String(result.notes || "").trim();
+      rsState.costUsd = typeof stats.costUsd === "number" ? stats.costUsd : null;
 
       const rowsHtml = rows.map((r, i) => `
         <div class="rs-row${r.same ? " same" : ""}">
@@ -4485,6 +4488,7 @@
         ${rows.length ? `<div class="rs-h">${isCompany ? "Company details" : "Contact details"}</div><div class="rs-rows">${rowsHtml}</div>` : ""}
         ${peopleHtml}
         ${pointsHtml}
+        ${typeof stats.costUsd === "number" ? `<div class="rs-cost">💲 This research cost about <b>${formatResearchCost(stats.costUsd)}</b> <span>(estimate at list prices; see console.anthropic.com → Usage for the exact amount)</span></div>` : ""}
         <div class="rs-foot">Searched the web ${stats.searches || 0} time${stats.searches === 1 ? "" : "s"} and read ${stats.fetches || 0} page${stats.fetches === 1 ? "" : "s"}. Check the sources before you rely on anything here.</div>`;
 
       const body = document.getElementById("rsBody");
@@ -4493,6 +4497,12 @@
       body.querySelectorAll("[data-rs-person]").forEach(cb => cb.addEventListener("change", () => { rsState.people[cb.dataset.rsPerson].selected = cb.checked; updateResearchSaveBtn(); }));
       document.getElementById("rsSaveBtn").hidden = nothing && !rsState.notes;
       updateResearchSaveBtn();
+    }
+
+    function formatResearchCost(usd) {
+      if (usd < 0.01) return "less than 1¢";
+      if (usd < 1) return `${Math.round(usd * 100)}¢`;
+      return `$${usd.toFixed(2)}`;
     }
 
     window.selectResearchPeople = function (on) {
@@ -4529,6 +4539,7 @@
       const research = {
         talkingPoints: savePoints ? rsState.points.map(t => ({ point: String(t.point), source: String(t.source || "") })) : [],
         notes: rsState.notes,
+        costUsd: rsState.costUsd ?? null,
         researchedAt: serverTimestamp(),
         by: currentUser
       };

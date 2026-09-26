@@ -387,6 +387,25 @@
       gap: 3px;
       min-width: 0;
     }
+    /* All Leads: companies collapse like My Workspace */
+    .grp-toggle { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; border: none; background: none; padding: 0; text-align: left; cursor: pointer; font-family: inherit; color: inherit; }
+    .grp-toggle:focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; border-radius: 8px; }
+    .grp-chev { flex: none; width: 20px; height: 20px; display: grid; place-items: center; color: var(--gray-500); font-size: 11px; transition: transform 0.18s ease; }
+    .grp-toggle[aria-expanded="true"] .grp-chev { transform: rotate(90deg); color: var(--blue); }
+    .grp-name { font-size: 14px; font-weight: 800; color: var(--gray-900); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+    .grp-meta { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 3px; font-size: 11px; color: var(--gray-500); font-weight: 600; }
+    .grp-due { color: var(--red); font-weight: 800; }
+    .group-row.grp-closed td { border-bottom: 1px solid rgba(112,101,82,0.18); }
+    .leads-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 0 4px 8px; font-size: 12px; color: var(--gray-500); }
+    .leads-bar .ws-expand { margin-left: auto; }
+    @media (min-width: 901px) { .leads-bar { margin: 12px 28px 6px; } }
+    @media (max-width: 900px) {
+      .leads-bar { margin: 10px 18px 0; }
+      #leadsTable tr.group-row .group-label { flex-wrap: wrap; align-items: flex-start; }
+      #leadsTable tr.group-row .grp-toggle { flex: 1 1 100%; }
+      #leadsTable tr.group-row .group-actions { width: 100%; justify-content: flex-start; padding-left: 30px; }
+      .grp-name { white-space: normal; }
+    }
     .state-row td { text-align: center; padding: 48px; color: var(--gray-400); white-space: normal; }
     .state-row strong { display: block; font-size: 14px; color: var(--gray-600); margin-bottom: 4px; }
     .limit-note td {
@@ -1404,6 +1423,11 @@
     .rs-meta a { color: var(--blue); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 260px; }
     .rs-tag { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: rgba(22,163,74,0.10); color: var(--green); }
     .rs-tag.warn { background: #fff4e5; color: #8a4b00; }
+    .rs-tag.muted { background: rgba(100,116,139,0.10); color: var(--gray-500); }
+    .rs-h-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .rs-select { display: flex; gap: 2px; text-transform: none; letter-spacing: 0; }
+    .rs-select button { border: none; background: none; color: var(--blue); font: 700 12px inherit; font-family: inherit; cursor: pointer; padding: 4px 8px; border-radius: 8px; }
+    .rs-select button:hover { background: var(--blue-light); }
     .rs-list { display: flex; flex-direction: column; gap: 6px; }
     .rs-item { display: grid; grid-template-columns: 22px 1fr; gap: 10px; padding: 9px 12px; border: 1px solid var(--border); border-radius: 12px; background: rgba(255,255,255,0.75); font-size: 13px; color: var(--gray-800); }
     .rs-item input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--blue); }
@@ -1511,6 +1535,13 @@
       <button class="btn btn-primary"   onclick="openAddLead()">+ Add Lead</button>
     </div>
 
+    <div class="leads-bar">
+      <span id="leadsBarText"></span>
+      <span class="ws-expand">
+        <button type="button" onclick="setAllLeadsCompanies(true)">Expand all</button>
+        <button type="button" onclick="setAllLeadsCompanies(false)">Collapse all</button>
+      </span>
+    </div>
     <div class="table-wrap">
       <table id="leadsTable">
         <thead>
@@ -2945,8 +2976,24 @@
     }
 
     // ── RENDER TABLE ───────────────────────────────────────────────
+    // Leads are grouped by company. Companies start collapsed; the ones the rep opens stay open
+    // across re-renders, and a search opens every matching company.
+    const leadsOpenCompanies = new Set();
+    let lastTableLeads = [];
+    window.toggleLeadsCompany = function (groupKey) {
+      if (leadsOpenCompanies.has(groupKey)) leadsOpenCompanies.delete(groupKey); else leadsOpenCompanies.add(groupKey);
+      renderTable(lastTableLeads);
+    };
+    window.setAllLeadsCompanies = function (open) {
+      if (open) lastTableLeads.forEach(l => leadsOpenCompanies.add(getCompanyGroupKey((l.company || "").trim() || "No Company")));
+      else leadsOpenCompanies.clear();
+      renderTable(lastTableLeads);
+    };
+
     function renderTable(leads) {
+      lastTableLeads = leads;
       const tbody = document.getElementById("leadTableBody");
+      const searching = !!(document.getElementById("searchInput")?.value || "").trim();
       if (!leads.length) {
         tbody.innerHTML = `<tr class="state-row"><td colspan="6"><strong>No leads found</strong><p>Import a CSV or click + Add Lead.</p></td></tr>`;
         return;
@@ -2984,22 +3031,37 @@
           <td class="c-last">${touch}</td>
           <td class="c-actions"><div class="actions">
             ${webBtn}${liBtn}
+            <button class="icon-btn" onclick="openResearch('${l.id}')" title="Research this person" aria-label="Research this person">🔎</button>
             <button class="icon-btn" onclick="openActivity('${l.id}')" title="Log activity" aria-label="Log activity">📝</button>
             <button class="icon-btn" onclick="openDetail('${l.id}')"  title="View details" aria-label="View details">👁</button>
           </div></td>
         </tr>`;
       };
 
-      const rowsHtml = Array.from(groups.values()).map(group => `
-        <tr class="group-row">
+      const rowsHtml = Array.from(groups.values()).map(group => {
+        const open = searching || leadsOpenCompanies.has(group.groupKey);
+        const due = group.leads.filter(leadFollowUp).length;
+        const lastDates = group.leads.map(l => l.lastContacted?.toDate ? l.lastContacted.toDate() : null).filter(Boolean);
+        const last = lastDates.length ? new Date(Math.max(...lastDates.map(d => d.getTime()))) : null;
+        const hasCompany = group.groupKey !== "__no_company__";
+        return `
+        <tr class="group-row${open ? "" : " grp-closed"}">
           <td colspan="6">
             <div class="group-label">
-              <div class="group-main">
-                <span>${esc(group.companyName)}</span>
-                <small>${group.leads.length} lead${group.leads.length!==1?"s":""}</small>
-              </div>
+              <button type="button" class="grp-toggle" aria-expanded="${open}" onclick="toggleLeadsCompany('${esc(group.groupKey)}')" title="${open ? "Hide" : "Show"} the people at ${esc(group.companyName)}">
+                <span class="grp-chev" aria-hidden="true">▶</span>
+                <span style="min-width:0">
+                  <span class="grp-name">${esc(group.companyName)}</span>
+                  <span class="grp-meta">
+                    <span>👥 ${group.leads.length} ${group.leads.length===1?"lead":"leads"}</span>
+                    ${due ? `<span class="grp-due">${due} need${due===1?"s":""} follow-up</span>` : ""}
+                    <span>${last ? `Last contact ${fmtDate(last)}` : "Never contacted"}</span>
+                  </span>
+                </span>
+              </button>
               <span class="group-actions">
-                ${group.groupKey !== "__no_company__" ? `<button class="add-contact-btn" type="button" onclick="openAddContact('${esc(group.groupKey)}')" title="Add another person at ${esc(group.companyName)}">+ Add contact</button>` : ""}
+                ${hasCompany ? `<button class="add-contact-btn" type="button" onclick="openCompanyResearch('${esc(group.groupKey)}')" title="Research ${esc(group.companyName)} and all its people">🔎 Research</button>` : ""}
+                ${hasCompany ? `<button class="add-contact-btn" type="button" onclick="openAddContact('${esc(group.groupKey)}')" title="Add another person at ${esc(group.companyName)}">+ Add contact</button>` : ""}
                 <span class="rep-badge" onclick="openAssignCompany('${esc(group.groupKey)}')" title="Assign this company">
                   <span class="rep-dot"></span>${esc(getCompanyAssignmentLabel(group.leads))}
                 </span>
@@ -3007,8 +3069,11 @@
             </div>
           </td>
         </tr>
-        ${group.leads.map(renderLeadRow).join("")}
-      `).join("");
+        ${open ? group.leads.map(renderLeadRow).join("") : ""}`;
+      }).join("");
+      const openCount = Array.from(groups.values()).filter(g => searching || leadsOpenCompanies.has(g.groupKey)).length;
+      const barText = document.getElementById("leadsBarText");
+      if (barText) barText.textContent = `${groups.size} compan${groups.size===1?"y":"ies"} · ${limitedLeads.length} lead${limitedLeads.length===1?"":"s"}${openCount ? "" : " · tap a company to see its people"}`;
       const limitNotice = leads.length > MAX_TABLE_ROWS
         ? `<tr class="limit-note"><td colspan="6">Showing first ${MAX_TABLE_ROWS.toLocaleString()} of ${leads.length.toLocaleString()} filtered leads. Narrow the search or filters to see more.</td></tr>`
         : "";
@@ -3156,7 +3221,7 @@
             <div class="ws-person-side">
               <div class="ws-last${last ? "" : " never"}">${last ? `Last contact<br>${fmtDate(last)}${l.contactCount ? ` · ${l.contactCount}×` : ""}` : (wsIsDone(l) ? "No contact logged" : "Never contacted")}</div>
               <button class="btn btn-primary btn-sm" onclick="openActivity('${l.id}')">Log Activity</button>
-              <button class="btn btn-secondary btn-sm" onclick="openResearch('${l.id}')" title="Research on the web">🔎</button>
+              <button class="btn btn-secondary btn-sm" onclick="openResearch('${l.id}')" title="Research this person on the web">🔎</button>
               <button class="btn btn-secondary btn-sm" onclick="openDetail('${l.id}')">Details</button>
             </div>
           </div>`;
@@ -3178,6 +3243,7 @@
           <div class="ws-people">${people}</div>
           ${c.key !== "__no_company__" ? `<div class="ws-add-row">
             <button type="button" onclick="openAddContact('${esc(c.key)}')">+ Add person</button>
+            <button type="button" onclick="openCompanyResearch('${esc(c.key)}')">🔎 Research company</button>
             <button type="button" onclick="openScreenshotReader('${esc(c.key)}')">📷 Add from screenshot</button>
             ${site ? `<button type="button" onclick="openUrl('${esc(site)}')">🌐 Website</button>` : ""}
           </div>` : ""}
@@ -3560,7 +3626,7 @@
       if (phone) act.push(`<a class="ld-action" href="tel:${esc(phone)}">📞 Call</a>`);
       if (site)  act.push(`<a class="ld-action" href="#" onclick="openUrl('${esc(site)}');return false">🌐 Website</a>`);
       if (li)    act.push(`<a class="ld-action" href="#" onclick="openUrl('${esc(li.url)}');return false">in ${li.search ? "Find on LinkedIn" : "LinkedIn"}</a>`);
-      act.push(`<button class="ld-action" type="button" onclick="openResearch('${l.id}')">🔎 ${l.research ? "Research again" : "Research"}</button>`);
+      act.push(`<button class="ld-action" type="button" onclick="openResearch('${l.id}')" title="Research only this person">🔎 ${l.research ? "Research person again" : "Research person"}</button>`);
       html += `<div class="ld-actions">${act.join("")}</div>`;
 
       // Contact details
@@ -3591,6 +3657,7 @@
             <div class="ld-people-actions">
               <button class="ld-add-person" type="button" onclick="openAddContact('${esc(groupKey)}')">+ Add another person at ${esc(l.company)}</button>
               <button class="ld-add-person" type="button" onclick="openScreenshotReader('${esc(groupKey)}')">📷 Add people from a screenshot</button>
+              <button class="ld-add-person" type="button" onclick="openCompanyResearch('${esc(groupKey)}')">🔎 Research the whole company</button>
             </div>
           </div>`;
       }
@@ -3599,15 +3666,17 @@
       const note = linkedinNote(l);
       const liTarget = li ? li.url : `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent([l.name, l.company].filter(Boolean).join(" "))}`;
       // Saved research (talking points and notes)
-      if (l.research && (l.research.talkingPoints?.length || l.research.notes)) {
-        const when = l.research.researchedAt?.toDate ? fmtDate(l.research.researchedAt.toDate()) : "";
-        html += `<div class="ld-section-title">Research</div>
+      [["research", "Research"], ["companyResearch", "Company research"]].forEach(([key, title]) => {
+        const rs = l[key];
+        if (!rs || !(rs.talkingPoints?.length || rs.notes)) return;
+        const when = rs.researchedAt?.toDate ? fmtDate(rs.researchedAt.toDate()) : "";
+        html += `<div class="ld-section-title">${title}</div>
           <div class="ld-research">
-            ${l.research.talkingPoints?.length ? `<ul>${l.research.talkingPoints.map(t => `<li>${esc(t.point)}${realUrl(t.source) ? ` <a href="#" onclick="openUrl('${esc(realUrl(t.source))}');return false">source</a>` : ""}</li>`).join("")}</ul>` : ""}
-            ${l.research.notes ? `<small>${esc(l.research.notes)}</small>` : ""}
-            <small>${when ? `Researched ${esc(when)}` : "Researched"}${l.research.by ? ` by ${esc(l.research.by)}` : ""}</small>
+            ${rs.talkingPoints?.length ? `<ul>${rs.talkingPoints.map(t => `<li>${esc(t.point)}${realUrl(t.source) ? ` <a href="#" onclick="openUrl('${esc(realUrl(t.source))}');return false">source</a>` : ""}</li>`).join("")}</ul>` : ""}
+            ${rs.notes ? `<small>${esc(rs.notes)}</small>` : ""}
+            <small>${when ? `Researched ${esc(when)}` : "Researched"}${rs.by ? ` by ${esc(rs.by)}` : ""}</small>
           </div>`;
-      }
+      });
 
       html += `<div class="ld-section-title">LinkedIn invite note</div>
         <div class="ld-note">
@@ -4095,11 +4164,14 @@
     })();
 
     // ── LEAD RESEARCH ──────────────────────────────────────────────
-    // The Railway service (SHOT_READER_URL + /research) has Claude search the public web for a lead.
+    // The Railway service (SHOT_READER_URL + /research) has Claude search the public web.
+    //   Person research: one lead only (title, email, phone, LinkedIn, talking points).
+    //   Company research: the company's details, a check of everyone we have there, and new people.
     // Every value comes back with its source page, and nothing is saved until the rep ticks it.
-    let rsState = { id: null, rows: [], people: [], points: [], notes: "", busy: false };
+    let rsState = { mode: "person", id: null, groupKey: null, rows: [], people: [], points: [], notes: "", busy: false, run: 0 };
 
     const rsUrlKey = v => String(v || "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/+$/, "");
+    const rsFieldName = k => k === "linkedin" ? "LinkedIn" : k;
     function rsSame(key, a, b) {
       if (!a || !b) return false;
       if (key === "phone") return String(a).replace(/\D/g, "").slice(-10) === String(b).replace(/\D/g, "").slice(-10);
@@ -4112,54 +4184,90 @@
       const host = rsUrlKey(url).split("/")[0];
       return `<a href="#" onclick="openUrl('${esc(url)}');return false" title="${esc(url)}">source: ${esc(host)}</a>`;
     }
+    function rsCompanyLeads() {
+      return rsState.groupKey ? getCompanyLeads(rsState.groupKey).filter(isLeadVisibleToCurrentUser) : [];
+    }
 
     window.openResearch = function (id) {
       const l = allLeads[id];
       if (!l) return;
       if (!canCurrentUserManageLeadAssignment(l)) return showToast("This lead is assigned to another rep", "error");
       closeModal("detailModal");
-      rsState = { id, rows: [], people: [], points: [], notes: "", busy: false };
+      rsState = { mode: "person", id, groupKey: null, rows: [], people: [], points: [], notes: "", busy: false, run: rsState.run + 1 };
       document.getElementById("rsTitle").textContent = `Research ${l.name || l.company || "lead"}`;
       document.getElementById("rsSub").textContent = [l.title, l.company].filter(Boolean).join(" · ") ||
-        "Searches the public web for this lead's business contact details.";
+        "Searches the public web for this person's business contact details.";
+      document.getElementById("researchModal").classList.add("active");
+      runResearch();
+    };
+
+    window.openCompanyResearch = function (groupKey) {
+      const leads = getCompanyLeads(groupKey).filter(isLeadVisibleToCurrentUser);
+      if (!leads.length || groupKey === "__no_company__") return;
+      closeModal("detailModal");
+      rsState = { mode: "company", id: null, groupKey, rows: [], people: [], points: [], notes: "", busy: false, run: rsState.run + 1 };
+      const name = companyDefaults(groupKey).company || leads[0].company;
+      document.getElementById("rsTitle").textContent = `Research ${name}`;
+      document.getElementById("rsSub").textContent =
+        `Checks the ${leads.length} ${leads.length === 1 ? "person" : "people"} you have at ${name} and looks for more.`;
       document.getElementById("researchModal").classList.add("active");
       runResearch();
     };
 
     window.runResearch = async function () {
-      const id = rsState.id, l = allLeads[id];
-      if (!l || rsState.busy) return;
-      rsState.busy = true;
+      const run = rsState.run;
+      if (rsState.busy) return;
       const body = document.getElementById("rsBody");
+      let request, label, wait;
+      if (rsState.mode === "company") {
+        const leads = rsCompanyLeads();
+        if (!leads.length) return;
+        const d = companyDefaults(rsState.groupKey);
+        request = { company: {
+          company: d.company, website: d.website, city: d.extras.city || "", country: d.extras.country || "",
+          people: leads.map(p => ({
+            name: p.name || "", title: p.title || "", email: splitEmail(cleanEmail(p.email)).address,
+            phone: cleanPhone(p.phone), linkedin: p.linkedin || ""
+          }))
+        } };
+        label = `<b>${esc(d.company)}</b> and its people`;
+        wait = "This usually takes 1 to 4 minutes.";
+      } else {
+        const l = allLeads[rsState.id];
+        if (!l) return;
+        request = { lead: {
+          name: l.name || "", title: l.title || "", company: l.company || "",
+          email: splitEmail(cleanEmail(l.email)).address, phone: cleanPhone(l.phone),
+          website: l.website || "", linkedin: l.linkedin || "", city: l.city || "", country: l.country || ""
+        } };
+        label = `<b>${esc(l.name || l.company)}</b>${l.company && l.company !== l.name ? ` at ${esc(l.company)}` : ""}`;
+        wait = "This usually takes 30 seconds to 2 minutes.";
+      }
+      rsState.busy = true;
       document.getElementById("rsSaveBtn").hidden = true;
       document.getElementById("rsRetryBtn").hidden = true;
-      body.innerHTML = `<div class="rs-status"><span class="rs-spin"></span><span>Searching the web for <b>${esc(l.name || l.company)}</b>${l.company && l.company !== l.name ? ` at ${esc(l.company)}` : ""}… This usually takes 30 seconds to 2 minutes. Keep this window open.</span></div>`;
+      body.innerHTML = `<div class="rs-status"><span class="rs-spin"></span><span>Searching the web for ${label}… ${wait} Keep this window open.</span></div>`;
       try {
         if (!SHOT_READER_URL) throw new Error("Research needs the Railway service. See docs/screenshot-reader-setup.md.");
         if (!auth.currentUser) throw new Error("Sign in again, then retry.");
         const token = await auth.currentUser.getIdToken();
-        const lead = {
-          name: l.name || "", title: l.title || "", company: l.company || "",
-          email: splitEmail(cleanEmail(l.email)).address, phone: cleanPhone(l.phone),
-          website: l.website || "", linkedin: l.linkedin || "", city: l.city || "", country: l.country || ""
-        };
         let res;
         try {
           res = await fetch(`${SHOT_READER_URL.replace(/\/+$/, "")}/research`, {
             method: "POST",
             headers: { "Content-Type": "application/json", "x-firebase-token": token },
-            body: JSON.stringify({ lead })
+            body: JSON.stringify(request)
           });
         } catch {
           throw new Error("Couldn't reach the research service. Check your connection and try again.");
         }
         const data = await res.json().catch(() => ({}));
         if (!res.ok) throw new Error(data.error || "The research didn't work. Try again.");
-        if (rsState.id !== id) return;
+        if (rsState.run !== run) return;
         renderResearch(data.result || {}, data.stats || {});
       } catch (e) {
         console.error(e);
-        if (rsState.id !== id) return;
+        if (rsState.run !== run) return;
         body.innerHTML = `<div class="rs-status error">${esc(e.message || "The research didn't work. Try again.")}</div>`;
         document.getElementById("rsRetryBtn").hidden = false;
       } finally {
@@ -4167,67 +4275,76 @@
       }
     };
 
-    function renderResearch(result, stats) {
-      const l = allLeads[rsState.id];
-      if (!l) return;
-      const P = result.person || {}, C = result.company || {};
-      const current = {
-        title: l.title, email: splitEmail(cleanEmail(l.email)).address, phone: cleanPhone(l.phone),
-        linkedin: l.linkedin, website: l.website, address: l.address, city: l.city,
-        industry: l.industry, employeeRange: formatDetailValue(l.employeeRange)
-      };
-      const found = [
-        ["title", "Title", P.title, P.title_source],
-        ["email", "Email", P.email_status === "not_found" ? "" : P.email, P.email_source, P.email_status],
-        ["phone", "Phone", P.phone || C.phone, P.phone ? P.phone_source : C.source],
-        ["linkedin", "LinkedIn", P.linkedin, P.linkedin_source],
-        ["website", "Website", C.website, C.source],
-        ["address", "Address", C.address, C.source],
-        ["city", "City", C.city, C.source],
-        ["industry", "Industry", C.industry, C.source],
-        ["employeeRange", "Company size", C.employee_range, C.source]
-      ];
-      rsState.rows = found.filter(([, , val]) => String(val || "").trim()).map(([key, label, val, src, status]) => {
+    // Field rows: found value next to what we have, with source. Matches are shown greyed.
+    function rsBuildRows(found, current) {
+      return found.filter(([, , val]) => String(val || "").trim()).map(([key, label, val, src, status]) => {
         const now = String(current[key] || "").trim();
         const same = rsSame(key, now, val);
         const guess = key === "email" && status === "pattern_guess";
         return { key, label, val: String(val).trim(), src, guess, same, now, selected: !same && !guess };
       });
+    }
+
+    // Matches a found person to the tracker and works out what to do with them.
+    function rsPlanPerson(p, companyLeads) {
+      const email = String(p.email || "").trim().toLowerCase();
+      const guess = p.email_status === "pattern_guess";
+      const match = companyLeads.find(k => norm(k.name || "") === norm(p.name)) ||
+        (email ? Object.values(allLeads).find(k => String(k.email || "").toLowerCase().includes(email)) : null);
+      if (!match) {
+        return p.status === "left" ? null : { ...p, email, guess, mode: "new", selected: true };
+      }
+      const have = {
+        email: splitEmail(cleanEmail(match.email)).address, phone: cleanPhone(match.phone),
+        title: String(match.title || "").trim(), linkedin: String(match.linkedin || "").trim()
+      };
+      // Missing details are filled in (ticked). Details that differ are only replaced if the rep ticks them.
+      const fills = {}, replaces = {}, differs = [];
+      [["email", email], ["phone", String(p.phone || "").trim()], ["title", String(p.title || "").trim()], ["linkedin", String(p.linkedin || "").trim()]]
+        .forEach(([key, val]) => {
+          if (!val) return;
+          const v = key === "email" && guess ? `${val} (guessed)` : val;
+          if (!have[key]) fills[key] = v;
+          else if (!rsSame(key, have[key], val)) { replaces[key] = v; differs.push(`${rsFieldName(key)}: ${have[key]}`); }
+        });
+      const canEdit = canCurrentUserManageLeadAssignment(match);
+      const mode = !canEdit ? "same" : Object.keys(fills).length ? "update" : Object.keys(replaces).length ? "replace" : "same";
+      return { ...p, email, guess, match, fills, replaces, differs, canEdit, mode, selected: mode === "update" };
+    }
+
+    function renderResearch(result, stats) {
+      const isCompany = rsState.mode === "company";
+      let rows = [], people = [];
+      if (isCompany) {
+        const C = result.company || {};
+        const d = companyDefaults(rsState.groupKey);
+        rows = rsBuildRows([
+          ["website", "Website", C.website, C.source],
+          ["address", "Address", C.address, C.source],
+          ["city", "City", C.city, C.source],
+          ["industry", "Industry", C.industry, C.source],
+          ["employeeRange", "Company size", C.employee_range, C.source]
+        ], { website: d.website, address: d.extras.address, city: d.extras.city, industry: d.industry, employeeRange: formatDetailValue(d.extras.employeeRange) });
+        const companyLeads = rsCompanyLeads();
+        people = (result.people || []).filter(p => String(p.name || "").trim())
+          .map(p => rsPlanPerson(p, companyLeads)).filter(Boolean);
+      } else {
+        const l = allLeads[rsState.id];
+        if (!l) return;
+        const P = result.person || {};
+        rows = rsBuildRows([
+          ["title", "Title", P.title, P.title_source],
+          ["email", "Email", P.email_status === "not_found" ? "" : P.email, P.email_source, P.email_status],
+          ["phone", "Phone", P.phone, P.phone_source],
+          ["linkedin", "LinkedIn", P.linkedin, P.linkedin_source]
+        ], { title: l.title, email: splitEmail(cleanEmail(l.email)).address, phone: cleanPhone(l.phone), linkedin: l.linkedin });
+      }
+      rsState.rows = rows;
+      rsState.people = people;
       rsState.points = (result.talking_points || []).filter(t => String(t.point || "").trim());
       rsState.notes = String(result.notes || "").trim();
-      const groupKey = getCompanyGroupKey(l.company || "");
-      const known = Object.values(allLeads);
-      // Each person found is either new (added as a contact) or already in the tracker, in which case
-      // the details research found are filled into their record where it's missing them.
-      const selfEmail = splitEmail(cleanEmail(l.email)).address;
-      rsState.people = (result.other_people || []).filter(p => String(p.name || "").trim())
-        // The lead being researched sometimes shows up in its own "other people" list.
-        .filter(p => norm(p.name) !== norm(l.name || "") && !(selfEmail && String(p.email || "").trim().toLowerCase() === selfEmail))
-        .map(p => {
-        const email = String(p.email || "").trim().toLowerCase();
-        const match = known.find(k => k.id !== l.id && (
-          (email && String(k.email || "").toLowerCase().includes(email)) ||
-          (norm(k.name || "") === norm(p.name) && getCompanyGroupKey(k.company || "") === groupKey)));
-        if (!match) return { ...p, mode: "new", selected: true };
-        const have = {
-          email: splitEmail(cleanEmail(match.email)).address, phone: cleanPhone(match.phone),
-          title: String(match.title || "").trim(), linkedin: String(match.linkedin || "").trim()
-        };
-        // Missing details are filled in (ticked). Details that differ from the tracker are only
-        // replaced if the rep ticks them.
-        const fills = {}, replaces = {}, differs = [];
-        [["email", email], ["phone", String(p.phone || "").trim()], ["title", String(p.title || "").trim()], ["linkedin", String(p.linkedin || "").trim()]]
-          .forEach(([key, val]) => {
-            if (!val) return;
-            if (!have[key]) fills[key] = val;
-            else if (!rsSame(key, have[key], val)) { replaces[key] = val; differs.push(`${key === "linkedin" ? "LinkedIn" : key}: ${have[key]}`); }
-          });
-        const canEdit = canCurrentUserManageLeadAssignment(match);
-        const mode = !canEdit ? "same" : Object.keys(fills).length ? "update" : Object.keys(replaces).length ? "replace" : "same";
-        return { ...p, match, fills, replaces, differs, canEdit, mode, selected: mode === "update" };
-      });
 
-      const rowsHtml = rsState.rows.map((r, i) => `
+      const rowsHtml = rows.map((r, i) => `
         <div class="rs-row${r.same ? " same" : ""}">
           ${r.same ? "<span></span>" : `<input type="checkbox" data-rs-row="${i}" ${r.selected ? "checked" : ""} aria-label="Save ${esc(r.label)}">`}
           <div class="rs-label">${esc(r.label)}</div>
@@ -4241,38 +4358,40 @@
           </div>
         </div>`).join("");
 
+      const tickable = people.filter(p => p.mode !== "same").length;
+      const peopleHtml = people.length ? `
+        <div class="rs-h rs-h-row"><span>People (${people.length})</span>
+          ${tickable ? `<span class="rs-select"><button type="button" onclick="selectResearchPeople(true)">Select all</button><button type="button" onclick="selectResearchPeople(false)">None</button></span>` : ""}</div>
+        <div class="rs-list">
+          ${people.map((p, i) => {
+            const tag = p.mode === "new" ? `<span class="rs-tag">New contact</span>`
+              : p.mode === "update" ? `<span class="rs-tag">In the tracker · add ${esc(Object.keys(p.fills).map(rsFieldName).join(", "))}</span>`
+              : p.mode === "replace" ? `<span class="rs-tag warn">In the tracker · tick to replace ${esc(Object.keys(p.replaces).map(rsFieldName).join(", "))}</span>`
+              : `<span class="rs-tag muted">${p.match && !p.canEdit ? "In the tracker · assigned to another rep" : "In the tracker · nothing new"}</span>`;
+            const left = p.status === "left" ? `<span class="rs-tag warn">May have left the company</span>` : "";
+            return `<label class="rs-item" style="cursor:${p.mode === "same" ? "default" : "pointer"}">
+              ${p.mode === "same" ? "<span>✓</span>" : `<input type="checkbox" data-rs-person="${i}" ${p.selected ? "checked" : ""}>`}
+              <span><b>${esc(p.name)}</b>${p.title ? ` · ${esc(p.title)}` : ""} ${tag} ${left}
+                <div class="rs-meta">${[p.email ? p.email + (p.guess ? " (guessed)" : "") : "", p.phone].filter(Boolean).map(esc).join(" · ")} ${rsSourceLink(p.source)}</div>
+                ${p.differs?.length ? `<div class="rs-meta">${p.mode === "replace" ? "Tracker now has" : "Kept, the tracker has a different"} ${esc(p.differs.join("; "))}</div>` : ""}</span>
+            </label>`;
+          }).join("")}
+        </div>` : "";
+
       const pointsHtml = rsState.points.length ? `
         <div class="rs-h">Talking points</div>
         <div class="rs-list">
           ${rsState.points.map(t => `<div class="rs-item"><span>💡</span><span>${esc(t.point)} ${rsSourceLink(t.source)}</span></div>`).join("")}
-          <label class="rs-item" style="cursor:pointer"><input type="checkbox" id="rsSavePoints" checked><span>Save these talking points to the lead</span></label>
+          <label class="rs-item" style="cursor:pointer"><input type="checkbox" id="rsSavePoints" checked><span>Save these talking points${isCompany ? " to everyone at this company" : " to the lead"}</span></label>
         </div>` : "";
 
-      const peopleHtml = rsState.people.length ? `
-        <div class="rs-h">Other people at ${esc(l.company || "this company")}</div>
-        <div class="rs-list">
-          ${rsState.people.map((p, i) => {
-            const fillNames = Object.keys(p.fills || {}).map(k => k === "linkedin" ? "LinkedIn" : k);
-            const tag = p.mode === "new" ? `<span class="rs-tag">New contact</span>`
-              : p.mode === "update" ? `<span class="rs-tag">In the tracker · add ${esc(fillNames.join(", "))}</span>`
-              : p.mode === "replace" ? `<span class="rs-tag warn">In the tracker · tick to replace ${esc(Object.keys(p.replaces).map(k => k === "linkedin" ? "LinkedIn" : k).join(", "))}</span>`
-              : `<span class="rs-tag" style="background:rgba(100,116,139,0.10);color:var(--gray-500)">${p.match && !p.canEdit ? "In the tracker · assigned to another rep" : "Already in the tracker · nothing new"}</span>`;
-            return `<label class="rs-item" style="cursor:${p.mode === "same" ? "default" : "pointer"}">
-            ${p.mode === "same" ? "<span>✓</span>" : `<input type="checkbox" data-rs-person="${i}" ${p.selected ? "checked" : ""}>`}
-            <span><b>${esc(p.name)}</b>${p.title ? ` · ${esc(p.title)}` : ""} ${tag}
-              <div class="rs-meta">${[p.email, p.phone].filter(Boolean).map(esc).join(" · ")} ${rsSourceLink(p.source)}</div>
-              ${p.differs?.length ? `<div class="rs-meta">${p.mode === "replace" ? "Tracker now has" : "Kept, the tracker has a different"} ${esc(p.differs.join("; "))}</div>` : ""}</span>
-          </label>`;
-          }).join("")}
-        </div>` : "";
-
-      const nothing = !rsState.rows.length && !rsState.points.length && !rsState.people.length;
+      const nothing = !rows.length && !rsState.points.length && !people.length;
       document.getElementById("rsBody").innerHTML = `
         ${rsState.notes ? `<div class="rs-note">📝 ${esc(rsState.notes)}</div>` : ""}
-        ${nothing ? `<div class="rs-status">Nothing new was found on the public web for this lead.</div>` : ""}
-        ${rsState.rows.length ? `<div class="rs-h">Contact details</div><div class="rs-rows">${rowsHtml}</div>` : ""}
-        ${pointsHtml}
+        ${nothing ? `<div class="rs-status">Nothing new was found on the public web.</div>` : ""}
+        ${rows.length ? `<div class="rs-h">${isCompany ? "Company details" : "Contact details"}</div><div class="rs-rows">${rowsHtml}</div>` : ""}
         ${peopleHtml}
+        ${pointsHtml}
         <div class="rs-foot">Searched the web ${stats.searches || 0} time${stats.searches === 1 ? "" : "s"} and read ${stats.fetches || 0} page${stats.fetches === 1 ? "" : "s"}. Check the sources before you rely on anything here.</div>`;
 
       const body = document.getElementById("rsBody");
@@ -4283,64 +4402,89 @@
       updateResearchSaveBtn();
     }
 
+    window.selectResearchPeople = function (on) {
+      rsState.people.forEach((p, i) => {
+        if (p.mode === "same") return;
+        p.selected = on;
+        const cb = document.querySelector(`[data-rs-person="${i}"]`);
+        if (cb) cb.checked = on;
+      });
+      updateResearchSaveBtn();
+    };
+
     function updateResearchSaveBtn() {
       const fields = rsState.rows.filter(r => r.selected && !r.same).length;
       const added = rsState.people.filter(p => p.selected && p.mode === "new").length;
       const updated = rsState.people.filter(p => p.selected && (p.mode === "update" || p.mode === "replace")).length;
       const parts = [];
-      if (fields) parts.push(`${fields} detail${fields === 1 ? "" : "s"}`);
+      if (fields) parts.push(`${fields} ${rsState.mode === "company" ? "company " : ""}detail${fields === 1 ? "" : "s"}`);
       if (added) parts.push(`${added} new ${added === 1 ? "contact" : "contacts"}`);
       if (updated) parts.push(`${updated} contact update${updated === 1 ? "" : "s"}`);
       document.getElementById("rsSaveBtn").textContent = parts.length ? `Save ${parts.join(" + ")}` : "Save research notes";
     }
 
     window.saveResearch = async function () {
-      const l = allLeads[rsState.id];
-      if (!l) return;
-      const update = {};
+      const isCompany = rsState.mode === "company";
+      const fields = {};
       rsState.rows.filter(r => r.selected && !r.same).forEach(r => {
         let v = String(r.val || "").trim();
         if (!v) return;
         if (r.key === "email") v = v.toLowerCase() + (r.guess ? " (guessed)" : "");
-        update[r.key] = v;
+        fields[r.key] = v;
       });
       const savePoints = document.getElementById("rsSavePoints")?.checked;
-      update.research = {
+      const research = {
         talkingPoints: savePoints ? rsState.points.map(t => ({ point: String(t.point), source: String(t.source || "") })) : [],
         notes: rsState.notes,
         researchedAt: serverTimestamp(),
         by: currentUser
       };
-      update.updatedAt = serverTimestamp();
       const btn = document.getElementById("rsSaveBtn");
       btn.disabled = true;
       try {
-        await updateDoc(doc(db, "leads", l.id), update);
-        const chosen = rsState.people.filter(p => p.selected && p.mode === "new");
+        let skipped = 0;
+        if (isCompany) {
+          // Company details and company research go on everyone at the company this rep can edit.
+          for (const l of rsCompanyLeads()) {
+            if (!canCurrentUserManageLeadAssignment(l)) { skipped++; continue; }
+            await updateDoc(doc(db, "leads", l.id), { ...fields, companyResearch: research, updatedAt: serverTimestamp() });
+          }
+        } else {
+          const l = allLeads[rsState.id];
+          if (!l) return;
+          await updateDoc(doc(db, "leads", l.id), { ...fields, research, updatedAt: serverTimestamp() });
+        }
+
         const updates = rsState.people.filter(p => p.selected && (p.mode === "update" || p.mode === "replace"));
         for (const p of updates) {
           await updateDoc(doc(db, "leads", p.match.id), { ...(p.mode === "replace" ? p.replaces : p.fills), updatedAt: serverTimestamp() });
         }
-        const d = companyDefaults(getCompanyGroupKey(l.company || ""));
-        for (const p of chosen) {
+        const added = rsState.people.filter(p => p.selected && p.mode === "new");
+        const d = companyDefaults(rsState.groupKey || getCompanyGroupKey(allLeads[rsState.id]?.company || ""));
+        for (const p of added) {
           await addDoc(collection(db, "leads"), {
-            name: String(p.name).trim(), company: d.company || l.company || "",
-            email: String(p.email || "").trim().toLowerCase(), phone: String(p.phone || "").trim(),
-            website: d.website || l.website || "", linkedin: String(p.linkedin || "").trim(),
-            title: String(p.title || "").trim(), industry: d.industry || l.industry || "",
+            name: String(p.name).trim(), company: d.company,
+            email: p.email ? p.email + (p.guess ? " (guessed)" : "") : "", phone: String(p.phone || "").trim(),
+            website: fields.website || d.website || "", linkedin: String(p.linkedin || "").trim(),
+            title: String(p.title || "").trim(), industry: fields.industry || d.industry || "",
             assignedTo: d.rep, status: "New", contactCount: 0, lastContacted: null,
             createdAt: serverTimestamp(), updatedAt: serverTimestamp(), source: "research",
-            ...d.extras
+            ...d.extras,
+            ...(fields.address ? { address: fields.address } : {}), ...(fields.city ? { city: fields.city } : {}),
+            ...(fields.employeeRange ? { employeeRange: fields.employeeRange } : {}),
+            ...(isCompany ? { companyResearch: research } : {})
           });
         }
-        const fields = Object.keys(update).filter(k => k !== "research" && k !== "updatedAt").length;
-        const bits = fields ? [`saved ${fields} detail${fields === 1 ? "" : "s"}`] : [];
-        if (chosen.length) bits.push(`added ${chosen.length} ${chosen.length === 1 ? "contact" : "contacts"}`);
+
+        const n = Object.keys(fields).length, bits = [];
+        if (n) bits.push(`saved ${n} ${isCompany ? "company " : ""}detail${n === 1 ? "" : "s"}`);
+        if (added.length) bits.push(`added ${added.length} ${added.length === 1 ? "contact" : "contacts"}`);
         if (updates.length) bits.push(`updated ${updates.length} existing ${updates.length === 1 ? "contact" : "contacts"}`);
+        if (skipped) bits.push(`skipped ${skipped} assigned to another rep`);
         const msg = bits.join(", ");
         showToast(msg ? msg[0].toUpperCase() + msg.slice(1) : "Saved the research notes", "success");
         closeModal("researchModal");
-        openDetail(l.id);
+        if (!isCompany) openDetail(rsState.id);
       } catch (e) {
         console.error(e);
         showToast("Failed to save the research", "error");

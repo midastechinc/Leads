@@ -13,7 +13,7 @@
 // and researches leads on the web (POST /research, see research.ts).
 import Anthropic from "npm:@anthropic-ai/sdk";
 import { createRemoteJWKSet, jwtVerify } from "npm:jose@5";
-import { type LeadInput, ResearchError, researchLead } from "./research.ts";
+import { type CompanyInput, type LeadInput, ResearchError, researchCompany, researchLead } from "./research.ts";
 
 const FIREBASE_PROJECT_ID = Deno.env.get("FIREBASE_PROJECT_ID") ?? "midas-leads-a8b13";
 const FIREBASE_JWKS = createRemoteJWKSet(new URL(
@@ -113,19 +113,23 @@ async function relayOneMin(req: Request, endpoint: string): Promise<Response> {
   }
 }
 
+// Body: { lead } researches one person; { company: { company, website, city, country, people } }
+// researches a whole company, checking the people we have and finding more.
 async function handleResearch(req: Request): Promise<Response> {
-  let lead: LeadInput;
+  let body: { lead?: LeadInput; company?: CompanyInput };
   try {
-    lead = ((await req.json()) as { lead?: LeadInput }).lead ?? {};
+    body = await req.json();
   } catch {
     return json(req, 400, { error: "The request wasn't valid JSON." });
   }
-  if (!String(lead.name ?? "").trim() && !String(lead.company ?? "").trim()) {
-    return json(req, 400, { error: "The lead needs a name or a company to research." });
+  const company = body.company;
+  const lead = body.lead ?? {};
+  if (company ? !String(company.company ?? "").trim() : !String(lead.name ?? "").trim() && !String(lead.company ?? "").trim()) {
+    return json(req, 400, { error: company ? "The company needs a name to research." : "The lead needs a name or a company to research." });
   }
   try {
-    const { result, stats } = await researchLead(client, lead);
-    console.log("research done:", JSON.stringify({ company: lead.company, ...stats }));
+    const { result, stats } = company ? await researchCompany(client, company) : await researchLead(client, lead);
+    console.log("research done:", JSON.stringify({ mode: company ? "company" : "person", company: company?.company ?? lead.company, ...stats }));
     return json(req, 200, { result, stats });
   } catch (err) {
     if (err instanceof ResearchError) return json(req, err.status, { error: err.message });

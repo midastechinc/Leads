@@ -3570,7 +3570,7 @@
     // which asks Claude to list the people in it. Nothing is saved until the rep reviews the list.
     // Address of the reader when it runs as its own service (Railway), e.g. "https://extract-contacts-production.up.railway.app".
     // Leave empty to use the extract-contacts function on the Supabase server.
-    const SHOT_READER_URL = "";
+    const SHOT_READER_URL = "https://leads-production-2ad0.up.railway.app";
     const SHOT_MAX_SIDE = 1568;   // Claude reads images up to about this size without downscaling
     const SHOT_MAX_SLICES = 4;    // long team pages are cut into pieces so the text stays readable
     let shotState = { slices: [], people: [], previewUrl: "" };

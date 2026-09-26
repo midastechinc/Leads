@@ -398,12 +398,30 @@
     .group-row.grp-closed td { border-bottom: 1px solid rgba(112,101,82,0.18); }
     .leads-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 0 4px 8px; font-size: 12px; color: var(--gray-500); }
     .leads-bar .ws-expand { margin-left: auto; }
+    /* Same width for every rep badge so the company buttons line up */
+    .group-row .group-actions { flex-wrap: nowrap; }
+    .group-row .rep-badge { min-width: 118px; }
+    @media (min-width: 901px) { #leadsTable .c-actions .actions { justify-content: flex-end; } }
+    /* Multi-select */
+    .sel-check { width: 17px; height: 17px; flex: none; accent-color: var(--blue); cursor: pointer; margin: 0; }
+    .c-name .name-wrap { display: flex; align-items: flex-start; gap: 10px; }
+    .c-name .name-wrap .sel-check { margin-top: 2px; }
+    .grp-select { display: flex; align-items: center; padding: 0 2px; }
+    .leads-bar .sel-all { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 700; color: var(--gray-600); }
+    .bulk-bar { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 18px; border-radius: 999px; background: #2b2520; color: #fff; box-shadow: 0 12px 30px rgba(0,0,0,0.28); font-size: 14px; white-space: nowrap; }
+    .bulk-bar[hidden] { display: none; }
+    .bulk-bar b { font-weight: 800; }
+    .bulk-bar button { border: none; border-radius: 999px; padding: 9px 14px; font: 700 13px inherit; font-family: inherit; cursor: pointer; }
+    .bulk-bar .bulk-assign { background: linear-gradient(135deg, var(--blue), #3b82f6); color: #fff; }
+    .bulk-bar .bulk-clear { background: rgba(255,255,255,0.12); color: #fff; }
     @media (min-width: 901px) { .leads-bar { margin: 12px 28px 6px; } }
     @media (max-width: 900px) {
       .leads-bar { margin: 10px 18px 0; }
       #leadsTable tr.group-row .group-label { flex-wrap: wrap; align-items: flex-start; }
-      #leadsTable tr.group-row .grp-toggle { flex: 1 1 100%; }
-      #leadsTable tr.group-row .group-actions { width: 100%; justify-content: flex-start; padding-left: 30px; }
+      #leadsTable tr.group-row .grp-toggle { flex: 1 1 calc(100% - 40px); }
+      #leadsTable tr.group-row .group-actions { width: 100%; justify-content: flex-start; padding-left: 57px; flex-wrap: wrap; }
+      .group-row .rep-badge { min-width: 0; }
+      .bulk-bar { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); left: 16px; right: 16px; transform: none; justify-content: space-between; }
       .grp-name { white-space: normal; }
     }
     .state-row td { text-align: center; padding: 48px; color: var(--gray-400); white-space: normal; }
@@ -1536,6 +1554,7 @@
     </div>
 
     <div class="leads-bar">
+      <label class="sel-all" title="Select every lead in this list"><input type="checkbox" class="sel-check" id="selAllLeads" onchange="selectAllShownLeads(this.checked)"> Select all</label>
       <span id="leadsBarText"></span>
       <span class="ws-expand">
         <button type="button" onclick="setAllLeadsCompanies(true)">Expand all</button>
@@ -1911,6 +1930,13 @@
         <button class="btn btn-primary" onclick="submitAddLead()">Add Lead</button>
       </div>
     </div>
+  </div>
+
+  <!-- ══ Bulk actions for selected leads ══ -->
+  <div class="bulk-bar" id="bulkBar" hidden>
+    <span><b id="bulkCount">0</b> selected</span>
+    <button type="button" class="bulk-assign" onclick="openAssignSelected()">Assign to rep…</button>
+    <button type="button" class="bulk-clear" onclick="clearLeadSelection()">Clear</button>
   </div>
 
   <!-- ══ Lead Research Modal ══ -->
@@ -2870,6 +2896,7 @@
     window.switchView = function (v) {
       activeView = v;
       document.body.dataset.view = v;
+      updateSelectionUi(); // the bulk-assign bar only belongs on All Leads
       document.querySelectorAll(".view").forEach(el => el.classList.remove("active"));
       document.querySelectorAll(".view-tab").forEach(el => el.classList.remove("active"));
       document.getElementById(`view-${v}`).classList.add("active");
@@ -2975,6 +3002,58 @@
       return days <= 0 ? "Today" : days === 1 ? "Yesterday" : `${days} days ago`;
     }
 
+    // ── MULTI-SELECT ───────────────────────────────────────────────
+    // Tick leads (or a whole company) in All Leads, then assign them all to a rep at once.
+    const selectedLeadIds = new Set();
+    let tableGroups = new Map();
+    window.toggleLeadSelect = function (id, on) {
+      if (on) selectedLeadIds.add(id); else selectedLeadIds.delete(id);
+      updateSelectionUi();
+    };
+    window.toggleGroupSelect = function (groupKey, on) {
+      (tableGroups.get(groupKey)?.leads || []).forEach(l => on ? selectedLeadIds.add(l.id) : selectedLeadIds.delete(l.id));
+      renderTable(lastTableLeads);
+    };
+    window.selectAllShownLeads = function (on) {
+      lastTableLeads.forEach(l => on ? selectedLeadIds.add(l.id) : selectedLeadIds.delete(l.id));
+      renderTable(lastTableLeads);
+    };
+    window.clearLeadSelection = function () {
+      selectedLeadIds.clear();
+      renderTable(lastTableLeads);
+    };
+    function updateSelectionUi() {
+      [...selectedLeadIds].forEach(id => { if (!allLeads[id]) selectedLeadIds.delete(id); });
+      const n = selectedLeadIds.size;
+      const bar = document.getElementById("bulkBar");
+      if (bar) bar.hidden = !n || activeView !== "admin";
+      const count = document.getElementById("bulkCount");
+      if (count) count.textContent = n;
+      document.querySelectorAll("#leadTableBody .grp-check").forEach(cb => {
+        const leads = tableGroups.get(cb.dataset.group)?.leads || [];
+        const picked = leads.filter(l => selectedLeadIds.has(l.id)).length;
+        cb.checked = !!leads.length && picked === leads.length;
+        cb.indeterminate = picked > 0 && picked < leads.length;
+      });
+      const all = document.getElementById("selAllLeads");
+      if (all) {
+        const picked = lastTableLeads.filter(l => selectedLeadIds.has(l.id)).length;
+        all.checked = !!lastTableLeads.length && picked === lastTableLeads.length;
+        all.indeterminate = picked > 0 && picked < lastTableLeads.length;
+      }
+    }
+    window.openAssignSelected = function () {
+      const leads = [...selectedLeadIds].map(id => allLeads[id]).filter(Boolean);
+      const allowed = leads.filter(canCurrentUserManageLeadAssignment);
+      if (!allowed.length) return showToast("You can only assign unassigned leads or your own leads", "error");
+      const skipped = leads.length - allowed.length;
+      const companies = new Set(allowed.map(l => getCompanyGroupKey(l.company || ""))).size;
+      openAssignLeads(allowed.map(l => l.id),
+        `${allowed.length} selected lead${allowed.length === 1 ? "" : "s"} at ${companies} compan${companies === 1 ? "y" : "ies"}`,
+        skipped ? `${allowed.length} selected lead${allowed.length === 1 ? "" : "s"} (${skipped} assigned to another rep will be skipped)` : null,
+        true);
+    };
+
     // ── RENDER TABLE ───────────────────────────────────────────────
     // Leads are grouped by company. Companies start collapsed; the ones the rep opens stay open
     // across re-renders, and a search opens every matching company.
@@ -3022,8 +3101,13 @@
           : (fu ? `<div class="touch-flag">Not contacted yet</div>` : `<div class="td-muted">—</div>`);
         return `<tr class="${fu ? "needs-followup" : ""}">
           <td class="c-name" title="${esc(l.name||'')}">
-            <div class="td-name"><a href="#" onclick="openDetail('${l.id}');return false;" style="color:inherit;text-decoration:none">${esc(l.name||"—")}</a></div>
-            ${(l.title||l.industry)?`<div class="td-sub">${esc(l.title||l.industry)}</div>`:""}
+            <div class="name-wrap">
+              <input type="checkbox" class="sel-check" ${selectedLeadIds.has(l.id) ? "checked" : ""} onchange="toggleLeadSelect('${l.id}', this.checked)" aria-label="Select ${esc(l.name||"lead")}">
+              <div style="min-width:0">
+                <div class="td-name"><a href="#" onclick="openDetail('${l.id}');return false;" style="color:inherit;text-decoration:none">${esc(l.name||"—")}</a></div>
+                ${(l.title||l.industry)?`<div class="td-sub">${esc(l.title||l.industry)}</div>`:""}
+              </div>
+            </div>
           </td>
           <td class="c-email" title="${email}">${email?`<a href="mailto:${esc(email)}" style="color:var(--blue);text-decoration:none;">${esc(email)}</a>`:`<span class="td-muted">No email</span>`}</td>
           <td class="c-phone td-muted">${phone?`<a href="tel:${esc(phone)}" style="color:inherit;text-decoration:none">${esc(phone)}</a>`:"—"}</td>
@@ -3048,6 +3132,7 @@
         <tr class="group-row${open ? "" : " grp-closed"}">
           <td colspan="6">
             <div class="group-label">
+              <span class="grp-select"><input type="checkbox" class="sel-check grp-check" data-group="${esc(group.groupKey)}" ${group.leads.every(l => selectedLeadIds.has(l.id)) ? "checked" : ""} onchange="toggleGroupSelect('${esc(group.groupKey)}', this.checked)" aria-label="Select everyone at ${esc(group.companyName)}"></span>
               <button type="button" class="grp-toggle" aria-expanded="${open}" onclick="toggleLeadsCompany('${esc(group.groupKey)}')" title="${open ? "Hide" : "Show"} the people at ${esc(group.companyName)}">
                 <span class="grp-chev" aria-hidden="true">▶</span>
                 <span style="min-width:0">
@@ -3078,6 +3163,8 @@
         ? `<tr class="limit-note"><td colspan="6">Showing first ${MAX_TABLE_ROWS.toLocaleString()} of ${leads.length.toLocaleString()} filtered leads. Narrow the search or filters to see more.</td></tr>`
         : "";
       tbody.innerHTML = limitNotice + rowsHtml;
+      tableGroups = groups;
+      updateSelectionUi();
     }
 
     // ── WORKSPACE VIEW ─────────────────────────────────────────────
@@ -3264,15 +3351,17 @@
       if (!companyLeads.every(canCurrentUserManageLeadAssignment)) {
         return showToast("You can only claim unassigned leads or unassign your own leads","error");
       }
-      assignTarget = {
-        type: "company",
-        groupKey,
-        leadIds: companyLeads.map(l => l.id),
-        companyName: companyLeads[0]?.company?.trim() || "No Company"
-      };
-      selectedRep = getCompanyAssignedRep(companyLeads);
-      document.getElementById("assignModalSub").textContent =
-        `${assignTarget.companyName} — ${companyLeads.length} lead${companyLeads.length!==1?"s":""}`;
+      const companyName = companyLeads[0]?.company?.trim() || "No Company";
+      openAssignLeads(companyLeads.map(l => l.id), companyName,
+        `${companyName} — ${companyLeads.length} lead${companyLeads.length!==1?"s":""}`, false);
+    };
+
+    // Opens the rep picker for a set of leads (a company, or leads ticked in All Leads).
+    function openAssignLeads(leadIds, label, subtitle, clearSelectionAfter) {
+      const leads = leadIds.map(id => allLeads[id]).filter(Boolean);
+      assignTarget = { type: "company", leadIds, companyName: label, clearSelectionAfter };
+      selectedRep = getCompanyAssignedRep(leads);
+      document.getElementById("assignModalSub").textContent = subtitle || label;
 
       // Every rep (not just admins) can assign to any rep in this list — they just can't
       // open this modal in the first place for a lead someone else already owns (see the
@@ -3294,7 +3383,7 @@
           onkeydown="if(event.key==='Enter'){selectRep(null,this.value.trim());this.value=''}">
       </div>`;
       document.getElementById("assignModal").classList.add("active");
-    };
+    }
 
     window.selectRep = function (el, name) {
       if (name === undefined || name === null || name === "") return;
@@ -3308,15 +3397,19 @@
       try {
         if (assignTarget.type === "company") {
           const nextAssignedTo = selectedRep === "__UNASSIGNED__" ? "" : selectedRep;
-          const batch = writeBatch(db);
-          assignTarget.leadIds.forEach(id => {
-            batch.update(doc(db,"leads",id), {
-              assignedTo: nextAssignedTo, updatedAt: serverTimestamp()
+          // Firestore batches hold up to 500 writes.
+          for (let i = 0; i < assignTarget.leadIds.length; i += 450) {
+            const batch = writeBatch(db);
+            assignTarget.leadIds.slice(i, i + 450).forEach(id => {
+              batch.update(doc(db,"leads",id), {
+                assignedTo: nextAssignedTo, updatedAt: serverTimestamp()
+              });
             });
-          });
-          await batch.commit();
+            await batch.commit();
+          }
           const actionLabel = nextAssignedTo ? `assigned to ${nextAssignedTo}` : "unassigned";
           showToast(`${assignTarget.companyName} ${actionLabel}`,"success");
+          if (assignTarget.clearSelectionAfter) clearLeadSelection();
         }
         closeModal("assignModal");
       } catch(e) { console.error(e); showToast("Failed to assign","error"); }

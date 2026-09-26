@@ -537,12 +537,7 @@ body.lt-shell .saved-filters .filter-input,body.lt-shell .saved-filters .filter-
     </div>
     <button class="mini-link" type="button" id="settingsClose">Close</button>
   </div>
-  <label class="lbl" for="apiKey">1min.ai API key</label>
-  <input type="password" id="apiKey" placeholder="Paste your 1min.ai API key...">
-  <div class="mini-row">
-    <label class="mini-check"><input type="checkbox" id="rememberApiKey" checked> Save to database</label>
-    <button class="mini-link" type="button" onclick="clearSavedApiKey()">Clear saved key</button>
-  </div>
+  <p class="note">🔑 The 1min.ai key is kept on the server (Railway variable <code>ONEMIN_API_KEY</code>), not in this page. Stay signed in to the lead tracker in this browser to generate posts.</p>
   <div class="lbl lbl-t">AI model</div>
   <div class="chips" id="modelChips">
     <div class="chip on" data-model="gpt-4o-mini">GPT-4o Mini (fast)</div>
@@ -763,6 +758,20 @@ body.lt-shell .saved-filters .filter-input,body.lt-shell .saved-filters .filter-
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script type="module">
+// Uses the lead tracker's Firebase sign-in (same site, so it's shared) to prove to the
+// AI server that the request comes from a signed-in user.
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+const auth = getAuth(initializeApp({
+  apiKey: "AIzaSyB0xBLlmRvUFlBkh03IGQRCOUhCJELS7v8",
+  authDomain: "midas-leads-a8b13.firebaseapp.com",
+  projectId: "midas-leads-a8b13",
+  appId: "1:844446591167:web:2e87b6d6ee6ad61776fe0a"
+}));
+const authReady = new Promise(resolve => { const stop = onAuthStateChanged(auth, () => { stop(); resolve(); }); });
+window.getLeadTrackerIdToken = async () => { await authReady; return auth.currentUser ? auth.currentUser.getIdToken() : ""; };
+</script>
 <script>
 // ── LeadTracker Supabase client (must be defined before any startup code below runs) ──
 const LEADTRACKER_SUPABASE = {
@@ -946,18 +955,6 @@ document.getElementById('topicSearch')?.addEventListener('input', (ev) => {
 
 const SOCIAL_POST_IMAGE_BUCKET = 'social-post-images';
 
-// Load API key from Supabase on startup (async)
-loadSavedApiKey().then(savedApiKey => {
-  const apiKeyInput = document.getElementById('apiKey');
-  const rememberApiKey = document.getElementById('rememberApiKey');
-  if (apiKeyInput && savedApiKey) apiKeyInput.value = savedApiKey;
-  if (rememberApiKey) rememberApiKey.checked = true;
-  if (!savedApiKey) openSettingsForKey();
-});
-document.getElementById('rememberApiKey')?.addEventListener('change', persistApiKeyPreference);
-document.getElementById('apiKey')?.addEventListener('change', () => {
-  if (document.getElementById('rememberApiKey')?.checked) persistApiKeyPreference();
-});
 
 initializeLeadTrackerContext();
 document.getElementById('savedPostsSec')?.classList.add('on');
@@ -987,19 +984,6 @@ function showErr(m){const b=document.getElementById('errBox');b.innerHTML='⚠�
 function hideErr(){document.getElementById('errBox').classList.remove('on')}
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),2500)}
 
-// Opens the Settings panel so the user can paste their 1min.ai key.
-function openSettingsForKey() {
-  const panel = document.getElementById('settingsPanel');
-  if (!panel) return;
-  panel.hidden = false;
-  document.getElementById('settingsToggle')?.setAttribute('aria-expanded', 'true');
-  document.getElementById('apiKey')?.focus();
-}
-
-function getApiKeyValue() {
-  const input = document.getElementById('apiKey');
-  return (input?.value || '').trim();
-}
 
 function waitForLogoAssets() {
   if (logoDark.complete && logoDark.naturalWidth && logoLight.complete && logoLight.naturalWidth) {
@@ -1058,19 +1042,35 @@ async function persistCardImage(card, post, isIG, preferredDataUrl) {
   return await uploadDataUrlToStorage(dataUrl, path);
 }
 
-// ── 1min.ai API ──────────────────────────────────────────────────────────────
-async function call1min(apiKey, model, prompt, webSearch=false) {
+// ── 1min.ai API (through the AI server, which holds the key) ─────────────────
+// Same Railway service as the lead tracker's screenshot reader.
+const AI_SERVER_URL = "https://leads-production-2ad0.up.railway.app";
+
+async function oneMinFetch(endpoint, body) {
+  const token = await window.getLeadTrackerIdToken?.();
+  if (!token) throw new Error('Sign in to the lead tracker in this browser first, then try again.');
+  let r;
+  try {
+    r = await fetch(`${AI_SERVER_URL}/1min/${endpoint}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-firebase-token": token },
+      body: JSON.stringify(body)
+    });
+  } catch (_) {
+    throw new Error("Couldn't reach the AI server. Check your connection and try again.");
+  }
+  return r;
+}
+
+async function call1min(model, prompt, webSearch=false) {
   const body={type:"UNIFY_CHAT_WITH_AI",model,promptObject:{prompt}};
   if(webSearch) body.promptObject.settings={webSearchSettings:{webSearch:true,numOfSite:5,maxWord:1500}};
-  const r=await fetch("https://api.1min.ai/api/chat-with-ai",{
-    method:"POST",headers:{"Content-Type":"application/json","API-KEY":apiKey},
-    body:JSON.stringify(body)
-  });
-  if(!r.ok){let msg=`HTTP ${r.status}`;try{const e=await r.json();msg=e?.error?.message||e?.message||msg}catch(_){}throw new Error(msg)}
+  const r=await oneMinFetch("chat-with-ai", body);
+  if(!r.ok){let msg=`HTTP ${r.status}`;try{const e=await r.json();msg=(typeof e?.error==='string'?e.error:e?.error?.message)||e?.message||msg}catch(_){}throw new Error(msg)}
   const data=await r.json();
   const arr=data?.aiRecord?.aiRecordDetail?.resultObject;
   if(arr&&arr.length)return arr.join('\n');
-  throw new Error("Unexpected 1min.ai response — check API key & credits.");
+  throw new Error("Unexpected 1min.ai response. Check the 1min.ai credits and the ONEMIN_API_KEY on Railway.");
 }
 
 function parseJSON(raw){
@@ -1081,6 +1081,18 @@ function parseJSON(raw){
 
 const CURRENT_YEAR = new Date().getFullYear();
 const API_KEY_STORAGE_KEY = 'midas_social_generator_1min_api_key';
+const API_KEY_SETTING = '1min_api_key';
+
+async function removeOldSavedApiKey() {
+  try { localStorage.removeItem(API_KEY_STORAGE_KEY); } catch(_){}
+  try {
+    const db = getLeadTrackerClient();
+    if (db) await db.from('settings').delete().eq('key', API_KEY_SETTING);
+  } catch(_){}
+}
+// The 1min.ai key now lives on the server. Remove the copies older versions saved in the browser
+// and in the (publicly readable) settings table.
+removeOldSavedApiKey();
 let currentGenerationContext = {
   topicContext: '',
   audienceKey: '',
@@ -1114,55 +1126,6 @@ function getLeadTrackerClient() {
   return leadTrackerSupabase;
 }
 
-// ── API Key: Supabase-backed persistence ─────────────────────────────────────
-const API_KEY_SETTING = '1min_api_key';
-
-async function loadSavedApiKey() {
-  // Fallback to localStorage while Supabase initialises
-  const local = (() => { try { return localStorage.getItem(API_KEY_STORAGE_KEY) || ''; } catch(_){ return ''; } })();
-  try {
-    const db = getLeadTrackerClient();
-    if (!db) return local;
-    const { data } = await db.from('settings').select('value').eq('key', API_KEY_SETTING).single();
-    if (data?.value) {
-      // Sync back to localStorage as fast-path for next load
-      try { localStorage.setItem(API_KEY_STORAGE_KEY, data.value); } catch(_){}
-      return data.value;
-    }
-  } catch (_) {}
-  return local;
-}
-
-async function persistApiKeyPreference() {
-  const remember = document.getElementById('rememberApiKey');
-  const apiKeyInput = document.getElementById('apiKey');
-  if (!remember || !apiKeyInput || !remember.checked || !apiKeyInput.value.trim()) return;
-  const val = apiKeyInput.value.trim();
-  // Save to localStorage immediately (fast)
-  try { localStorage.setItem(API_KEY_STORAGE_KEY, val); } catch(_){}
-  // Save to Supabase (persists across browsers/devices)
-  try {
-    const db = getLeadTrackerClient();
-    if (!db) return;
-    await db.from('settings').upsert({ key: API_KEY_SETTING, value: val }, { onConflict: 'key' });
-    toast('🔑 API key saved to database');
-  } catch(err) {
-    console.warn('Could not save API key to Supabase:', err);
-  }
-}
-
-async function clearSavedApiKey() {
-  try { localStorage.removeItem(API_KEY_STORAGE_KEY); } catch(_){}
-  try {
-    const db = getLeadTrackerClient();
-    if (db) await db.from('settings').delete().eq('key', API_KEY_SETTING);
-  } catch(_){}
-  const remember = document.getElementById('rememberApiKey');
-  const apiKeyInput = document.getElementById('apiKey');
-  if (remember) remember.checked = false;
-  if (apiKeyInput) apiKeyInput.value = '';
-  toast('🗑️ API key cleared from database');
-}
 
 const audienceMap = {
   business_owners: {
@@ -1941,7 +1904,7 @@ function getPreferredImageModel(imageStyle, requestedModel) {
   return 'black-forest-labs/flux-1.1-pro-ultra';
 }
 
-async function generateFluxImage(apiKey, model, prompt, isIG) {
+async function generateFluxImage(model, prompt, isIG) {
   const resolvedModel = getPreferredImageModel(currentGenerationContext.imageStyle, model);
   const promptObject = {
     prompt,
@@ -1963,23 +1926,16 @@ async function generateFluxImage(apiKey, model, prompt, isIG) {
     promptObject.prompt_upsampling = false;
   }
 
-  const submitRes = await fetch('https://api.1min.ai/api/features', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'API-KEY': apiKey
-    },
-    body: JSON.stringify({
-      type: 'IMAGE_GENERATOR',
-      model: resolvedModel,
-      promptObject
-    })
+  const submitRes = await oneMinFetch('features', {
+    type: 'IMAGE_GENERATOR',
+    model: resolvedModel,
+    promptObject
   });
   if (!submitRes.ok) {
     let msg = `HTTP ${submitRes.status}`;
     try {
       const err = await submitRes.json();
-      msg = err?.error?.message || err?.message || err?.detail || msg;
+      msg = (typeof err?.error === 'string' ? err.error : err?.error?.message) || err?.message || err?.detail || msg;
     } catch (_) {}
     throw new Error(`1min.ai FLUX request failed: ${msg}`);
   }
@@ -3517,9 +3473,6 @@ function drawLI_Infographic(ctx, W, H, post) {
 // ════════════════════════════════════════════════════════════════════════════
 async function run(){
   hideErr();
-  const apiKey=getApiKeyValue();
-  persistApiKeyPreference(); // async — fires and forgets, non-blocking
-  if(!apiKey){showErr('Add your 1min.ai API key in ⚙ Settings first.');openSettingsForKey();return}
 
   const model=document.querySelector('#modelChips .chip.on')?.dataset.model||'gpt-4o-mini';
   const tone=document.getElementById('postTone').value;
@@ -3593,7 +3546,7 @@ Search rules:
 Find ${perPlat+1} real recent ${CURRENT_YEAR} stories. Each summary must explain why the story matters to business leaders in 2 concise sentences.
 Return ONLY a raw JSON array (nothing before [ or after ]):
 [{"headline":"real headline","source":"pub","date":"month year","summary":"2 concise business-relevant sentences","key_stat":"number or null","stat_label":"label or null","category_tag":"RANSOMWARE ALERT or DATA BREACH or PHISHING THREAT or AI THREAT or COMPLIANCE UPDATE or CYBER ATTACK or IT DOWNTIME or SECURITY TIP"}]`;
-      const raw=await call1min(apiKey,model,newsPrompt,true);
+      const raw=await call1min(model,newsPrompt,true);
       sourceItems=safeParsePosts(raw);
       if(!sourceItems.length) sourceItems=[{headline:`Ransomware Attacks on Ontario SMBs Surge in ${CURRENT_YEAR}`,source:"BleepingComputer",date:`April ${CURRENT_YEAR}`,summary:"Ransomware incidents targeting Canadian small businesses remain elevated. Healthcare clinics and accounting firms continue to be top targets.",key_stat:"40%",stat_label:"surge in attacks",category_tag:"RANSOMWARE ALERT"}];
 
@@ -4017,7 +3970,7 @@ Final Output Check:
 - Every sentence must add value, specificity, or tension.
 - End each caption with: 📞 905-787-2038  |  🌐 midastech.ca  |  ✉️ info@midastech.ca`;
 
-    const postsRaw=await call1min(apiKey,model,(currentMode==='manual' && !manualTopicIsCyber) ? manualTopicPrompt : postOnlyPrompt,false);
+    const postsRaw=await call1min(model,(currentMode==='manual' && !manualTopicIsCyber) ? manualTopicPrompt : postOnlyPrompt,false);
     let posts=normalizeStructuredPosts(safeParsePosts(postsRaw), 'post');
 
     if(!posts.length){
@@ -4179,7 +4132,7 @@ Final Output Check:
     document.getElementById('statusBar').classList.remove('on');
 
   } catch(err){
-    showErr(err.message+'<br><small>Check your 1min.ai key and credit balance.</small>');
+    showErr(err.message+(/sign in/i.test(err.message)?'':'<br><small>If this keeps happening, check the 1min.ai credit balance.</small>'));
   }
   btn.disabled=false;
   btn.innerHTML='✨ Write my posts';
@@ -5084,7 +5037,7 @@ async function saveToLeadTracker(i){
 (function initStudioLayout() {
   const panel = document.getElementById('settingsPanel');
   const toggle = document.getElementById('settingsToggle');
-  const setSettings = open => { if (!panel) return; panel.hidden = !open; toggle?.setAttribute('aria-expanded', String(open)); if (open) document.getElementById('apiKey')?.focus(); };
+  const setSettings = open => { if (!panel) return; panel.hidden = !open; toggle?.setAttribute('aria-expanded', String(open)); };
   toggle?.addEventListener('click', () => setSettings(panel.hidden));
   document.getElementById('settingsClose')?.addEventListener('click', () => setSettings(false));
 

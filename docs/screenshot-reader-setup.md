@@ -1,6 +1,11 @@
 # Screenshot reader setup
 
-The lead window's **📷 Add people from a screenshot** button, and **📷 From screenshot** in Add Lead, send the image to a Supabase Edge Function called `extract-contacts`. The function asks Claude to list the people in the image and sends them back to the app. You check the list and pick who to add. Nothing is saved until you press **Add N people**.
+Three buttons send a screenshot to a Supabase Edge Function called `extract-contacts`:
+- **📷 From screenshot** in the All Leads toolbar adds new leads. Each person keeps the company shown in the image, so one screenshot can hold several companies, for example LinkedIn search results.
+- **📷 Add people from a screenshot** in the lead window adds people at that lead's company.
+- **📷 From screenshot** in Add Lead uses the company typed there.
+
+The function asks Claude to list the people in the image and sends them back to the app. You check the list and pick who to add. Nothing is saved until you press **Add N leads**.
 
 The Anthropic API key stays on your Supabase server. The browser never sees it. The function only answers people who are signed in to the lead tracker: it checks their Firebase sign-in token before it calls Claude.
 
@@ -48,9 +53,11 @@ If it fails, run `docker compose logs -f functions` while you try again. The fun
   - People already in the tracker (same email, or same name at the same company) start unticked.
   - The list warns when someone's email domain doesn't match the company website, for example a lawyer who shares an office but runs a different firm.
   - Claude can add its own note when something was hard to read.
-- **What gets saved.** New people get:
-  - the company's website, industry, rep, city, country and size
-  - `source: "screenshot"`
+- **Company.** If you type a company at the top, everyone is added to it. If you leave it blank, each person gets the company Claude read from the image, and you can edit it. A person with no company starts unticked.
+- **What gets saved.** Someone at a company already in the tracker gets that company's:
+  - website, industry, rep, city, country and size
+
+  People at a new company are assigned to you. Every saved lead is marked `source: "screenshot"`.
 - **Cost.** A screenshot usually costs a few cents. A long page split into 4 pieces costs about 4 times as much. You can see the actual spend under **Usage** in the Claude Console.
 
 ## Changing the settings

@@ -1188,7 +1188,7 @@
       .filters-extra { display: none; width: 100%; }
       .filters-extra.open { display: grid; gap: 8px; }
       .toolbar .spacer { display: none; }
-      .toolbar > .btn-primary { width: 100%; }
+      .toolbar > .btn-primary, .toolbar > .shot-open-btn { flex: 1 1 40%; }
       .admin-menu { width: 100%; }
       .admin-menu > summary { width: 100%; justify-content: center; }
       .admin-menu-list { left: 0; right: 0; }
@@ -1341,6 +1341,7 @@
     .shot-person.off { opacity: 0.55; }
     .shot-person input[type=checkbox] { width: 18px; height: 18px; margin-top: 8px; accent-color: var(--blue); }
     .shot-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .shot-fields .shot-company { grid-column: 1 / -1; }
     .shot-fields input { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; font: 13px inherit; font-family: inherit; background: var(--surface); color: var(--gray-800); }
     .shot-fields input:focus { outline: none; border-color: rgba(29,78,216,0.42); box-shadow: 0 0 0 3px rgba(29,78,216,0.10); }
     .shot-flags { grid-column: 2; display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
@@ -1412,6 +1413,7 @@
           <button class="btn btn-danger" id="clearAllBtn" style="display:none" onclick="closeAdminMenu();clearAllLeads()">Clear all leads…</button>
         </div>
       </details>
+      <button class="btn btn-secondary shot-open-btn" onclick="openScreenshotReader()">📷 From screenshot</button>
       <button class="btn btn-primary"   onclick="openAddLead()">+ Add Lead</button>
     </div>
 
@@ -1784,11 +1786,11 @@
   <!-- ══ Screenshot Reader Modal ══ -->
   <div class="modal-overlay" id="shotModal">
     <div class="modal modal-wide">
-      <h2>Add people from a screenshot</h2>
-      <p class="modal-sub">Use a team page, email signature, business card or LinkedIn page. You'll check every person before anything is saved.</p>
+      <h2 id="shotTitle">Add leads from a screenshot</h2>
+      <p class="modal-sub">Use a team page, email signature, business card, LinkedIn page or a list of leads. You'll check every person before anything is saved.</p>
       <div class="form-row">
-        <div class="form-group"><label>Company</label><input type="text" id="shotCompany" placeholder="ABC Inc"></div>
-        <div class="form-group"><label>Website</label><input type="text" id="shotWebsite" placeholder="https://"></div>
+        <div class="form-group"><label>Company (optional)</label><input type="text" id="shotCompany" placeholder="Blank = company shown for each person"></div>
+        <div class="form-group"><label>Website</label><input type="text" id="shotWebsite" placeholder="Optional"></div>
       </div>
       <div class="shot-drop" id="shotDrop" tabindex="0" role="button" aria-label="Choose, drop or paste a screenshot">
         <div id="shotDropText"><b>📷 Paste a screenshot (Ctrl+V)</b><br>or drop it here, or tap to choose a file</div>
@@ -1800,7 +1802,7 @@
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="closeModal('shotModal')">Cancel</button>
         <button class="btn btn-primary" id="shotReadBtn" onclick="readScreenshot()" disabled>Read screenshot</button>
-        <button class="btn btn-primary" id="shotSaveBtn" onclick="saveScreenshotPeople()" hidden>Add people</button>
+        <button class="btn btn-primary" id="shotSaveBtn" onclick="saveScreenshotPeople()" hidden>Add leads</button>
       </div>
     </div>
   </div>
@@ -3593,6 +3595,7 @@
       closeModal("detailModal");
       if (shotState.previewUrl) URL.revokeObjectURL(shotState.previewUrl);
       shotState = { slices: [], people: [], previewUrl: "" };
+      document.getElementById("shotTitle").textContent = groupKey ? `Add people at ${company}` : "Add leads from a screenshot";
       document.getElementById("shotCompany").value = company;
       document.getElementById("shotWebsite").value = website;
       document.getElementById("shotPreview").hidden = true;
@@ -3670,7 +3673,7 @@
       document.getElementById("shotSaveBtn").hidden = true;
       document.getElementById("shotReadBtn").hidden = false;
       document.getElementById("shotReadBtn").disabled = false;
-      setShotStatus("Ready. Check the company name above, then press Read screenshot.");
+      setShotStatus("Ready. Press Read screenshot.");
     }
 
     async function shotErrorMessage(error) {
@@ -3713,10 +3716,14 @@
           const email = String(p.email || "").toLowerCase(), name = norm(p.name || "");
           const same = merged.find(m => (email && String(m.email).toLowerCase() === email) || (name && norm(m.name) === name));
           if (!same) return merged.push({ ...p });
-          ["name", "title", "email", "phone", "linkedin", "note"].forEach(k => { if (!same[k] && p[k]) same[k] = p[k]; });
+          ["name", "title", "company", "email", "phone", "linkedin", "note"].forEach(k => { if (!same[k] && p[k]) same[k] = p[k]; });
         });
-        shotState.people = merged.map(p => ({ ...p, ...shotChecks(p, company, website) }));
-        shotState.people.forEach(p => { p.selected = !p.duplicate; });
+        // A company typed above applies to everyone; otherwise each person keeps the company shown in the image.
+        shotState.people = merged.map(p => {
+          const person = { ...p, company: company || String(p.company || "").trim() };
+          return { ...person, ...shotChecks(person, website, company) };
+        });
+        shotState.people.forEach(p => { p.selected = !p.duplicate && !!p.company; });
         renderShotPeople();
       } catch (e) {
         console.error(e);
@@ -3734,10 +3741,13 @@
     }
 
     // Flags people already in the tracker and emails at a different domain from the company website.
-    function shotChecks(p, company, website) {
+    function shotChecks(p, website, typedCompany) {
       const flags = [];
+      const company = p.company;
       const email = String(p.email || "").toLowerCase(), name = norm(p.name || "");
       const groupKey = getCompanyGroupKey(company);
+      if (!company) flags.push({ text: "No company found. Type one in before adding this person." });
+      if (!typedCompany) website = company ? companyDefaults(groupKey).website : "";
       const existing = Object.values(allLeads).find(l =>
         (email && String(l.email || "").toLowerCase().split(/[\s,;]+/).includes(email)) ||
         (name && norm(l.name || "") === name && getCompanyGroupKey(l.company || "") === groupKey));
@@ -3766,7 +3776,7 @@
         <div class="shot-people">${people.map((p, i) => `
           <div class="shot-person${p.selected ? "" : " off"}">
             <input type="checkbox" data-i="${i}" ${p.selected ? "checked" : ""} aria-label="Add ${esc(p.name || "this person")}">
-            <div class="shot-fields">${field(i, "name", "Name")}${field(i, "title", "Title")}${field(i, "email", "Email")}${field(i, "phone", "Phone")}</div>
+            <div class="shot-fields">${field(i, "name", "Name")}${field(i, "title", "Title")}${field(i, "email", "Email")}${field(i, "phone", "Phone")}${field(i, "company", "Company").replace("<input", '<input class="shot-company"')}</div>
             ${p.flags.length ? `<div class="shot-flags">${p.flags.map(f => `<div class="shot-flag${f.dupe ? " dupe" : ""}">${f.dupe ? "✓" : "⚠️"} ${esc(f.text)}</div>`).join("")}</div>` : ""}
           </div>`).join("")}
         </div>`;
@@ -3791,7 +3801,7 @@
     function updateShotSaveBtn() {
       const n = shotState.people.filter(p => p.selected).length;
       const btn = document.getElementById("shotSaveBtn");
-      btn.textContent = n ? `Add ${n} ${n === 1 ? "person" : "people"}` : "Add people";
+      btn.textContent = n ? `Add ${n} ${n === 1 ? "lead" : "leads"}` : "Add leads";
       btn.disabled = !n;
     }
 
@@ -3799,19 +3809,23 @@
       const chosen = shotState.people.filter(p => p.selected);
       if (!chosen.length) return;
       if (chosen.some(p => !String(p.name || "").trim())) return showToast("Every ticked person needs a name", "error");
-      const company = document.getElementById("shotCompany").value.trim();
+      if (chosen.some(p => !String(p.company || "").trim())) return showToast("Every ticked person needs a company", "error");
+      const typedCompany = document.getElementById("shotCompany").value.trim();
       const website = document.getElementById("shotWebsite").value.trim();
-      const d = companyDefaults(company ? getCompanyGroupKey(company) : "");
       const btn = document.getElementById("shotSaveBtn");
       btn.disabled = true;
       let saved = 0;
       try {
         for (const p of chosen) {
+          const company = p.company.trim();
+          // Someone at a company already in the tracker gets that company's details, website, industry and rep.
+          const d = companyDefaults(getCompanyGroupKey(company));
+          const sameAsTyped = typedCompany && getCompanyGroupKey(typedCompany) === getCompanyGroupKey(company);
           await addDoc(collection(db, "leads"), {
             name: p.name.trim(), company: d.company || company,
             email: String(p.email || "").trim().toLowerCase(),
             phone: String(p.phone || "").trim(),
-            website: website || d.website,
+            website: (sameAsTyped && website) || d.website,
             linkedin: String(p.linkedin || "").trim(),
             title: String(p.title || "").trim(),
             industry: d.industry,
@@ -3822,7 +3836,8 @@
           });
           saved++;
         }
-        showToast(`Added ${saved} ${saved === 1 ? "person" : "people"}${company ? ` at ${company}` : ""}`, "success");
+        const companies = [...new Set(chosen.map(p => p.company.trim()))];
+        showToast(`Added ${saved} ${saved === 1 ? "lead" : "leads"}${companies.length === 1 ? ` at ${companies[0]}` : ` at ${companies.length} companies`}`, "success");
         closeModal("shotModal");
       } catch (e) {
         console.error(e);

@@ -125,7 +125,7 @@ The same Railway service also answers `POST /research` (code in `research.ts`). 
   - Changes start ticked, and you can edit them before saving.
   - Talking points are saved to the lead and shown in its window under **Research**.
   - Other people it finds can be added as contacts; anyone already in the tracker is marked.
-- **Cost.** Each search is billed on top of the Claude tokens, and the review screen shows how many searches were run. A lead usually takes a handful of searches and page reads. Actual spend is under **Usage** in the Claude Console.
+- **Cost.** Each search is billed on top of the Claude tokens. The review screen shows an estimate of what that run cost (at list prices: $5 / $25 per million input / output tokens and $10 per 1,000 searches; set in `PRICE` in `research.ts`), and the estimate is saved with the research. A lead usually takes a handful of searches and page reads. Actual spend is under **Usage** in the Claude Console.
 - **Setup.** Nothing extra. It uses the same `ANTHROPIC_API_KEY`, and needs web search enabled for your organization in the Claude Console (it is by default).
 
 ## Changing the settings

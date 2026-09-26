@@ -1188,7 +1188,7 @@
       .filters-extra { display: none; width: 100%; }
       .filters-extra.open { display: grid; gap: 8px; }
       .toolbar .spacer { display: none; }
-      .toolbar > .btn-primary { width: 100%; }
+      .toolbar > .btn-primary, .toolbar > .shot-open-btn { flex: 1 1 40%; }
       .admin-menu { width: 100%; }
       .admin-menu > summary { width: 100%; justify-content: center; }
       .admin-menu-list { left: 0; right: 0; }
@@ -1325,6 +1325,32 @@
     .ld-person small { display: block; font-size: 12px; color: var(--gray-500); }
     .ld-add-person { padding: 10px 12px; border: 1px dashed rgba(29,78,216,0.35); border-radius: 12px; background: transparent; color: var(--blue); font: 700 13px inherit; font-family: inherit; cursor: pointer; text-align: left; }
     .ld-add-person:hover { background: var(--blue-light); }
+
+    /* Screenshot reader */
+    .ld-people-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .ld-people-actions .ld-add-person { flex: 1 1 200px; }
+    .shot-drop { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 130px; padding: 16px; border: 2px dashed rgba(29,78,216,0.3); border-radius: 16px; background: rgba(232,240,255,0.45); text-align: center; cursor: pointer; font-size: 13px; color: var(--gray-600); }
+    .shot-drop:hover, .shot-drop.dragging { background: var(--blue-light); border-color: var(--blue); }
+    .shot-drop:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+    .shot-drop b { color: var(--blue); font-size: 14px; }
+    .shot-drop img { max-width: 100%; max-height: 220px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.12); }
+    .shot-status { margin-top: 12px; font-size: 13px; color: var(--gray-600); }
+    .shot-status.error { color: #b42318; font-weight: 600; }
+    .shot-people { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+    .shot-person { display: grid; grid-template-columns: 22px 1fr; gap: 10px; padding: 12px; border: 1px solid var(--border); border-radius: 14px; background: rgba(255,255,255,0.75); }
+    .shot-person.off { opacity: 0.55; }
+    .shot-person input[type=checkbox] { width: 18px; height: 18px; margin-top: 8px; accent-color: var(--blue); }
+    .shot-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .shot-fields .shot-company { grid-column: 1 / -1; }
+    .shot-fields input { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; font: 13px inherit; font-family: inherit; background: var(--surface); color: var(--gray-800); }
+    .shot-fields input:focus { outline: none; border-color: rgba(29,78,216,0.42); box-shadow: 0 0 0 3px rgba(29,78,216,0.10); }
+    .shot-flags { grid-column: 2; display: flex; flex-direction: column; gap: 4px; font-size: 12px; }
+    .shot-flag { padding: 5px 9px; border-radius: 8px; background: #fff4e5; color: #8a4b00; }
+    .shot-flag.dupe { background: #eef2f6; color: var(--gray-600); }
+    .shot-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-top: 14px; font-size: 13px; color: var(--gray-600); }
+    .shot-toolbar > span:last-child { white-space: nowrap; }
+    .shot-toolbar button { background: none; border: none; color: var(--blue); font: 600 13px inherit; font-family: inherit; cursor: pointer; padding: 4px; }
+    @media (max-width: 520px) { .shot-fields { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body data-view="admin">
@@ -1387,6 +1413,7 @@
           <button class="btn btn-danger" id="clearAllBtn" style="display:none" onclick="closeAdminMenu();clearAllLeads()">Clear all leads…</button>
         </div>
       </details>
+      <button class="btn btn-secondary shot-open-btn" onclick="openScreenshotReader()">📷 From screenshot</button>
       <button class="btn btn-primary"   onclick="openAddLead()">+ Add Lead</button>
     </div>
 
@@ -1749,8 +1776,33 @@
       </div>
       <div class="form-group"><label>Assigned To</label><select id="newAssigned"></select></div>
       <div class="modal-actions">
+        <button class="btn btn-secondary" style="margin-right:auto" onclick="openScreenshotReader(null, true)">📷 From screenshot</button>
         <button class="btn btn-secondary" onclick="closeModal('addLeadModal')">Cancel</button>
         <button class="btn btn-primary" onclick="submitAddLead()">Add Lead</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ Screenshot Reader Modal ══ -->
+  <div class="modal-overlay" id="shotModal">
+    <div class="modal modal-wide">
+      <h2 id="shotTitle">Add leads from a screenshot</h2>
+      <p class="modal-sub">Use a team page, email signature, business card, LinkedIn page or a list of leads. You'll check every person before anything is saved.</p>
+      <div class="form-row">
+        <div class="form-group"><label>Company (optional)</label><input type="text" id="shotCompany" placeholder="Blank = company shown for each person"></div>
+        <div class="form-group"><label>Website</label><input type="text" id="shotWebsite" placeholder="Optional"></div>
+      </div>
+      <div class="shot-drop" id="shotDrop" tabindex="0" role="button" aria-label="Choose, drop or paste a screenshot">
+        <div id="shotDropText"><b>📷 Paste a screenshot (Ctrl+V)</b><br>or drop it here, or tap to choose a file</div>
+        <img id="shotPreview" alt="" hidden>
+      </div>
+      <input type="file" id="shotFile" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+      <div class="shot-status" id="shotStatus"></div>
+      <div id="shotResults"></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal('shotModal')">Cancel</button>
+        <button class="btn btn-primary" id="shotReadBtn" onclick="readScreenshot()" disabled>Read screenshot</button>
+        <button class="btn btn-primary" id="shotSaveBtn" onclick="saveScreenshotPeople()" hidden>Add leads</button>
       </div>
     </div>
   </div>
@@ -3339,7 +3391,10 @@
                 <span><b>${esc(p.name || "Unnamed")}</b>${(p.title || p.industry) ? `<small>${esc(p.title || p.industry)}</small>` : ""}</span>
                 <span class="status-badge status-${esc(p.status || "New")}">${esc(p.status || "New")}</span>
               </button>`).join("")}
-            <button class="ld-add-person" type="button" onclick="openAddContact('${esc(groupKey)}')">+ Add another person at ${esc(l.company)}</button>
+            <div class="ld-people-actions">
+              <button class="ld-add-person" type="button" onclick="openAddContact('${esc(groupKey)}')">+ Add another person at ${esc(l.company)}</button>
+              <button class="ld-add-person" type="button" onclick="openScreenshotReader('${esc(groupKey)}')">📷 Add people from a screenshot</button>
+            </div>
           </div>`;
       }
 
@@ -3475,20 +3530,17 @@
     };
     // Opens Add Lead for another person at an existing company, with the company details filled in.
     window.openAddContact = function (groupKey) {
-      const people = getCompanyLeads(groupKey);
-      if (!people.length) return openAddLead();
-      const pick = key => people.map(p => p[key]).find(v => v !== null && v !== undefined && String(v).trim() !== "") || "";
-      const company = pick("company");
+      const d = companyDefaults(groupKey);
+      if (!d.people.length) return openAddLead();
       openAddLead();
       closeModal("detailModal");
-      document.getElementById("addLeadTitle").textContent = `Add contact at ${company}`;
+      document.getElementById("addLeadTitle").textContent = `Add contact at ${d.company}`;
       document.getElementById("addLeadSub").textContent = "Company details are filled in. Add the person's name, email, phone and title.";
-      document.getElementById("newCompany").value  = company;
-      document.getElementById("newWebsite").value  = pick("website");
-      document.getElementById("newIndustry").value = pick("industry");
-      populateRepSelect(document.getElementById("newAssigned"), getCompanyAssignedRep(people) || pick("assignedTo") || currentUser);
-      addLeadCompanyExtras = {};
-      ["city", "state", "country", "address", "employeeRange"].forEach(k => { const v = pick(k); if (v) addLeadCompanyExtras[k] = v; });
+      document.getElementById("newCompany").value  = d.company;
+      document.getElementById("newWebsite").value  = d.website;
+      document.getElementById("newIndustry").value = d.industry;
+      populateRepSelect(document.getElementById("newAssigned"), d.rep);
+      addLeadCompanyExtras = d.extras;
     };
 
     window.submitAddLead = async function () {
@@ -3512,6 +3564,304 @@
         showToast("Lead added","success"); closeModal("addLeadModal");
       } catch(e) { console.error(e); showToast("Failed","error"); }
     };
+
+    // ── ADD PEOPLE FROM A SCREENSHOT ───────────────────────────────
+    // The image goes to the extract-contacts Supabase Edge Function (supabase/functions/extract-contacts),
+    // which asks Claude to list the people in it. Nothing is saved until the rep reviews the list.
+    const SHOT_MAX_SIDE = 1568;   // Claude reads images up to about this size without downscaling
+    const SHOT_MAX_SLICES = 4;    // long team pages are cut into pieces so the text stays readable
+    let shotState = { slices: [], people: [], previewUrl: "" };
+
+    function companyDefaults(groupKey) {
+      const people = groupKey ? getCompanyLeads(groupKey) : [];
+      const pick = key => people.map(p => p[key]).find(v => v !== null && v !== undefined && String(v).trim() !== "") || "";
+      const extras = {};
+      ["city", "state", "country", "address", "employeeRange"].forEach(k => { const v = pick(k); if (v) extras[k] = v; });
+      return {
+        people, extras,
+        company: pick("company"), website: pick("website"), industry: pick("industry"),
+        rep: (people.length && getCompanyAssignedRep(people)) || pick("assignedTo") || currentUser
+      };
+    }
+
+    window.openScreenshotReader = function (groupKey, fromAddLead) {
+      let company = "", website = "";
+      if (fromAddLead) {
+        company = document.getElementById("newCompany").value.trim();
+        website = document.getElementById("newWebsite").value.trim();
+        closeModal("addLeadModal");
+      }
+      if (groupKey) ({ company, website } = companyDefaults(groupKey));
+      closeModal("detailModal");
+      if (shotState.previewUrl) URL.revokeObjectURL(shotState.previewUrl);
+      shotState = { slices: [], people: [], previewUrl: "" };
+      document.getElementById("shotTitle").textContent = groupKey ? `Add people at ${company}` : "Add leads from a screenshot";
+      document.getElementById("shotCompany").value = company;
+      document.getElementById("shotWebsite").value = website;
+      document.getElementById("shotPreview").hidden = true;
+      document.getElementById("shotDropText").hidden = false;
+      document.getElementById("shotResults").innerHTML = "";
+      setShotStatus("");
+      document.getElementById("shotReadBtn").disabled = true;
+      document.getElementById("shotReadBtn").hidden = false;
+      document.getElementById("shotSaveBtn").hidden = true;
+      document.getElementById("shotModal").classList.add("active");
+      setTimeout(() => document.getElementById("shotDrop").focus(), 100);
+    };
+
+    function setShotStatus(text, isError) {
+      const el = document.getElementById("shotStatus");
+      el.textContent = text;
+      el.classList.toggle("error", !!isError);
+    }
+
+    // Resizes the screenshot to JPEG pieces Claude can read. Tall images (a whole team page) are cut
+    // into overlapping slices instead of being shrunk until the text is unreadable.
+    async function screenshotSlices(file) {
+      const url = URL.createObjectURL(file);
+      try {
+        const img = await new Promise((resolve, reject) => {
+          const i = new Image();
+          i.onload = () => resolve(i);
+          i.onerror = () => reject(new Error("unreadable"));
+          i.src = url;
+        });
+        const w = img.naturalWidth, h = img.naturalHeight;
+        let sliceH = h, step = h;
+        if (h > w * 1.6) {
+          sliceH = Math.round(w * 1.25);
+          const overlap = Math.round(sliceH * 0.12);
+          const count = Math.min(SHOT_MAX_SLICES, Math.ceil((h - overlap) / (sliceH - overlap)));
+          sliceH = Math.ceil((h + overlap * (count - 1)) / count);
+          step = sliceH - overlap;
+        }
+        const slices = [];
+        for (let y = 0; y < h; y += step) {
+          const sh = Math.min(sliceH, h - y);
+          const scale = Math.min(1, SHOT_MAX_SIDE / Math.max(w, sh));
+          const canvas = document.createElement("canvas");
+          canvas.width = Math.round(w * scale);
+          canvas.height = Math.round(sh * scale);
+          const ctx = canvas.getContext("2d");
+          ctx.fillStyle = "#fff";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, y, w, sh, 0, 0, canvas.width, canvas.height);
+          slices.push(canvas.toDataURL("image/jpeg", 0.85));
+          if (y + sh >= h) break;
+        }
+        return slices;
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    }
+
+    async function useScreenshotFile(file) {
+      if (!file || !/^image\//.test(file.type)) return setShotStatus("That isn't an image. Use a PNG or JPG screenshot.", true);
+      try {
+        shotState.slices = await screenshotSlices(file);
+      } catch {
+        return setShotStatus("That image couldn't be opened. Try a PNG or JPG screenshot.", true);
+      }
+      if (shotState.previewUrl) URL.revokeObjectURL(shotState.previewUrl);
+      shotState.previewUrl = URL.createObjectURL(file);
+      shotState.people = [];
+      const preview = document.getElementById("shotPreview");
+      preview.src = shotState.previewUrl;
+      preview.hidden = false;
+      document.getElementById("shotDropText").hidden = true;
+      document.getElementById("shotResults").innerHTML = "";
+      document.getElementById("shotSaveBtn").hidden = true;
+      document.getElementById("shotReadBtn").hidden = false;
+      document.getElementById("shotReadBtn").disabled = false;
+      setShotStatus("Ready. Press Read screenshot.");
+    }
+
+    async function shotErrorMessage(error) {
+      try {
+        const body = await error.context.json();
+        if (body && body.error) return body.error;
+      } catch {}
+      const status = error?.context?.status;
+      if (status === 404 || error?.name === "FunctionsRelayError" || error?.name === "FunctionsFetchError") {
+        return "The screenshot reader isn't set up on the server yet. See docs/screenshot-reader-setup.md.";
+      }
+      return "Something went wrong reading the screenshot. Try again.";
+    }
+
+    window.readScreenshot = async function () {
+      if (!shotState.slices.length) return;
+      const btn = document.getElementById("shotReadBtn");
+      btn.disabled = true;
+      setShotStatus(shotState.slices.length > 1
+        ? `Reading ${shotState.slices.length} parts of a long screenshot… this can take up to a minute.`
+        : "Reading the screenshot… this usually takes 10–30 seconds.");
+      try {
+        const client = getLiClient();
+        if (!client) throw new Error("The screenshot reader couldn't load. Refresh the page and try again.");
+        if (!auth.currentUser) throw new Error("Sign in again, then retry.");
+        const token = await auth.currentUser.getIdToken();
+        const company = document.getElementById("shotCompany").value.trim();
+        const website = document.getElementById("shotWebsite").value.trim();
+        const results = await Promise.all(shotState.slices.map(async dataUrl => {
+          const { data, error } = await client.functions.invoke("extract-contacts", {
+            body: { image: dataUrl, mediaType: "image/jpeg", company, website },
+            headers: { "x-firebase-token": token }
+          });
+          if (error) throw new Error(await shotErrorMessage(error));
+          return data?.people || [];
+        }));
+        // Slices overlap, so the same person can appear twice. Merge them by email, then by name.
+        const merged = [];
+        results.flat().forEach(p => {
+          const email = String(p.email || "").toLowerCase(), name = norm(p.name || "");
+          const same = merged.find(m => (email && String(m.email).toLowerCase() === email) || (name && norm(m.name) === name));
+          if (!same) return merged.push({ ...p });
+          ["name", "title", "company", "email", "phone", "linkedin", "note"].forEach(k => { if (!same[k] && p[k]) same[k] = p[k]; });
+        });
+        // A company typed above applies to everyone; otherwise each person keeps the company shown in the image.
+        shotState.people = merged.map(p => {
+          const person = { ...p, company: company || String(p.company || "").trim() };
+          return { ...person, ...shotChecks(person, website, company) };
+        });
+        shotState.people.forEach(p => { p.selected = !p.duplicate && !!p.company; });
+        renderShotPeople();
+      } catch (e) {
+        console.error(e);
+        setShotStatus(e.message || "Something went wrong reading the screenshot.", true);
+      } finally {
+        btn.disabled = false;
+      }
+    };
+
+    function domainOf(value) {
+      const v = String(value || "").trim().toLowerCase();
+      if (!v) return "";
+      const host = v.includes("@") ? v.split("@").pop() : v.replace(/^[a-z]+:\/\//, "").split(/[\/?#]/)[0];
+      return host.replace(/^www\./, "");
+    }
+
+    // Flags people already in the tracker and emails at a different domain from the company website.
+    function shotChecks(p, website, typedCompany) {
+      const flags = [];
+      const company = p.company;
+      const email = String(p.email || "").toLowerCase(), name = norm(p.name || "");
+      const groupKey = getCompanyGroupKey(company);
+      if (!company) flags.push({ text: "No company found. Type one in before adding this person." });
+      if (!typedCompany) website = company ? companyDefaults(groupKey).website : "";
+      const existing = Object.values(allLeads).find(l =>
+        (email && String(l.email || "").toLowerCase().split(/[\s,;]+/).includes(email)) ||
+        (name && norm(l.name || "") === name && getCompanyGroupKey(l.company || "") === groupKey));
+      if (existing) flags.push({ dupe: true, text: `Already in the tracker as ${existing.name || existing.email}${existing.company && existing.company !== existing.name ? ` (${existing.company})` : ""}.` });
+      const site = domainOf(website), mail = domainOf(p.email);
+      if (site && mail && mail !== site && !mail.endsWith("." + site)) {
+        flags.push({ text: `Email is at ${mail}, not ${site}. Check they work at ${company || "this company"}.` });
+      }
+      if (p.note) flags.push({ text: p.note });
+      return { duplicate: !!existing, flags };
+    }
+
+    function renderShotPeople() {
+      const people = shotState.people;
+      const box = document.getElementById("shotResults");
+      if (!people.length) {
+        box.innerHTML = "";
+        document.getElementById("shotSaveBtn").hidden = true;
+        return setShotStatus("No people were found in that screenshot. Try one that shows names, emails or phone numbers.", true);
+      }
+      setShotStatus("");
+      const field = (i, k, label) => `<input type="text" data-i="${i}" data-k="${k}" value="${esc(people[i][k] || "")}" placeholder="${label}" aria-label="${label}">`;
+      box.innerHTML = `
+        <div class="shot-toolbar"><span>Found ${people.length} ${people.length === 1 ? "person" : "people"}. Fix anything that's wrong, untick anyone you don't want.</span>
+          <span><button type="button" onclick="selectShotPeople(true)">All</button><button type="button" onclick="selectShotPeople(false)">None</button></span></div>
+        <div class="shot-people">${people.map((p, i) => `
+          <div class="shot-person${p.selected ? "" : " off"}">
+            <input type="checkbox" data-i="${i}" ${p.selected ? "checked" : ""} aria-label="Add ${esc(p.name || "this person")}">
+            <div class="shot-fields">${field(i, "name", "Name")}${field(i, "title", "Title")}${field(i, "email", "Email")}${field(i, "phone", "Phone")}${field(i, "company", "Company").replace("<input", '<input class="shot-company"')}</div>
+            ${p.flags.length ? `<div class="shot-flags">${p.flags.map(f => `<div class="shot-flag${f.dupe ? " dupe" : ""}">${f.dupe ? "✓" : "⚠️"} ${esc(f.text)}</div>`).join("")}</div>` : ""}
+          </div>`).join("")}
+        </div>`;
+      box.querySelectorAll('input[type=checkbox]').forEach(cb => cb.addEventListener("change", () => {
+        people[cb.dataset.i].selected = cb.checked;
+        cb.closest(".shot-person").classList.toggle("off", !cb.checked);
+        updateShotSaveBtn();
+      }));
+      box.querySelectorAll('input[type=text]').forEach(inp => inp.addEventListener("input", () => {
+        people[inp.dataset.i][inp.dataset.k] = inp.value;
+      }));
+      document.getElementById("shotReadBtn").hidden = true;
+      document.getElementById("shotSaveBtn").hidden = false;
+      updateShotSaveBtn();
+    }
+
+    window.selectShotPeople = function (on) {
+      shotState.people.forEach(p => { p.selected = on; });
+      renderShotPeople();
+    };
+
+    function updateShotSaveBtn() {
+      const n = shotState.people.filter(p => p.selected).length;
+      const btn = document.getElementById("shotSaveBtn");
+      btn.textContent = n ? `Add ${n} ${n === 1 ? "lead" : "leads"}` : "Add leads";
+      btn.disabled = !n;
+    }
+
+    window.saveScreenshotPeople = async function () {
+      const chosen = shotState.people.filter(p => p.selected);
+      if (!chosen.length) return;
+      if (chosen.some(p => !String(p.name || "").trim())) return showToast("Every ticked person needs a name", "error");
+      if (chosen.some(p => !String(p.company || "").trim())) return showToast("Every ticked person needs a company", "error");
+      const typedCompany = document.getElementById("shotCompany").value.trim();
+      const website = document.getElementById("shotWebsite").value.trim();
+      const btn = document.getElementById("shotSaveBtn");
+      btn.disabled = true;
+      let saved = 0;
+      try {
+        for (const p of chosen) {
+          const company = p.company.trim();
+          // Someone at a company already in the tracker gets that company's details, website, industry and rep.
+          const d = companyDefaults(getCompanyGroupKey(company));
+          const sameAsTyped = typedCompany && getCompanyGroupKey(typedCompany) === getCompanyGroupKey(company);
+          await addDoc(collection(db, "leads"), {
+            name: p.name.trim(), company: d.company || company,
+            email: String(p.email || "").trim().toLowerCase(),
+            phone: String(p.phone || "").trim(),
+            website: (sameAsTyped && website) || d.website,
+            linkedin: String(p.linkedin || "").trim(),
+            title: String(p.title || "").trim(),
+            industry: d.industry,
+            assignedTo: d.rep,
+            status: "New", contactCount: 0, lastContacted: null,
+            createdAt: serverTimestamp(), updatedAt: serverTimestamp(), source: "screenshot",
+            ...d.extras
+          });
+          saved++;
+        }
+        const companies = [...new Set(chosen.map(p => p.company.trim()))];
+        showToast(`Added ${saved} ${saved === 1 ? "lead" : "leads"}${companies.length === 1 ? ` at ${companies[0]}` : ` at ${companies.length} companies`}`, "success");
+        closeModal("shotModal");
+      } catch (e) {
+        console.error(e);
+        showToast(saved ? `Added ${saved}, then saving failed. Check the list before retrying.` : "Failed to save", "error");
+        if (saved) { shotState.people.forEach(p => { if (chosen.indexOf(p) < saved) p.selected = false; }); renderShotPeople(); }
+      } finally {
+        btn.disabled = false;
+      }
+    };
+
+    (function wireScreenshotReader() {
+      const drop = document.getElementById("shotDrop"), file = document.getElementById("shotFile");
+      drop.addEventListener("click", () => file.click());
+      drop.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); file.click(); } });
+      file.addEventListener("change", () => { useScreenshotFile(file.files[0]); file.value = ""; });
+      drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("dragging"); });
+      drop.addEventListener("dragleave", () => drop.classList.remove("dragging"));
+      drop.addEventListener("drop", e => { e.preventDefault(); drop.classList.remove("dragging"); useScreenshotFile(e.dataTransfer.files[0]); });
+      document.addEventListener("paste", e => {
+        if (!document.getElementById("shotModal").classList.contains("active")) return;
+        const item = [...(e.clipboardData?.items || [])].find(i => i.type.startsWith("image/"));
+        if (item) { e.preventDefault(); useScreenshotFile(item.getAsFile()); }
+      });
+    })();
 
     // ── CLEAR ALL ──────────────────────────────────────────────────
     window.clearAllLeads = async function () {

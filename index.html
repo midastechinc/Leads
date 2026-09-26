@@ -1306,6 +1306,12 @@
       .modal-overlay .modal-actions { position: sticky; bottom: calc(-16px - env(safe-area-inset-bottom, 0px)); z-index: 2; background: var(--surface); margin: 14px -16px 0; padding: 12px 16px calc(8px + env(safe-area-inset-bottom, 0px)); border-top: 1px solid var(--border); }
       .modal-overlay .modal-actions .btn { flex: 1; }
     }
+
+    .ld-note { border: 1px solid rgba(10,102,194,0.2); background: #f3f8fd; border-radius: 14px; padding: 12px 14px; }
+    .ld-note-text { margin: 0; font-size: 14px; color: var(--gray-800); line-height: 1.5; }
+    .ld-note-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+    .ld-note-count { font-size: 12px; font-weight: 700; color: #0a66c2; font-variant-numeric: tabular-nums; margin-right: auto; }
+    .ld-note-hint { margin: 8px 0 0; font-size: 12px; color: var(--gray-500); }
 </style>
 </head>
 <body data-view="admin">
@@ -3132,6 +3138,40 @@
     function buildMailtoUrl(to, subject, body) {
       return `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     }
+    // LinkedIn connection note (LinkedIn caps invite notes at 200 characters).
+    const LINKEDIN_NOTE_LIMIT = 200;
+    const LINKEDIN_NOTES = {
+      law:        "We help law firms keep email, Microsoft 365 and client data secure.",
+      accounting: "We help accounting firms keep email, client files and portals secure.",
+      healthcare: "We help clinics keep patient data, email and backups secure.",
+      warehouse:  "We help warehouses and logistics teams keep systems running and payments safe.",
+      generic:    "We help Ontario businesses keep email, Microsoft 365 and backups secure."
+    };
+    function linkedinNote(lead) {
+      const hi = `Hi ${greetingName(lead)},`;
+      const who = "I'm Ali from Midas Tech, an IT and cybersecurity company in Richmond Hill.";
+      const what = LINKEDIN_NOTES[detectFirmType(lead)] || LINKEDIN_NOTES.generic;
+      const options = [
+        `${hi} ${who} ${what} Would be glad to connect.`,
+        `${hi} ${who} ${what} Glad to connect.`,
+        `Hi there, ${who} ${what} Glad to connect.`,
+        `Hi there, I'm Ali from Midas Tech, a local IT and cybersecurity company. ${what}`
+      ];
+      return options.find(t => t.length <= LINKEDIN_NOTE_LIMIT) || options[options.length - 1].slice(0, LINKEDIN_NOTE_LIMIT);
+    }
+    window.copyLinkedinNote = async function (id) {
+      const lead = allLeads[id];
+      if (!lead) return;
+      const text = linkedinNote(lead);
+      try { await navigator.clipboard.writeText(text); showToast("LinkedIn note copied", "success"); }
+      catch (e) {
+        const ta = document.createElement("textarea"); ta.value = text; ta.style.position = "fixed"; ta.style.left = "-9999px";
+        document.body.appendChild(ta); ta.select();
+        let ok = false; try { ok = document.execCommand("copy"); } catch (e2) {}
+        ta.remove(); showToast(ok ? "LinkedIn note copied" : "Copy was blocked. Select the text instead.", ok ? "success" : "error");
+      }
+    };
+
     const FIRM_TYPE_LABELS = { law: "Law firm", accounting: "Accounting firm", healthcare: "Healthcare clinic", warehouse: "Warehouse & logistics", generic: "General" };
     let emailDraftHistory = {}; // { [step]: { dateLabel } } — for whichever lead is open in the detail modal
 
@@ -3271,6 +3311,20 @@
       ].filter(([, v]) => v);
       html += `<div class="ld-section-title">Contact details</div>
         <dl class="ld-list">${rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("")}</dl>`;
+
+      // LinkedIn invite note
+      const note = linkedinNote(l);
+      const liTarget = li ? li.url : `https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent([l.name, l.company].filter(Boolean).join(" "))}`;
+      html += `<div class="ld-section-title">LinkedIn invite note</div>
+        <div class="ld-note">
+          <p class="ld-note-text">${esc(note)}</p>
+          <div class="ld-note-foot">
+            <span class="ld-note-count">${note.length} / ${LINKEDIN_NOTE_LIMIT}</span>
+            <button class="btn btn-secondary btn-sm" type="button" onclick="copyLinkedinNote('${l.id}')">Copy note</button>
+            <a class="btn btn-ghost btn-sm" href="#" onclick="openUrl('${esc(liTarget)}');return false" style="text-decoration:none">${li && !li.search ? "Open profile" : "Find on LinkedIn"}</a>
+          </div>
+          <p class="ld-note-hint">On their profile: Connect → Add a note → paste.</p>
+        </div>`;
 
       // Everything else from the CSV import, folded away; only real web addresses become links
       const SKIP = new Set(["id","name","company","email","phone","website","linkedin",

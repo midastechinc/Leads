@@ -114,7 +114,9 @@ If it fails, run `docker compose logs -f functions` while you try again. The fun
 
 ## Lead research (🔎 Research)
 
-The same Railway service also answers `POST /research` (code in `research.ts`). The lead window and each person in My Workspace have a **🔎 Research** button.
+The same Railway service also answers `POST /research` (code in `research.ts`). There are two kinds of research:
+- **Person research** (🔎 on a person in All Leads or My Workspace, or **Research person** in the lead window) looks up that one person only: title, email, phone, LinkedIn and talking points.
+- **Company research** (🔎 **Research** on a company in All Leads, **Research company** in My Workspace, or **Research the whole company** in the lead window) looks up the company's details. It checks every person you already have there, flagging anyone who seems to have left, and finds additional decision makers. The review list has **Select all / None** for the people it found.
 
 - **What it does.** Claude (`claude-opus-5`, medium effort) uses web search and web fetch to look for the lead's public business details: the company website and team pages, professional directories and news. It never logs in to LinkedIn; profile links come from search results.
 - **What you get back.** Every value has the page it came from. Emails are labelled **Found on a web page** or **Guessed from the company's email pattern**. Guesses start unticked, and if you save one it's stored with a "(guessed)" note.

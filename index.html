@@ -1451,6 +1451,17 @@
     .rs-item input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--blue); }
     .rs-note { padding: 10px 12px; border-radius: 12px; background: #fff4e5; color: #8a4b00; font-size: 13px; }
     .rs-foot { font-size: 12px; color: var(--gray-500); margin-top: 6px; }
+    .rs-hint { font-size: 12px; color: var(--gray-500); margin: -2px 0 10px; }
+    .rs-links { display: flex; flex-wrap: wrap; gap: 8px; }
+    .rs-link { display: inline-flex; align-items: center; gap: 7px; padding: 9px 13px; border-radius: 12px; border: 1px solid var(--border); background: linear-gradient(180deg, #fffdf9, #f5efe4); color: var(--gray-800); font: 700 13px/1 inherit; font-family: inherit; text-decoration: none; }
+    .rs-link:hover { border-color: rgba(29,78,216,0.3); color: var(--blue); }
+    .rs-link span { font-weight: 800; color: var(--blue); }
+    .rs-engines { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .rs-engine { display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 14px; border-radius: 14px; border: 1px solid var(--border); background: rgba(255,255,255,0.8); cursor: pointer; font-family: inherit; }
+    .rs-engine:hover { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(29,78,216,0.10); }
+    .rs-engine b { font-size: 14px; color: var(--gray-900); }
+    .rs-engine span { font-size: 12px; color: var(--gray-500); }
+    @media (max-width: 640px) { .rs-engines { grid-template-columns: 1fr; } }
     .rs-cost { margin-top: 14px; padding: 9px 12px; border-radius: 12px; background: rgba(22,163,74,0.08); color: var(--gray-800); font-size: 13px; }
     .rs-cost span { color: var(--gray-500); font-size: 11px; }
     .ld-research { display: flex; flex-direction: column; gap: 6px; }
@@ -1945,10 +1956,11 @@
   <div class="modal-overlay" id="researchModal">
     <div class="modal modal-wide">
       <h2 id="rsTitle">Research</h2>
-      <p class="modal-sub" id="rsSub">Searches the public web for this lead's business contact details. Nothing is saved until you choose.</p>
+      <p class="modal-sub" id="rsSub">Find this lead's business contact details on the public web.</p>
       <div id="rsBody"></div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="closeModal('researchModal')">Close</button>
+        <button class="btn btn-secondary" id="rsBackBtn" onclick="showResearchChoices()" hidden>← Other options</button>
         <button class="btn btn-secondary" id="rsRetryBtn" onclick="runResearch()" hidden>Try again</button>
         <button class="btn btn-primary" id="rsSaveBtn" onclick="saveResearch()" hidden>Save selected</button>
       </div>
@@ -4293,7 +4305,7 @@
       document.getElementById("rsSub").textContent = [l.title, l.company].filter(Boolean).join(" · ") ||
         "Searches the public web for this person's business contact details.";
       document.getElementById("researchModal").classList.add("active");
-      runResearch();
+      showResearchChoices();
     };
 
     window.openCompanyResearch = function (groupKey) {
@@ -4306,12 +4318,128 @@
       document.getElementById("rsSub").textContent =
         `Checks the ${leads.length} ${leads.length === 1 ? "person" : "people"} you have at ${name} and looks for more.`;
       document.getElementById("researchModal").classList.add("active");
-      runResearch();
+      showResearchChoices();
     };
 
-    window.runResearch = async function () {
+    // First screen of the research window: free quick-search links (open in new tabs), plus two
+    // AI options: 1min.ai (uses the 1min.ai credits Social Studio already uses) and cheap Claude.
+    function rsQuickLinks() {
+      const g = q => `https://www.google.com/search?q=${encodeURIComponent(q)}`;
+      const lawDirectory = "https://lso.ca/public-resources/finding-a-lawyer-or-paralegal/directory-search";
+      if (rsState.mode === "company") {
+        const d = companyDefaults(rsState.groupKey);
+        const company = d.company, site = realUrl(d.website), domain = domainOf(d.website);
+        return [
+          site && ["🌐", "Company website", site],
+          ["👥", "Team / about page", domain ? g(`site:${domain} team OR people OR staff OR lawyers OR about`) : g(`"${company}" team`)],
+          ["in", "People on LinkedIn", g(`site:linkedin.com/in "${company}"`)],
+          ["🏢", "LinkedIn company page", g(`site:linkedin.com/company "${company}"`)],
+          ["✉️", "Email addresses", domain ? g(`"@${domain}"`) : g(`"${company}" email`)],
+          ["📍", "Google Maps listing", `https://www.google.com/maps/search/${encodeURIComponent([company, d.extras.city].filter(Boolean).join(" "))}`],
+          ["📰", "Recent news", `https://www.google.com/search?tbm=nws&q=${encodeURIComponent(`"${company}"`)}`],
+          detectFirmType({ company, industry: d.industry }) === "law" && ["⚖️", "Law Society directory", lawDirectory]
+        ].filter(Boolean);
+      }
+      const l = allLeads[rsState.id] || {};
+      const name = l.name || "", company = l.company || "", site = realUrl(l.website), domain = domainOf(l.website);
+      return [
+        ["in", "LinkedIn profile", g(`site:linkedin.com/in "${name}"${company ? ` "${company}"` : ""}`)],
+        ["✉️", "Email address", domain ? g(`"${name}" "@${domain}"`) : g(`"${name}" "${company}" email`)],
+        ["📞", "Phone / extension", g(`"${name}" "${company}" phone`)],
+        ["👥", "Company team page", domain ? g(`site:${domain} "${name.split(" ").pop()}"`) : g(`"${company}" team`)],
+        site && ["🌐", "Company website", site],
+        detectFirmType(l) === "law" && ["⚖️", "Law Society directory", lawDirectory]
+      ].filter(Boolean);
+    }
+
+    function showResearchChoices() {
+      const who = rsState.mode === "company" ? "company" : "person";
+      document.getElementById("rsSaveBtn").hidden = true;
+      document.getElementById("rsRetryBtn").hidden = true;
+      document.getElementById("rsBackBtn").hidden = true;
+      document.getElementById("rsBody").innerHTML = `
+        <div class="rs-h">Free quick search</div>
+        <p class="rs-hint">Each opens a search in a new tab. Copy what you find into the lead, or use 📷 screenshot on a team page to add everyone at once.</p>
+        <div class="rs-links">${rsQuickLinks().map(([icon, label, url]) =>
+          `<a class="rs-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer"><span>${icon}</span>${esc(label)}</a>`).join("")}</div>
+        <div class="rs-h">AI research</div>
+        <p class="rs-hint">The AI searches the web for you and shows what it found, with sources, for you to review before saving.</p>
+        <div class="rs-engines">
+          <button type="button" class="rs-engine" onclick="runResearch('1min')"><b>✨ Research with 1min.ai</b><span>Uses your 1min.ai credits. No Claude charge.</span></button>
+          <button type="button" class="rs-engine" onclick="runResearch('claude')"><b>🔎 Research with Claude (cheap)</b><span>Usually a few cents per ${who}. Shows the cost after.</span></button>
+        </div>`;
+    }
+    window.showResearchChoices = showResearchChoices;
+
+    function rsParseJson(text) {
+      const cleaned = String(text || "").replace(/```(?:json)?/gi, "");
+      const start = cleaned.indexOf("{"), end = cleaned.lastIndexOf("}");
+      if (start < 0 || end <= start) throw new Error("1min.ai didn't return a readable answer. Try again or use Claude.");
+      try { return JSON.parse(cleaned.slice(start, end + 1)); }
+      catch { throw new Error("1min.ai didn't return a readable answer. Try again or use Claude."); }
+    }
+
+    // Research through 1min.ai's web-search chat, relayed by the Railway service (which holds the key).
+    async function oneMinResearch(request, token) {
+      const isCompany = !!request.company;
+      const shape = isCompany
+        ? `{"company":{"name":"","website":"","phone":"","address":"","city":"","industry":"","employee_range":"","description":"","source":""},
+"people":[{"name":"","title":"","email":"","email_status":"found|pattern_guess|not_found","phone":"","linkedin":"","status":"current|left|unknown","source":""}],
+"talking_points":[{"point":"","source":""}],"notes":""}`
+        : `{"person":{"name":"","title":"","title_source":"","email":"","email_status":"found|pattern_guess|not_found","email_source":"","phone":"","phone_source":"","linkedin":"","linkedin_source":""},
+"talking_points":[{"point":"","source":""}],"notes":""}`;
+      const task = isCompany
+        ? `Research this company and its people. For every person listed, check they still work there and find their current title, business email, direct phone and LinkedIn profile URL. Also add up to 10 other decision makers (owners, partners, directors, office or IT managers).
+Company: ${request.company.company}
+Website: ${request.company.website || "(unknown)"}
+City: ${request.company.city || "(unknown)"}
+People we have:
+${request.company.people.map(p => `- ${[p.name, p.title, p.email, p.phone].filter(Boolean).join(", ")}`).join("\n") || "- none"}`
+        : `Research this one person only (not their colleagues): current title, business email, direct phone and LinkedIn profile URL.
+Name: ${request.lead.name}
+Title: ${request.lead.title || "(unknown)"}
+Company: ${request.lead.company || "(unknown)"}
+Website: ${request.lead.website || "(unknown)"}
+Email we have: ${request.lead.email || "(none)"}`;
+      const prompt = `You research B2B sales leads in Canada for an IT services company. Use web search.
+${task}
+
+Rules: public business information only. Never invent anything; leave a field "" when not found. Give the web page URL where you found each value in the matching source field. email_status is "found" only if the exact email appears on a web page, "pattern_guess" if built from the company's email pattern, otherwise "not_found". Up to 4 recent, specific talking points with sources.
+Reply with ONLY this JSON and nothing else:
+${shape}`;
+      let res;
+      try {
+        res = await fetch(`${SHOT_READER_URL.replace(/\/+$/, "")}/1min/chat-with-ai`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-firebase-token": token },
+          body: JSON.stringify({ type: "UNIFY_CHAT_WITH_AI", model: ONEMIN_RESEARCH_MODEL,
+            promptObject: { prompt, settings: { webSearchSettings: { webSearch: true, numOfSite: 5, maxWord: 1500 } } } })
+        });
+      } catch {
+        throw new Error("Couldn't reach the research service. Check your connection and try again.");
+      }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((typeof data.error === "string" ? data.error : data.error?.message) || data.message || "1min.ai research didn't work. Try again.");
+      const raw = data?.aiRecord?.aiRecordDetail?.resultObject;
+      const result = rsParseJson(Array.isArray(raw) ? raw.join("\n") : raw);
+      const email = s => ["found", "pattern_guess", "not_found"].includes(s) ? s : "not_found";
+      if (isCompany) {
+        result.company = result.company || {};
+        result.people = (Array.isArray(result.people) ? result.people : []).map(p => ({ ...p, email_status: email(p.email_status), status: ["current", "left", "unknown"].includes(p.status) ? p.status : "unknown" }));
+      } else {
+        result.person = result.person || {};
+        result.person.email_status = email(result.person.email_status);
+      }
+      result.talking_points = Array.isArray(result.talking_points) ? result.talking_points : [];
+      return { result, stats: { engine: "1min" } };
+    }
+
+    const ONEMIN_RESEARCH_MODEL = "gpt-4o-mini";
+
+    window.runResearch = async function (engine) {
       const run = rsState.run;
       if (rsState.busy) return;
+      rsState.engine = engine = engine || rsState.engine || "claude";
       const body = document.getElementById("rsBody");
       let request, label, wait;
       if (rsState.mode === "company") {
@@ -4326,7 +4454,7 @@
           }))
         } };
         label = `<b>${esc(d.company)}</b> and its people`;
-        wait = "This usually takes 1 to 4 minutes.";
+        wait = engine === "1min" ? "This usually takes under a minute." : "This usually takes 1 to 3 minutes.";
       } else {
         const l = allLeads[rsState.id];
         if (!l) return;
@@ -4336,35 +4464,43 @@
           website: l.website || "", linkedin: l.linkedin || "", city: l.city || "", country: l.country || ""
         } };
         label = `<b>${esc(l.name || l.company)}</b>${l.company && l.company !== l.name ? ` at ${esc(l.company)}` : ""}`;
-        wait = "This usually takes 30 seconds to 2 minutes.";
+        wait = engine === "1min" ? "This usually takes under a minute." : "This usually takes 30 seconds to 2 minutes.";
       }
       rsState.busy = true;
       document.getElementById("rsSaveBtn").hidden = true;
       document.getElementById("rsRetryBtn").hidden = true;
-      body.innerHTML = `<div class="rs-status"><span class="rs-spin"></span><span>Searching the web for ${label}… ${wait} Keep this window open.</span></div>`;
+      document.getElementById("rsBackBtn").hidden = true;
+      body.innerHTML = `<div class="rs-status"><span class="rs-spin"></span><span>${engine === "1min" ? "1min.ai is searching" : "Claude is searching"} the web for ${label}… ${wait} Keep this window open.</span></div>`;
       try {
         if (!SHOT_READER_URL) throw new Error("Research needs the Railway service. See docs/screenshot-reader-setup.md.");
         if (!auth.currentUser) throw new Error("Sign in again, then retry.");
         const token = await auth.currentUser.getIdToken();
-        let res;
-        try {
-          res = await fetch(`${SHOT_READER_URL.replace(/\/+$/, "")}/research`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", "x-firebase-token": token },
-            body: JSON.stringify(request)
-          });
-        } catch {
-          throw new Error("Couldn't reach the research service. Check your connection and try again.");
+        let data;
+        if (engine === "1min") {
+          data = await oneMinResearch(request, token);
+        } else {
+          let res;
+          try {
+            res = await fetch(`${SHOT_READER_URL.replace(/\/+$/, "")}/research`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", "x-firebase-token": token },
+              body: JSON.stringify(request)
+            });
+          } catch {
+            throw new Error("Couldn't reach the research service. Check your connection and try again.");
+          }
+          data = await res.json().catch(() => ({}));
+          if (!res.ok) throw new Error(data.error || "The research didn't work. Try again.");
         }
-        const data = await res.json().catch(() => ({}));
-        if (!res.ok) throw new Error(data.error || "The research didn't work. Try again.");
         if (rsState.run !== run) return;
         renderResearch(data.result || {}, data.stats || {});
+        document.getElementById("rsBackBtn").hidden = false;
       } catch (e) {
         console.error(e);
         if (rsState.run !== run) return;
         body.innerHTML = `<div class="rs-status error">${esc(e.message || "The research didn't work. Try again.")}</div>`;
         document.getElementById("rsRetryBtn").hidden = false;
+        document.getElementById("rsBackBtn").hidden = false;
       } finally {
         rsState.busy = false;
       }
@@ -4489,7 +4625,8 @@
         ${peopleHtml}
         ${pointsHtml}
         ${typeof stats.costUsd === "number" ? `<div class="rs-cost">💲 This research cost about <b>${formatResearchCost(stats.costUsd)}</b> <span>(estimate at list prices; see console.anthropic.com → Usage for the exact amount)</span></div>` : ""}
-        <div class="rs-foot">Searched the web ${stats.searches || 0} time${stats.searches === 1 ? "" : "s"} and read ${stats.fetches || 0} page${stats.fetches === 1 ? "" : "s"}. Check the sources before you rely on anything here.</div>`;
+        ${stats.engine === "1min" ? `<div class="rs-cost">✨ Researched with 1min.ai, using your 1min.ai credits. No Claude charge.</div>` : ""}
+        <div class="rs-foot">${stats.engine === "1min" ? "" : `Searched the web ${stats.searches || 0} time${stats.searches === 1 ? "" : "s"} and read ${stats.fetches || 0} page${stats.fetches === 1 ? "" : "s"}. `}Check the sources before you rely on anything here.</div>`;
 
       const body = document.getElementById("rsBody");
       body.querySelectorAll("[data-rs-row]").forEach(cb => cb.addEventListener("change", () => { rsState.rows[cb.dataset.rsRow].selected = cb.checked; updateResearchSaveBtn(); }));
@@ -4540,6 +4677,7 @@
         talkingPoints: savePoints ? rsState.points.map(t => ({ point: String(t.point), source: String(t.source || "") })) : [],
         notes: rsState.notes,
         costUsd: rsState.costUsd ?? null,
+        engine: rsState.engine || "claude",
         researchedAt: serverTimestamp(),
         by: currentUser
       };

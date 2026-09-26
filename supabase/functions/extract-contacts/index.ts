@@ -31,7 +31,8 @@ Return every person shown. For each one:
 - "company" is the organization the person works for as shown in the image. If the image doesn't name one for them, use the company named below when it is given, otherwise an empty string.
 - Use an empty string for anything the image does not show. Never guess or construct an email address, phone number or LinkedIn URL.
 - In "note", flag anything a reviewer should double-check, such as an email or phone that looks like it belongs to a different organization than the company named below, or text that was hard to read. Otherwise leave it empty.
-If the image shows no people, return an empty list.`;
+Read small or low-contrast text carefully; team pages often put names, titles, emails and phone numbers in tiny captions under photos.
+If you can't list anyone, return an empty list and use "problem" to say why in one short sentence the rep can act on (for example, the text is too small or blurry to read, or the image shows no people). Otherwise leave "problem" empty.`;
 
 const SCHEMA = {
   type: "object",
@@ -53,8 +54,9 @@ const SCHEMA = {
         additionalProperties: false,
       },
     },
+    problem: { type: "string" },
   },
-  required: ["people"],
+  required: ["people", "problem"],
   additionalProperties: false,
 };
 
@@ -153,7 +155,7 @@ Deno.serve(PORT ? { port: Number(PORT) } : {}, async (req) => {
       return json(req, 422, { error: "The screenshot has too many people to read at once. Crop it into smaller parts." });
     }
     const text = response.content.map((b) => (b.type === "text" ? b.text : "")).join("");
-    const parsed = JSON.parse(text) as { people: Record<string, string>[] };
+    const parsed = JSON.parse(text) as { people: Record<string, string>[]; problem?: string };
     const people = (parsed.people ?? []).map((p) => ({
       name: String(p.name ?? "").trim(),
       title: String(p.title ?? "").trim(),
@@ -163,7 +165,7 @@ Deno.serve(PORT ? { port: Number(PORT) } : {}, async (req) => {
       linkedin: String(p.linkedin ?? "").trim(),
       note: String(p.note ?? "").trim(),
     })).filter((p) => p.name || p.email);
-    return json(req, 200, { people });
+    return json(req, 200, { people, problem: people.length ? "" : String(parsed.problem ?? "").trim() });
   } catch (err) {
     if (err instanceof Anthropic.RateLimitError) {
       return json(req, 429, { error: "The screenshot reader is busy. Wait a minute and try again." });

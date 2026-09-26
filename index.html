@@ -469,6 +469,68 @@
     .card-contact-info a:hover { text-decoration: underline; }
     .card-actions { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; justify-content: center; flex-shrink: 0; }
     .card-last { font-size: 11px; color: var(--gray-400); text-align: right; margin-top: 4px; }
+
+    /* My Workspace: leads grouped by company, collapsed by default */
+    .ws-stat { cursor: default; font-family: inherit; }
+    button.ws-stat { cursor: pointer; transition: border-color 0.15s ease, box-shadow 0.15s ease; }
+    button.ws-stat:hover { border-color: rgba(220,38,38,0.35); }
+    button.ws-stat.on { border-color: var(--red); box-shadow: 0 0 0 3px rgba(220,38,38,0.12); }
+    .ws-toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; padding: 12px; margin-bottom: 14px; background: rgba(255,255,255,0.7); border: 1px solid var(--border); border-radius: 18px; }
+    .ws-toolbar input[type="text"] { flex: 1 1 240px; min-width: 0; padding: 10px 14px; border: 1px solid var(--border); border-radius: 12px; font: 13px inherit; font-family: inherit; background: var(--surface); outline: none; }
+    .ws-toolbar select { padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; font: 13px inherit; font-family: inherit; background: var(--surface); }
+    .ws-toolbar input[type="text"]:focus, .ws-toolbar select:focus { border-color: rgba(29,78,216,0.42); box-shadow: 0 0 0 3px rgba(29,78,216,0.10); }
+    .ws-expand { display: flex; gap: 4px; margin-left: auto; }
+    .ws-expand button { border: none; background: none; color: var(--blue); font: 600 13px inherit; font-family: inherit; cursor: pointer; padding: 6px 8px; border-radius: 8px; }
+    .ws-expand button:hover { background: var(--blue-light); }
+    .ws-summary-line { font-size: 12px; color: var(--gray-500); margin: 0 4px 10px; }
+    .ws-company { background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(249,244,235,0.92)); border: 1px solid var(--border); border-left: 4px solid var(--green); border-radius: 18px; box-shadow: var(--shadow-sm); overflow: hidden; }
+    .ws-company.pri-high { border-left-color: var(--red); }
+    .ws-company.pri-med  { border-left-color: var(--yellow); }
+    .ws-company.pri-done { border-left-color: var(--gray-300, #cbd5e1); }
+    .ws-company > summary { list-style: none; display: flex; align-items: center; gap: 12px; padding: 14px 16px; cursor: pointer; user-select: none; }
+    .ws-company > summary::-webkit-details-marker { display: none; }
+    .ws-company > summary:hover { background: rgba(232,240,255,0.35); }
+    .ws-company > summary:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
+    .ws-chev { flex: none; width: 22px; height: 22px; display: grid; place-items: center; border-radius: 50%; color: var(--gray-500); transition: transform 0.18s ease; font-size: 12px; }
+    .ws-company[open] .ws-chev { transform: rotate(90deg); color: var(--blue); }
+    .ws-avatar { flex: none; width: 38px; height: 38px; border-radius: 12px; display: grid; place-items: center; font-weight: 800; font-size: 15px; color: #fff; }
+    .ws-co-main { min-width: 0; flex: 1; }
+    .ws-co-name { font-weight: 800; font-size: 15px; color: var(--gray-900); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ws-co-meta { font-size: 12px; color: var(--gray-500); margin-top: 3px; display: flex; gap: 10px; flex-wrap: wrap; }
+    .ws-co-side { flex: none; display: flex; align-items: center; gap: 8px; }
+    .ws-pill { font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+    .ws-pill.due { background: rgba(220,38,38,0.10); color: var(--red); }
+    .ws-pill.ok  { background: rgba(22,163,74,0.10); color: var(--green); }
+    .ws-pill.muted { background: rgba(100,116,139,0.10); color: var(--gray-500); }
+    .ws-people { border-top: 1px solid var(--border); }
+    .ws-person { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; padding: 12px 16px 12px 20px; border-bottom: 1px solid rgba(67,50,28,0.07); }
+    .ws-person:last-child { border-bottom: none; }
+    .ws-person-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .ws-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--green); flex: none; }
+    .ws-dot.high { background: var(--red); } .ws-dot.med { background: var(--yellow); } .ws-dot.done { background: var(--gray-300, #cbd5e1); }
+    .ws-pname { font-weight: 700; font-size: 14px; color: var(--gray-900); background: none; border: none; padding: 0; cursor: pointer; font-family: inherit; text-align: left; }
+    .ws-pname:hover { color: var(--blue); text-decoration: underline; }
+    .ws-ptitle { font-size: 12px; color: var(--gray-500); }
+    .ws-links { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 7px; }
+    .ws-links a { font-size: 12px; color: var(--blue); text-decoration: none; padding: 4px 9px; border-radius: 999px; background: rgba(232,240,255,0.75); border: 1px solid rgba(29,78,216,0.10); max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .ws-links a:hover { text-decoration: underline; }
+    .ws-person-side { display: flex; align-items: center; gap: 10px; }
+    .ws-last { font-size: 11px; color: var(--gray-400); text-align: right; min-width: 92px; }
+    .ws-last.never { color: var(--red); font-weight: 700; }
+    .ws-add-row { display: flex; gap: 8px; flex-wrap: wrap; padding: 10px 16px 14px 20px; border-top: 1px solid rgba(67,50,28,0.07); }
+    .ws-add-row button { padding: 7px 12px; border: 1px dashed rgba(29,78,216,0.35); border-radius: 10px; background: transparent; color: var(--blue); font: 700 12px inherit; font-family: inherit; cursor: pointer; }
+    .ws-add-row button:hover { background: var(--blue-light); }
+    @media (max-width: 900px) {
+      .ws-toolbar { margin-left: 0; margin-right: 0; }
+      .ws-expand { margin-left: 0; width: 100%; justify-content: flex-end; }
+      .ws-company > summary { flex-wrap: wrap; padding: 12px; gap: 10px; }
+      .ws-co-main { flex: 1 1 calc(100% - 90px); }
+      .ws-co-side { width: 100%; padding-left: 70px; }
+      .ws-person { grid-template-columns: 1fr; padding: 12px; }
+      .ws-person-side { justify-content: space-between; flex-wrap: wrap; }
+      .ws-last { text-align: left; min-width: 0; }
+      .ws-add-row { padding: 10px 12px 12px; }
+    }
     .empty-workspace {
       text-align: center;
       padding: 72px 24px;
@@ -1447,27 +1509,32 @@
           <div class="workspace-sub" id="wsSub">Your assigned leads</div>
         </div>
         <div class="ws-stats">
-          <div class="ws-stat urgent"><div class="n" id="wsNeedsFollowup">0</div><div class="l">Follow-up</div></div>
+          <button type="button" class="ws-stat urgent" id="wsFollowupBtn" onclick="toggleWsFollowup()" title="Show only leads that need a follow-up" aria-pressed="false"><div class="n" id="wsNeedsFollowup">0</div><div class="l">Follow-up</div></button>
           <div class="ws-stat"><div class="n" id="wsTotal">0</div><div class="l">Assigned</div></div>
           <div class="ws-stat good"><div class="n" id="wsContacted">0</div><div class="l">Contacted</div></div>
           <div class="ws-stat good"><div class="n" id="wsClosed">0</div><div class="l">Closed</div></div>
         </div>
       </div>
 
-      <div class="toolbar" style="border-radius:8px; margin-bottom:14px; border:1px solid var(--gray-200);">
-        <input type="text" id="wsSearch" placeholder="Search my leads…" oninput="renderWorkspace()">
+      <div class="ws-toolbar">
+        <input type="text" id="wsSearch" placeholder="Search my companies or people…" oninput="renderWorkspace()">
         <select id="wsFilterStatus" onchange="renderWorkspace()">
           <option value="">All Statuses</option>
           <option>New</option><option>Contacted</option><option>Qualified</option>
           <option>Proposal</option><option>Closed</option><option>Dead</option>
         </select>
         <select id="wsSort" onchange="renderWorkspace()">
-          <option value="priority">Priority (needs follow-up first)</option>
+          <option value="priority">Needs follow-up first</option>
           <option value="recent">Recently updated</option>
-          <option value="name">Name A–Z</option>
+          <option value="name">Company A–Z</option>
           <option value="contacts">Most contacts</option>
         </select>
+        <div class="ws-expand">
+          <button type="button" onclick="setAllWsCompanies(true)">Expand all</button>
+          <button type="button" onclick="setAllWsCompanies(false)">Collapse all</button>
+        </div>
       </div>
+      <div class="ws-summary-line" id="wsSummaryLine"></div>
 
       <div class="lead-queue" id="leadQueue">
         <div class="empty-workspace"><div class="big">📋</div><strong>No leads yet</strong><p>Leads assigned to you will appear here.</p></div>
@@ -2731,7 +2798,7 @@
       document.getElementById(`view-${v}`).classList.add("active");
       // Lead pipeline counters only belong on the lead views.
       const metricsBar = document.getElementById("metricsBar");
-      if (metricsBar) metricsBar.style.display = (v === "social" || v === "linkedin") ? "none" : "";
+      if (metricsBar) metricsBar.style.display = (v === "social" || v === "linkedin" || v === "workspace") ? "none" : "";
       const tabIndex = v === "admin" ? 0 : v === "workspace" ? 1 : v === "linkedin" ? 2 : 3;
       document.querySelectorAll(".view-tab")[tabIndex].classList.add("active");
       if (v === "workspace") renderWorkspace();
@@ -2903,96 +2970,178 @@
     }
 
     // ── WORKSPACE VIEW ─────────────────────────────────────────────
+    // Leads assigned to me, grouped by company. Companies start collapsed; the ones the rep
+    // opens stay open across re-renders. A search opens every matching company.
+    const wsOpenCompanies = new Set();
+    let wsFollowupOnly = false;
+    const WS_COLORS = ["#2563eb","#0891b2","#16a34a","#d97706","#7c3aed","#db2777","#0072BC","#4d4d4d"];
+
+    function wsDaysSinceContact(l) {
+      if (!l.lastContacted) return Infinity;
+      const d = l.lastContacted.toDate ? l.lastContacted.toDate() : new Date(l.lastContacted);
+      return (Date.now() - d.getTime()) / 86400000;
+    }
+    function wsIsDone(l) { return l.status === "Closed" || l.status === "Dead"; }
+    // Same rule as the Follow-up counter: open, and never contacted or not in the last 3 days.
+    function wsNeedsFollowup(l) { return !wsIsDone(l) && wsDaysSinceContact(l) > 3; }
+    function wsPriority(l) {
+      if (wsIsDone(l)) return "done";
+      const days = wsDaysSinceContact(l);
+      return days > 5 ? "high" : days > 2 ? "med" : "low";
+    }
+    function wsLastContactDate(l) {
+      return l.lastContacted ? (l.lastContacted.toDate ? l.lastContacted.toDate() : new Date(l.lastContacted)) : null;
+    }
+
+    window.toggleWsFollowup = function () {
+      wsFollowupOnly = !wsFollowupOnly;
+      renderWorkspace();
+    };
+    window.setAllWsCompanies = function (open) {
+      document.querySelectorAll("#leadQueue .ws-company").forEach(d => {
+        d.open = open;
+        if (open) wsOpenCompanies.add(d.dataset.key); else wsOpenCompanies.delete(d.dataset.key);
+      });
+    };
+
     window.renderWorkspace = function () {
       const me      = currentUser;
-      const search  = (document.getElementById("wsSearch")?.value||"").toLowerCase();
+      const search  = (document.getElementById("wsSearch")?.value||"").trim().toLowerCase();
       const status  = document.getElementById("wsFilterStatus")?.value || "";
       const sort    = document.getElementById("wsSort")?.value || "priority";
 
-      const myLeads = getVisibleLeads().filter(l =>
-        l.assignedTo === me &&
+      const allMine = getVisibleLeads().filter(l => l.assignedTo === me);
+
+      // Stats cover everything assigned to me, whatever the filters.
+      document.getElementById("wsTitle").textContent = `${me}'s Workspace`;
+      document.getElementById("wsTotal").textContent     = allMine.length;
+      document.getElementById("wsContacted").textContent = allMine.filter(l=>l.contactCount>0).length;
+      document.getElementById("wsClosed").textContent    = allMine.filter(l=>l.status==="Closed").length;
+      document.getElementById("wsNeedsFollowup").textContent = allMine.filter(wsNeedsFollowup).length;
+      const fuBtn = document.getElementById("wsFollowupBtn");
+      if (fuBtn) { fuBtn.classList.toggle("on", wsFollowupOnly); fuBtn.setAttribute("aria-pressed", String(wsFollowupOnly)); }
+
+      const myLeads = allMine.filter(l =>
         (!status || l.status === status) &&
-        (!search || (l.name||"").toLowerCase().includes(search) ||
-                    (l.company||"").toLowerCase().includes(search))
+        (!wsFollowupOnly || wsNeedsFollowup(l)) &&
+        (!search || [l.name, l.company, l.title, l.email].some(v => String(v||"").toLowerCase().includes(search)))
       );
 
-      // Stats
-      document.getElementById("wsTitle").textContent = `${me}'s Workspace`;
-      document.getElementById("wsSub").textContent   = `${myLeads.length} lead${myLeads.length!==1?"s":""} assigned to you`;
-      document.getElementById("wsTotal").textContent     = myLeads.length;
-      document.getElementById("wsContacted").textContent = myLeads.filter(l=>l.contactCount>0).length;
-      document.getElementById("wsClosed").textContent    = myLeads.filter(l=>l.status==="Closed").length;
-      const needsFollowup = myLeads.filter(l => {
-        if (l.status === "Closed" || l.status === "Dead") return false;
-        if (!l.lastContacted) return true;
-        const d = l.lastContacted.toDate ? l.lastContacted.toDate() : new Date(l.lastContacted);
-        return (Date.now() - d.getTime()) > 3 * 24 * 60 * 60 * 1000; // 3+ days
-      }).length;
-      document.getElementById("wsNeedsFollowup").textContent = needsFollowup;
+      // Group by company
+      const groups = new Map();
+      myLeads.forEach(l => {
+        const key = getCompanyGroupKey(l.company || "");
+        if (!groups.has(key)) groups.set(key, { key, name: (l.company||"").trim() || "No company", leads: [] });
+        groups.get(key).leads.push(l);
+      });
+      const companies = [...groups.values()];
 
-      // Sort
-      const priorityScore = l => {
-        if (l.status === "Closed" || l.status === "Dead") return 999;
-        if (!l.lastContacted) return 0;
-        const d = l.lastContacted.toDate ? l.lastContacted.toDate() : new Date(l.lastContacted);
-        return -(Date.now() - d.getTime());
-      };
-      if (sort === "priority") myLeads.sort((a,b) => priorityScore(a) - priorityScore(b));
-      else if (sort === "recent") myLeads.sort((a,b) => (b.updatedAt?.seconds||0) - (a.updatedAt?.seconds||0));
-      else if (sort === "name")   myLeads.sort((a,b) => (a.name||"").localeCompare(b.name||""));
-      else if (sort === "contacts") myLeads.sort((a,b) => (b.contactCount||0) - (a.contactCount||0));
+      const urgency = l => wsIsDone(l) ? -1 : Math.min(wsDaysSinceContact(l), 36500);
+      const leadSort = {
+        priority: (a,b) => urgency(b) - urgency(a),
+        recent:   (a,b) => (b.updatedAt?.seconds||0) - (a.updatedAt?.seconds||0),
+        name:     (a,b) => (a.name||"").localeCompare(b.name||""),
+        contacts: (a,b) => (b.contactCount||0) - (a.contactCount||0)
+      }[sort] || ((a,b) => 0);
+      companies.forEach(c => {
+        c.leads.sort(leadSort);
+        c.due = c.leads.filter(wsNeedsFollowup).length;
+        c.open = c.leads.filter(l => !wsIsDone(l)).length;
+        c.worst = Math.max(...c.leads.map(urgency));
+        c.updated = Math.max(...c.leads.map(l => l.updatedAt?.seconds||0));
+        c.contacts = c.leads.reduce((n,l) => n + (l.contactCount||0), 0);
+        const dates = c.leads.map(wsLastContactDate).filter(Boolean);
+        c.last = dates.length ? new Date(Math.max(...dates.map(d => d.getTime()))) : null;
+        const worstLead = c.leads.reduce((w,l) => ({high:3,med:2,low:1,done:0}[wsPriority(l)] > ({high:3,med:2,low:1,done:0}[wsPriority(w)]) ? l : w), c.leads[0]);
+        c.priority = wsPriority(worstLead);
+      });
+      const byName = (a,b) => a.name.localeCompare(b.name);
+      companies.sort({
+        priority: (a,b) => (b.due - a.due) || (b.worst - a.worst) || byName(a,b),
+        recent:   (a,b) => (b.updated - a.updated) || byName(a,b),
+        name:     byName,
+        contacts: (a,b) => (b.contacts - a.contacts) || byName(a,b)
+      }[sort] || byName);
+
+      const filtered = search || status || wsFollowupOnly;
+      const myCompanyCount = new Set(allMine.map(l => getCompanyGroupKey(l.company||""))).size;
+      document.getElementById("wsSub").textContent =
+        `${allMine.length} lead${allMine.length!==1?"s":""} at ${myCompanyCount} compan${myCompanyCount!==1?"ies":"y"}`;
+      document.getElementById("wsSummaryLine").textContent = !myLeads.length ? "" :
+        (filtered ? `Showing ${myLeads.length} lead${myLeads.length!==1?"s":""} at ${companies.length} compan${companies.length!==1?"ies":"y"}` : "") +
+        (wsFollowupOnly ? " · needing follow-up" : "") +
+        (filtered ? "" : "Tap a company to see its people.");
 
       const queue = document.getElementById("leadQueue");
       if (!myLeads.length) {
-        queue.innerHTML = `<div class="empty-workspace"><div class="big">✅</div><strong>${me ? "No leads assigned to you" : "Set your name to see your leads"}</strong><p>${me ? "Leads assigned to you will appear here." : "Click Switch in the top right."}</p></div>`;
+        queue.innerHTML = allMine.length
+          ? `<div class="empty-workspace"><div class="big">🔎</div><strong>Nothing matches</strong><p>${wsFollowupOnly ? "No leads need a follow-up right now. Nice work." : "Try a different search or status."}</p></div>`
+          : `<div class="empty-workspace"><div class="big">✅</div><strong>${me ? "No leads assigned to you" : "Set your name to see your leads"}</strong><p>${me ? "Leads assigned to you will appear here." : "Click Switch in the top right."}</p></div>`;
         return;
       }
 
-      queue.innerHTML = myLeads.map(l => {
-        const email = cleanEmail(l.email);
-        const phone = cleanPhone(l.phone);
-        const lastC = l.lastContacted?.toDate ? fmtDate(l.lastContacted.toDate()) : null;
-
-        // Priority class
-        let priority = "low";
-        if (l.status !== "Closed" && l.status !== "Dead") {
-          if (!l.lastContacted) priority = "high";
-          else {
-            const d = l.lastContacted.toDate ? l.lastContacted.toDate() : new Date(l.lastContacted);
-            const days = (Date.now() - d.getTime()) / 86400000;
-            if (days > 5) priority = "high";
-            else if (days > 2) priority = "med";
-          }
-        }
-
-        const statusCls = `status-${(l.status||"New").replace(/\s/g,"")}`;
-
-        return `<div class="lead-card priority-${priority}">
-          <div class="card-main">
-            <div class="card-name">
-              <span>${esc(l.name||"—")}</span>
-              <span class="status-badge ${statusCls}">${esc(l.status||"New")}</span>
-              ${l.contactCount ? `<span style="font-size:11px;color:var(--gray-400);font-weight:400">${l.contactCount} contact${l.contactCount!==1?"s":""}</span>` : ""}
+      const colorFor = name => WS_COLORS[[...name.toLowerCase()].reduce((h,ch) => Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0, 2166136261) % WS_COLORS.length];
+      queue.innerHTML = companies.map(c => {
+        const isOpen = !!search || wsOpenCompanies.has(c.key);
+        const initial = (c.name.match(/[A-Za-z0-9]/) || ["?"])[0].toUpperCase();
+        const site = c.leads.map(l => l.website).find(Boolean);
+        const statusPill = c.due
+          ? `<span class="ws-pill due">${c.due} need${c.due===1?"s":""} follow-up</span>`
+          : c.open ? `<span class="ws-pill ok">✓ Up to date</span>` : `<span class="ws-pill muted">Closed out</span>`;
+        const people = c.leads.map(l => {
+          const email = cleanEmail(l.email), phone = cleanPhone(l.phone);
+          const last = wsLastContactDate(l);
+          const pri = wsPriority(l);
+          const statusCls = `status-${(l.status||"New").replace(/\s/g,"")}`;
+          return `<div class="ws-person">
+            <div style="min-width:0">
+              <div class="ws-person-top">
+                <span class="ws-dot ${pri}" title="${pri==="high"?"Follow up now":pri==="med"?"Follow up soon":pri==="done"?"Closed":"Recently contacted"}"></span>
+                <button type="button" class="ws-pname" onclick="openDetail('${l.id}')">${esc(l.name||"—")}</button>
+                ${(l.title||l.industry) ? `<span class="ws-ptitle">${esc(l.title||l.industry)}</span>` : ""}
+                <span class="status-badge ${statusCls}">${esc(l.status||"New")}</span>
+              </div>
+              <div class="ws-links">
+                ${email ? `<a href="mailto:${esc(email)}" title="${esc(email)}">✉️ ${esc(email)}</a>` : ""}
+                ${phone ? `<a href="tel:${esc(phone)}">📞 ${esc(phone)}</a>` : ""}
+                ${l.linkedin ? `<a href="#" onclick="openUrl('${esc(l.linkedin)}');return false;">🔗 LinkedIn</a>` : ""}
+              </div>
             </div>
-            <div class="card-meta">
-              ${l.company ? `<span>🏢 ${esc(l.company)}</span>` : ""}
-              ${(l.title||l.industry) ? `<span>💼 ${esc(l.title||l.industry)}</span>` : ""}
-              ${l.country ? `<span>📍 ${esc(l.country)}</span>` : ""}
+            <div class="ws-person-side">
+              <div class="ws-last${last ? "" : " never"}">${last ? `Last contact<br>${fmtDate(last)}${l.contactCount ? ` · ${l.contactCount}×` : ""}` : (wsIsDone(l) ? "No contact logged" : "Never contacted")}</div>
+              <button class="btn btn-primary btn-sm" onclick="openActivity('${l.id}')">Log Activity</button>
+              <button class="btn btn-secondary btn-sm" onclick="openDetail('${l.id}')">Details</button>
             </div>
-            <div class="card-contact-info">
-              ${email ? `<a href="mailto:${esc(email)}">✉️ ${esc(email)}</a>` : ""}
-              ${phone ? `<a href="tel:${esc(phone)}">📞 ${esc(phone)}</a>` : ""}
-              ${l.linkedin ? `<a href="#" onclick="openUrl('${esc(l.linkedin)}');return false;">🔗 LinkedIn</a>` : ""}
-              ${l.website  ? `<a href="#" onclick="openUrl('${esc(l.website)}');return false;">🌐 Website</a>` : ""}
-            </div>
-          </div>
-          <div class="card-actions">
-            <button class="btn btn-primary btn-sm"   onclick="openActivity('${l.id}')">Log Activity</button>
-            <button class="btn btn-secondary btn-sm" onclick="openDetail('${l.id}')">View Details</button>
-            <div class="card-last">${lastC ? `Last: ${lastC}` : "<span style='color:var(--red);font-weight:600'>Never contacted</span>"}</div>
-          </div>
-        </div>`;
+          </div>`;
+        }).join("");
+        return `<details class="ws-company pri-${c.priority}" data-key="${esc(c.key)}"${isOpen ? " open" : ""}>
+          <summary>
+            <span class="ws-chev" aria-hidden="true">▶</span>
+            <span class="ws-avatar" style="background:${colorFor(c.name)}" aria-hidden="true">${esc(initial)}</span>
+            <span class="ws-co-main">
+              <div class="ws-co-name">${esc(c.name)}</div>
+              <div class="ws-co-meta">
+                <span>👥 ${c.leads.length} ${c.leads.length===1?"person":"people"}</span>
+                <span>${c.last ? `🕑 Last contact ${fmtDate(c.last)}` : "🕑 Never contacted"}</span>
+                ${site ? `<span>🌐 ${esc(String(site).replace(/^https?:\/\//,"").replace(/^www\./,"").replace(/\/$/,""))}</span>` : ""}
+              </div>
+            </span>
+            <span class="ws-co-side">${statusPill}</span>
+          </summary>
+          <div class="ws-people">${people}</div>
+          ${c.key !== "__no_company__" ? `<div class="ws-add-row">
+            <button type="button" onclick="openAddContact('${esc(c.key)}')">+ Add person</button>
+            <button type="button" onclick="openScreenshotReader('${esc(c.key)}')">📷 Add from screenshot</button>
+            ${site ? `<button type="button" onclick="openUrl('${esc(site)}')">🌐 Website</button>` : ""}
+          </div>` : ""}
+        </details>`;
       }).join("");
+
+      // Remember what the rep opens or closes (not while a search is forcing groups open).
+      queue.querySelectorAll(".ws-company").forEach(d => d.addEventListener("toggle", () => {
+        if (document.getElementById("wsSearch")?.value.trim()) return;
+        if (d.open) wsOpenCompanies.add(d.dataset.key); else wsOpenCompanies.delete(d.dataset.key);
+      }));
     };
 
     // ── ASSIGN COMPANY ─────────────────────────────────────────────

@@ -32,6 +32,8 @@ Return every person shown. For each one:
 - Use an empty string for anything the image does not show. Never guess or construct an email address, phone number or LinkedIn URL.
 - In "note", flag anything a reviewer should double-check, such as an email or phone that looks like it belongs to a different organization than the company named below, or text that was hard to read. Otherwise leave it empty.
 Read small or low-contrast text carefully; team pages often put names, titles, emails and phone numbers in tiny captions under photos.
+If the image shows an organization's general contact details (a Contact Us page, a footer, a directory listing) but no named people, return one entry for the organization itself: "name" and "company" are the organization's name, "title" is "General contact", plus its email, phone and address.
+Put a street address in "address" only when the image shows one for that person or organization.
 If you can't list anyone, return an empty list and use "problem" to say why in one short sentence the rep can act on (for example, the text is too small or blurry to read, or the image shows no people). Otherwise leave "problem" empty.`;
 
 const SCHEMA = {
@@ -48,9 +50,10 @@ const SCHEMA = {
           email: { type: "string" },
           phone: { type: "string" },
           linkedin: { type: "string" },
+          address: { type: "string" },
           note: { type: "string" },
         },
-        required: ["name", "title", "company", "email", "phone", "linkedin", "note"],
+        required: ["name", "title", "company", "email", "phone", "linkedin", "address", "note"],
         additionalProperties: false,
       },
     },
@@ -163,6 +166,7 @@ Deno.serve(PORT ? { port: Number(PORT) } : {}, async (req) => {
       email: String(p.email ?? "").trim(),
       phone: String(p.phone ?? "").trim(),
       linkedin: String(p.linkedin ?? "").trim(),
+      address: String(p.address ?? "").trim(),
       note: String(p.note ?? "").trim(),
     })).filter((p) => p.name || p.email);
     return json(req, 200, { people, problem: people.length ? "" : String(parsed.problem ?? "").trim() });

@@ -3737,7 +3737,7 @@
           const email = String(p.email || "").toLowerCase(), name = norm(p.name || "");
           const same = merged.find(m => (email && String(m.email).toLowerCase() === email) || (name && norm(m.name) === name));
           if (!same) return merged.push({ ...p });
-          ["name", "title", "company", "email", "phone", "linkedin", "note"].forEach(k => { if (!same[k] && p[k]) same[k] = p[k]; });
+          ["name", "title", "company", "email", "phone", "linkedin", "address", "note"].forEach(k => { if (!same[k] && p[k]) same[k] = p[k]; });
         });
         // A company typed above applies to everyone; otherwise each person keeps the company shown in the image.
         shotState.people = merged.map(p => {
@@ -3788,7 +3788,7 @@
         box.innerHTML = "";
         document.getElementById("shotSaveBtn").hidden = true;
         const why = shotState.problem ? ` ${shotState.problem.replace(/\.?$/, ".")}` : "";
-        return setShotStatus(`No people were found in that screenshot.${why} Tip: zoom the web page in (Ctrl +) before taking the screenshot, or crop it to the part with the people.`, true);
+        return setShotStatus(`No people were found in that screenshot.${why} If there are people in the image, zoom the web page in (Ctrl +) before taking the screenshot, or crop it to the part with the people.`, true);
       }
       setShotStatus("");
       const field = (i, k, label) => `<input type="text" data-i="${i}" data-k="${k}" value="${esc(people[i][k] || "")}" placeholder="${label}" aria-label="${label}">`;
@@ -3798,7 +3798,7 @@
         <div class="shot-people">${people.map((p, i) => `
           <div class="shot-person${p.selected ? "" : " off"}">
             <input type="checkbox" data-i="${i}" ${p.selected ? "checked" : ""} aria-label="Add ${esc(p.name || "this person")}">
-            <div class="shot-fields">${field(i, "name", "Name")}${field(i, "title", "Title")}${field(i, "email", "Email")}${field(i, "phone", "Phone")}${field(i, "company", "Company").replace("<input", '<input class="shot-company"')}</div>
+            <div class="shot-fields">${field(i, "name", "Name")}${field(i, "title", "Title")}${field(i, "email", "Email")}${field(i, "phone", "Phone")}${field(i, "company", "Company").replace("<input", '<input class="shot-company"')}${people[i].address ? field(i, "address", "Address").replace("<input", '<input class="shot-company"') : ""}</div>
             ${p.flags.length ? `<div class="shot-flags">${p.flags.map(f => `<div class="shot-flag${f.dupe ? " dupe" : ""}">${f.dupe ? "✓" : "⚠️"} ${esc(f.text)}</div>`).join("")}</div>` : ""}
           </div>`).join("")}
         </div>`;
@@ -3854,7 +3854,8 @@
             assignedTo: d.rep,
             status: "New", contactCount: 0, lastContacted: null,
             createdAt: serverTimestamp(), updatedAt: serverTimestamp(), source: "screenshot",
-            ...d.extras
+            ...d.extras,
+            ...(String(p.address || "").trim() ? { address: String(p.address).trim() } : {})
           });
           saved++;
         }

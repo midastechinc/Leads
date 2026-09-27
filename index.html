@@ -1462,6 +1462,10 @@
     .pl-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
     .pl-chips button { border: 1px solid var(--border); background: rgba(255,255,255,0.8); border-radius: 999px; padding: 6px 11px; font: 700 12px inherit; font-family: inherit; cursor: pointer; color: var(--gray-700); }
     .pl-chips button:hover { border-color: var(--blue); color: var(--blue); }
+    .rs-found { grid-template-columns: 22px 1fr auto; align-items: center; }
+    .rs-found-main { min-width: 0; overflow-wrap: anywhere; }
+    .rs-found select { padding: 7px 9px; border: 1px solid var(--border); border-radius: 10px; font: 13px inherit; font-family: inherit; background: var(--surface); max-width: 210px; }
+    @media (max-width: 640px) { .rs-found { grid-template-columns: 22px 1fr; } .rs-found select { grid-column: 2; max-width: none; width: 100%; } }
     .rs-giveup { margin-top: 14px; font-size: 12px; color: var(--gray-500); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     .rs-giveup button { border: 1px solid var(--border); background: rgba(255,255,255,0.8); border-radius: 999px; padding: 5px 11px; font: 700 12px inherit; font-family: inherit; color: var(--gray-700); cursor: pointer; }
     .rs-giveup button:hover { border-color: var(--red); color: var(--red); }
@@ -4577,7 +4581,9 @@ ${shape}`;
     }
     const GENERIC_EMAIL = /^(info|admin|office|contact|hello|reception|mail|inquiries|enquiries|general|support|accounts|billing|careers|jobs|hr)\b/i;
 
-    // Scans the company website with Apify and turns what it finds into a research result for the review screen.
+    // Scans the company website (free reader + Apify) and turns what it finds into a research result.
+    // LinkedIn links matching a person fill the normal rows; every email and phone is listed with a
+    // "Save to" choice, pre-set when an email clearly belongs to someone.
     async function apifyWebsiteResearch() {
       const isCompany = rsState.mode === "company";
       const l = isCompany ? null : allLeads[rsState.id];
@@ -4585,40 +4591,45 @@ ${shape}`;
       const website = (l && l.website) || d.website;
       if (!website) throw new Error("There's no website on this lead to scan. Add one, or use another option.");
       const found = await apifyCall("website", { website });
-      const used = new Set();
-      const take = item => { if (item) used.add(item.value); return item; };
       let result;
+      const targets = isCompany ? rsCompanyLeads(true) : [l];
+      const items = [
+        ...found.emails.map(e => ({ kind: "email", value: e.value, source: e.source, generic: GENERIC_EMAIL.test(e.value) })),
+        ...found.phones.map(p => ({ kind: "phone", value: formatPhone(p.value), source: p.source }))
+      ].map(it => ({ ...it, target: "" }));
+      // Pre-select emails that clearly belong to someone we have.
+      targets.forEach(t => {
+        const e = emailForName(t.name, found.emails);
+        const item = e && items.find(it => it.kind === "email" && it.value === e.value && !it.target);
+        if (item) item.target = isCompany ? t.id : "self";
+      });
       if (isCompany) {
-        const people = rsCompanyLeads().map(p => {
-          const email = take(emailForName(p.name, found.emails));
-          const li = take(linkedinForName(p.name, found.linkedins));
-          if (!email && !li) return null;
-          return { name: p.name, title: "", email: email?.value || "", email_status: email ? "found" : "not_found", phone: "", linkedin: li?.value || "", status: "current", source: email?.source || li?.source || "" };
+        const people = targets.map(p => {
+          const li = linkedinForName(p.name, found.linkedins);
+          return li ? { name: p.name, title: "", email: "", email_status: "not_found", phone: "", linkedin: li.value, status: "current", source: li.source } : null;
         }).filter(Boolean);
-        result = {
-          company: { name: d.company, website: "", phone: found.phones[0]?.value || "", address: "", city: "", industry: "", employee_range: "", description: "", source: found.phones[0]?.source || "" },
-          people, talking_points: [], notes: ""
-        };
+        result = { company: { name: d.company, website: "", phone: "", address: "", city: "", industry: "", employee_range: "", description: "", source: "" }, people, talking_points: [], notes: "" };
       } else {
-        const email = take(emailForName(l.name, found.emails));
-        const li = take(linkedinForName(l.name, found.linkedins));
+        const li = linkedinForName(l.name, found.linkedins);
         result = {
-          person: { name: l.name, title: "", title_source: "", email: email?.value || "", email_status: email ? "found" : "not_found", email_source: email?.source || "",
-            phone: "", phone_source: "", linkedin: li?.value || "", linkedin_source: li?.source || "" },
+          person: { name: l.name, title: "", title_source: "", email: "", email_status: "not_found", email_source: "", phone: "", phone_source: "", linkedin: li?.value || "", linkedin_source: li?.source || "" },
           talking_points: [], notes: ""
         };
       }
-      // Everything else found goes into the notes so nothing is lost.
-      const others = found.emails.filter(e => !used.has(e.value));
-      const general = others.filter(e => GENERIC_EMAIL.test(e.value)).map(e => e.value);
-      const personal = others.filter(e => !GENERIC_EMAIL.test(e.value)).map(e => e.value);
-      const bits = [];
-      if (general.length) bits.push(`General emails: ${general.join(", ")}`);
-      if (personal.length) bits.push(`Other emails on the site: ${personal.slice(0, 15).join(", ")}`);
-      if (found.phones.length) bits.push(`Phones on the site: ${found.phones.slice(0, 8).map(p => p.value).join(", ")}`);
-      if (!found.emails.length && !found.phones.length) bits.push(`No emails or phone numbers were found on ${domainOf(website)}.`);
-      result.notes = bits.join(" · ");
+      const otherLinks = found.linkedins.filter(x => !targets.some(t => linkedinForName(t.name, [x])));
+      const notes = [];
+      if (!found.reachable && !found.apifyPages) notes.push(`Couldn't open ${domainOf(website)}. The site may block scanners; try the free quick search or another option.`);
+      else if (!items.length) notes.push(`No emails or phone numbers were found on ${domainOf(website)}. The site may only have a contact form.`);
+      if (otherLinks.length) notes.push(`LinkedIn links on the site: ${otherLinks.slice(0, 8).map(x => x.value).join(", ")}`);
+      result.notes = notes.join(" · ");
+      rsState.found = items;
       return { result, stats: { engine: "apify", pages: found.pages, costUsd: found.costUsd, site: domainOf(website) } };
+    }
+    function formatPhone(v) {
+      const s = String(v || "").trim();
+      const digits = s.replace(/\D/g, "").replace(/^1(?=\d{10})/, "");
+      if (/^\+?[\d\s().-]+$/.test(s) && digits.length === 10) return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+      return s;
     }
 
     // ── FIND NEW LEADS (Google Maps via Apify) ──────────────────────
@@ -4762,6 +4773,7 @@ ${shape}`;
         wait = engine === "1min" ? "This usually takes under a minute." : "This usually takes 30 seconds to 2 minutes.";
       }
       rsState.busy = true;
+      rsState.found = [];
       document.getElementById("rsSaveBtn").hidden = true;
       document.getElementById("rsRetryBtn").hidden = true;
       document.getElementById("rsBackBtn").hidden = true;
@@ -4915,14 +4927,34 @@ ${shape}`;
           <label class="rs-item" style="cursor:pointer"><input type="checkbox" id="rsSavePoints" checked><span>Save these talking points${isCompany ? " to everyone at this company" : " to the lead"}</span></label>
         </div>` : "";
 
-      const nothing = !rows.length && !rsState.points.length && !people.length;
+      const found = rsState.found || [];
+      const foundHtml = found.length ? (() => {
+        const l = allLeads[rsState.id];
+        const who = isCompany ? rsCompanyLeads(true) : [];
+        const first = String(l?.name || "").replace(/^(dr|mr|mrs|ms|miss)\.?\s+/i, "").split(" ")[0] || "this person";
+        const opts = it => isCompany
+          ? `<option value="">Skip</option>${who.map(p => `<option value="${p.id}"${it.target === p.id ? " selected" : ""}>${esc(p.name || "Unnamed")}'s ${it.kind}</option>`).join("")}${it.kind === "email" ? `<option value="new"${it.target === "new" ? " selected" : ""}>➕ New contact</option>` : ""}`
+          : `<option value="">Skip</option><option value="self"${it.target === "self" ? " selected" : ""}>Use as ${esc(first)}'s ${it.kind}</option>`;
+        return `<div class="rs-h">Found on the website (${found.length})</div>
+          <p class="rs-hint">Choose where each one should be saved. Emails that match a name are chosen for you.</p>
+          <div class="rs-list">${found.map((it, i) => `
+            <div class="rs-item rs-found">
+              <span>${it.kind === "email" ? "✉️" : "📞"}</span>
+              <span class="rs-found-main"><b>${esc(it.value)}</b>${it.generic ? ` <span class="rs-tag muted">general</span>` : ""}
+                <div class="rs-meta">${rsSourceLink(it.source)}</div></span>
+              <select data-rs-found="${i}" aria-label="Save ${esc(it.value)} to">${opts(it)}</select>
+            </div>`).join("")}</div>`;
+      })() : "";
+
+      const nothing = !rows.length && !rsState.points.length && !people.length && !found.length;
       document.getElementById("rsBody").innerHTML = `
         ${rsState.notes ? `<div class="rs-note">📝 ${esc(rsState.notes)}</div>` : ""}
         ${nothing ? `<div class="rs-status">Nothing new was found on the public web.</div>` : ""}
         ${rows.length ? `<div class="rs-h">${isCompany ? "Company details" : "Contact details"}</div><div class="rs-rows">${rowsHtml}</div>` : ""}
+        ${foundHtml}
         ${peopleHtml}
         ${pointsHtml}
-        ${stats.engine === "apify" ? `<div class="rs-cost">🌐 Scanned ${stats.pages || 0} page${stats.pages === 1 ? "" : "s"} of ${esc(stats.site || "the website")} with Apify${typeof stats.costUsd === "number" && stats.costUsd > 0 ? `, using <b>${formatResearchCost(stats.costUsd)}</b> of Apify credit` : ""}.</div>`
+        ${stats.engine === "apify" ? `<div class="rs-cost">🌐 Scanned ${stats.pages || 0} page${stats.pages === 1 ? "" : "s"} of ${esc(stats.site || "the website")}${typeof stats.costUsd === "number" && stats.costUsd > 0 ? `, using <b>${formatResearchCost(stats.costUsd)}</b> of Apify credit` : ""}.</div>`
           : typeof stats.costUsd === "number" ? `<div class="rs-cost">💲 This research cost about <b>${formatResearchCost(stats.costUsd)}</b> <span>(estimate at list prices; see console.anthropic.com → Usage for the exact amount)</span></div>` : ""}
         ${stats.engine === "1min" ? `<div class="rs-cost">✨ Researched with 1min.ai, using your 1min.ai credits. No Claude charge.</div>` : ""}
         ${rsState.mode === "person" && !allLeads[rsState.id]?.disabled ? `<div class="rs-giveup">Nothing useful? <button type="button" onclick="setLeadsDisabled(['${rsState.id}'], true, true)">🚫 Disable this person</button></div>` : ""}
@@ -4932,6 +4964,19 @@ ${shape}`;
       body.querySelectorAll("[data-rs-row]").forEach(cb => cb.addEventListener("change", () => { rsState.rows[cb.dataset.rsRow].selected = cb.checked; updateResearchSaveBtn(); }));
       body.querySelectorAll("[data-rs-val]").forEach(inp => inp.addEventListener("input", () => { rsState.rows[inp.dataset.rsVal].val = inp.value; }));
       body.querySelectorAll("[data-rs-person]").forEach(cb => cb.addEventListener("change", () => { rsState.people[cb.dataset.rsPerson].selected = cb.checked; updateResearchSaveBtn(); }));
+      body.querySelectorAll("[data-rs-found]").forEach(sel => sel.addEventListener("change", () => {
+        const it = rsState.found[sel.dataset.rsFound];
+        // One email and one phone per person: picking another clears the earlier choice.
+        if (sel.value && sel.value !== "new") rsState.found.forEach((o, j) => {
+          if (o !== it && o.kind === it.kind && o.target === sel.value) {
+            o.target = "";
+            const other = body.querySelector(`[data-rs-found="${j}"]`);
+            if (other) other.value = "";
+          }
+        });
+        it.target = sel.value;
+        updateResearchSaveBtn();
+      }));
       document.getElementById("rsSaveBtn").hidden = nothing && !rsState.notes;
       updateResearchSaveBtn();
     }
@@ -4960,6 +5005,8 @@ ${shape}`;
       if (fields) parts.push(`${fields} ${rsState.mode === "company" ? "company " : ""}detail${fields === 1 ? "" : "s"}`);
       if (added) parts.push(`${added} new ${added === 1 ? "contact" : "contacts"}`);
       if (updated) parts.push(`${updated} contact update${updated === 1 ? "" : "s"}`);
+      const picked = (rsState.found || []).filter(f => f.target).length;
+      if (picked) parts.push(`${picked} email${picked === 1 ? "" : "s"}/phone${picked === 1 ? "" : "s"} from the website`);
       document.getElementById("rsSaveBtn").textContent = parts.length ? `Save ${parts.join(" + ")}` : "Save research notes";
     }
 
@@ -4981,11 +5028,33 @@ ${shape}`;
         researchedAt: serverTimestamp(),
         by: currentUser
       };
+      // Emails and phones from the website scan, by where the rep chose to save them.
+      const picks = (rsState.found || []).filter(f => f.target);
+      const valueOf = f => f.kind === "email" ? f.value.toLowerCase() : f.value;
+      if (!isCompany) picks.filter(f => f.target === "self").forEach(f => { fields[f.kind] = valueOf(f); });
       const btn = document.getElementById("rsSaveBtn");
       btn.disabled = true;
       try {
         let skipped = 0;
         if (isCompany) {
+          const byLead = {};
+          picks.filter(f => f.target && f.target !== "new").forEach(f => { (byLead[f.target] ||= {})[f.kind] = valueOf(f); });
+          for (const [id, change] of Object.entries(byLead)) {
+            const target = allLeads[id];
+            if (!target || !canCurrentUserManageLeadAssignment(target)) { skipped++; continue; }
+            await updateDoc(doc(db, "leads", id), { ...change, ...(target.disabled ? { disabled: false } : {}), updatedAt: serverTimestamp() });
+          }
+          const dNew = companyDefaults(rsState.groupKey);
+          for (const f of picks.filter(p => p.target === "new")) {
+            const local = f.value.split("@")[0];
+            const name = f.generic ? `${dNew.company} (general)` : local.split(/[._-]+/).filter(Boolean).map(w => w[0].toUpperCase() + w.slice(1)).join(" ");
+            await addDoc(collection(db, "leads"), {
+              name, company: dNew.company, email: f.value.toLowerCase(), phone: "", website: dNew.website || "", linkedin: "",
+              title: f.generic ? "General contact" : "", industry: dNew.industry || "",
+              assignedTo: dNew.rep, status: "New", contactCount: 0, lastContacted: null,
+              createdAt: serverTimestamp(), updatedAt: serverTimestamp(), source: "website-scan", ...dNew.extras
+            });
+          }
           // Company details and company research go on everyone at the company this rep can edit.
           for (const l of rsCompanyLeads()) {
             if (!canCurrentUserManageLeadAssignment(l)) { skipped++; continue; }
@@ -5022,6 +5091,7 @@ ${shape}`;
         if (n) bits.push(`saved ${n} ${isCompany ? "company " : ""}detail${n === 1 ? "" : "s"}`);
         if (added.length) bits.push(`added ${added.length} ${added.length === 1 ? "contact" : "contacts"}`);
         if (updates.length) bits.push(`updated ${updates.length} existing ${updates.length === 1 ? "contact" : "contacts"}`);
+        if (picks.length) bits.push(`saved ${picks.length} email${picks.length === 1 ? "" : "s"}/phone${picks.length === 1 ? "" : "s"} from the website`);
         if (skipped) bits.push(`skipped ${skipped} assigned to another rep`);
         const msg = bits.join(", ");
         showToast(msg ? msg[0].toUpperCase() + msg.slice(1) : "Saved the research notes", "success");

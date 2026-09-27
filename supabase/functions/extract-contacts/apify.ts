@@ -1,8 +1,11 @@
 // Apify scrapers for the lead tracker (APIFY_TOKEN on the server):
 //   findPlaces:   Google Maps search ("accounting firms" in "Richmond Hill, ON") -> businesses to add as leads.
-//   scanWebsite:  crawls a company website for emails, phone numbers and LinkedIn links.
+//   scanWebsite:  reads a company website for emails, phone numbers and LinkedIn links, with our own
+//                 free reader (sitescan.ts) and Apify's contact scraper side by side.
 // Actors are run through the Apify API and polled until they finish; results are trimmed to what
 // the app needs. Actor IDs can be overridden with APIFY_PLACES_ACTOR / APIFY_CONTACTS_ACTOR.
+
+import { type Found, scanSite } from "./sitescan.ts";
 
 const APIFY_TOKEN = Deno.env.get("APIFY_TOKEN") ?? "";
 const APIFY_BASE_URL = Deno.env.get("APIFY_BASE_URL") ?? "https://api.apify.com/v2";
@@ -94,28 +97,57 @@ export async function scanWebsite(website: string) {
   if (!url) throw new ApifyError("This company has no website to scan.", 400);
   if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
   try { new URL(url); } catch { throw new ApifyError("The website address doesn't look right.", 400); }
-  const { items, costUsd } = await runActor(CONTACTS_ACTOR, {
-    startUrls: [{ url }],
-    maxDepth: 2,
-    maxRequestsPerStartUrl: 25,
-    sameDomain: true,
-  }, 50);
-  // Collect unique values with the first page each was found on.
-  const collect = (key: string) => {
-    const seen = new Map<string, string>();
+
+  // Our own free reader and the Apify scraper run side by side; results are merged. Either one
+  // failing is fine as long as the other works.
+  const [own, apifyRun] = await Promise.allSettled([
+    scanSite(url),
+    APIFY_TOKEN
+      ? runActor(CONTACTS_ACTOR, { startUrls: [{ url }], maxDepth: 2, maxRequestsPerStartUrl: 25, sameDomain: true }, 50)
+      : Promise.reject(new ApifyError("no token", 500)),
+  ]);
+
+  const emails = new Map<string, string>(), phones = new Map<string, string>(), linkedins = new Map<string, string>();
+  const phoneKey = (p: string) => p.replace(/\D/g, "").replace(/^1(?=\d{10})/, "").slice(0, 10);
+  const addAll = (list: Found[], map: Map<string, string>, keyOf: (v: string) => string) =>
+    list.forEach(({ value, source }) => { const k = keyOf(value); if (value && k && !map.has(k)) map.set(k, `${value}\u0000${source}`); });
+
+  let pages = 0, costUsd: number | null = null, apifyPages = 0;
+  if (own.status === "fulfilled") {
+    pages += own.value.pages.length;
+    addAll(own.value.emails, emails, (v) => v.toLowerCase());
+    addAll(own.value.phones, phones, phoneKey);
+    addAll(own.value.linkedins, linkedins, (v) => v.toLowerCase().replace(/\/+$/, ""));
+  } else {
+    console.error("site scan failed:", own.reason);
+  }
+  if (apifyRun.status === "fulfilled") {
+    const { items } = apifyRun.value;
+    costUsd = apifyRun.value.costUsd;
+    apifyPages = items.length;
+    pages += items.length;
     // deno-lint-ignore no-explicit-any
-    items.forEach((page: any) => (Array.isArray(page[key]) ? page[key] : []).forEach((v: unknown) => {
-      const value = str(v);
-      const k = key === "emails" ? value.toLowerCase() : key === "phones" ? value.replace(/\D/g, "").slice(-10) : value.toLowerCase().replace(/\/+$/, "");
-      if (value && k && !seen.has(k)) seen.set(k, `${value}\u0000${str(page.url)}`);
-    }));
-    return [...seen.values()].map((v) => { const [value, source] = v.split("\u0000"); return { value, source }; });
-  };
+    const list = (key: string) => items.flatMap((page: any) => (Array.isArray(page[key]) ? page[key] : []).map((v: unknown) => ({ value: str(v), source: str(page.url) })));
+    addAll(list("emails").map((e: Found) => ({ ...e, value: e.value.toLowerCase() })), emails, (v) => v.toLowerCase());
+    addAll([...list("phones"), ...list("phonesUncertain")], phones, phoneKey);
+    addAll(list("linkedIns"), linkedins, (v) => v.toLowerCase().replace(/\/+$/, ""));
+    console.log("apify contact scraper:", JSON.stringify({ items: items.length, fields: items[0] ? Object.keys(items[0]) : [] }));
+  } else if (!(apifyRun.reason instanceof ApifyError && apifyRun.reason.message === "no token")) {
+    console.error("apify contact scraper failed:", apifyRun.reason instanceof Error ? apifyRun.reason.message : apifyRun.reason);
+  }
+  if (own.status === "rejected" && apifyRun.status === "rejected") {
+    throw apifyRun.reason instanceof ApifyError && apifyRun.reason.message !== "no token"
+      ? apifyRun.reason
+      : new ApifyError("Couldn't read that website. Check the address and try again.", 502);
+  }
+  const split = (m: Map<string, string>) => [...m.values()].map((v) => { const [value, source] = v.split("\u0000"); return { value, source }; });
   return {
-    pages: items.length,
-    emails: collect("emails").map((e) => ({ ...e, value: e.value.toLowerCase() })),
-    phones: collect("phones"),
-    linkedins: collect("linkedIns"),
+    pages,
+    apifyPages,
+    reachable: own.status === "fulfilled" ? own.value.reachable : apifyPages > 0,
+    emails: split(emails),
+    phones: split(phones),
+    linkedins: split(linkedins),
     costUsd,
   };
 }

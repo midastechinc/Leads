@@ -398,6 +398,13 @@
     .group-row.grp-closed td { border-bottom: 1px solid rgba(112,101,82,0.18); }
     .leads-bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 0 4px 8px; font-size: 12px; color: var(--gray-500); }
     .leads-bar .ws-expand { margin-left: auto; }
+    .disabled-toggle { border: 1px solid var(--border); background: rgba(255,255,255,0.7); border-radius: 999px; padding: 4px 10px; font: 700 12px inherit; font-family: inherit; color: var(--gray-600); cursor: pointer; }
+    .disabled-toggle.on { background: #2b2520; color: #fff; border-color: #2b2520; }
+    tr.lead-disabled td { opacity: 0.6; }
+    .dis-tag { display: inline-block; font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 999px; background: rgba(100,116,139,0.14); color: var(--gray-600); margin-left: 6px; vertical-align: middle; }
+    .ld-disabled { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 10px 12px; border-radius: 12px; background: rgba(100,116,139,0.10); color: var(--gray-700); font-size: 13px; margin-bottom: 10px; }
+    .ld-person.is-disabled { opacity: 0.55; }
+    .bulk-bar .bulk-disable { background: rgba(255,255,255,0.12); color: #fff; }
     /* Same width for every rep badge so the company buttons line up */
     .group-row .group-actions { flex-wrap: nowrap; }
     .group-row .rep-badge { min-width: 118px; }
@@ -1452,6 +1459,9 @@
     .rs-note { padding: 10px 12px; border-radius: 12px; background: #fff4e5; color: #8a4b00; font-size: 13px; }
     .rs-foot { font-size: 12px; color: var(--gray-500); margin-top: 6px; }
     .rs-hint { font-size: 12px; color: var(--gray-500); margin: -2px 0 10px; }
+    .rs-giveup { margin-top: 14px; font-size: 12px; color: var(--gray-500); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .rs-giveup button { border: 1px solid var(--border); background: rgba(255,255,255,0.8); border-radius: 999px; padding: 5px 11px; font: 700 12px inherit; font-family: inherit; color: var(--gray-700); cursor: pointer; }
+    .rs-giveup button:hover { border-color: var(--red); color: var(--red); }
     .rs-links { display: flex; flex-wrap: wrap; gap: 8px; }
     .rs-link { display: inline-flex; align-items: center; gap: 7px; padding: 9px 13px; border-radius: 12px; border: 1px solid var(--border); background: linear-gradient(180deg, #fffdf9, #f5efe4); color: var(--gray-800); font: 700 13px/1 inherit; font-family: inherit; text-decoration: none; }
     .rs-link:hover { border-color: rgba(29,78,216,0.3); color: var(--blue); }
@@ -1569,6 +1579,7 @@
     <div class="leads-bar">
       <label class="sel-all" title="Select every lead in this list"><input type="checkbox" class="sel-check" id="selAllLeads" onchange="selectAllShownLeads(this.checked)"> Select all</label>
       <span id="leadsBarText"></span>
+      <button type="button" class="disabled-toggle" id="disabledToggle" onclick="toggleShowDisabled()" hidden title="Contacts you disabled because no information could be found">🚫 Disabled (<b>0</b>)</button>
       <span class="ws-expand">
         <button type="button" onclick="setAllLeadsCompanies(true)">Expand all</button>
         <button type="button" onclick="setAllLeadsCompanies(false)">Collapse all</button>
@@ -1949,6 +1960,7 @@
   <div class="bulk-bar" id="bulkBar" hidden>
     <span><b id="bulkCount">0</b> selected</span>
     <button type="button" class="bulk-assign" onclick="openAssignSelected()">Assign to rep…</button>
+    <button type="button" class="bulk-disable" id="bulkDisableBtn" onclick="disableSelected()">🚫 Disable</button>
     <button type="button" class="bulk-clear" onclick="clearLeadSelection()">Clear</button>
   </div>
 
@@ -2933,7 +2945,12 @@
 
     // ── METRICS ────────────────────────────────────────────────────
     function updateMetrics() {
-      const leads = getVisibleLeads();
+      const leads = getVisibleLeads().filter(l => !l.disabled);
+      const disabledCount = getVisibleLeads().length - leads.length;
+      const dBtn = document.getElementById("disabledToggle");
+      if (dBtn) { dBtn.hidden = !disabledCount && !showDisabledOnly; dBtn.querySelector("b").textContent = disabledCount; }
+      // Leave the disabled-only view once nothing is disabled any more.
+      if (showDisabledOnly && !disabledCount) setTimeout(() => { if (showDisabledOnly) toggleShowDisabled(); }, 0);
       const n = s => leads.filter(l => l.status === s).length;
       document.getElementById("metricTotal").textContent     = leads.length;
       document.getElementById("metricNew").textContent       = n("New");
@@ -2986,6 +3003,7 @@
       const leads   = getVisibleLeads().filter(l => {
         const email = cleanEmail(l.email);
         return (
+          (showDisabledOnly ? !!l.disabled : !l.disabled) &&
           (!search  || (l.name||"").toLowerCase().includes(search) ||
                        (l.company||"").toLowerCase().includes(search) ||
                        email.toLowerCase().includes(search) ||
@@ -3016,6 +3034,50 @@
       return days <= 0 ? "Today" : days === 1 ? "Yesterday" : `${days} days ago`;
     }
 
+    // ── DISABLED CONTACTS ──────────────────────────────────────────
+    // A contact no information can be found for can be disabled: hidden from All Leads, My Workspace,
+    // counters and follow-ups, but kept (and shown greyed in the lead window) so it can be enabled again.
+    let showDisabledOnly = false;
+    window.toggleShowDisabled = function () {
+      showDisabledOnly = !showDisabledOnly;
+      document.getElementById("disabledToggle")?.classList.toggle("on", showDisabledOnly);
+      selectedLeadIds.clear();
+      applyFilters();
+      updateMetrics();
+    };
+    window.setLeadsDisabled = async function (ids, disable, fromResearch) {
+      const leads = ids.map(id => allLeads[id]).filter(Boolean);
+      const allowed = leads.filter(canCurrentUserManageLeadAssignment);
+      if (!allowed.length) return showToast("You can only change your own or unassigned leads", "error");
+      const change = disable
+        ? { disabled: true, disabledReason: "No information found", disabledBy: currentUser, disabledAt: serverTimestamp() }
+        : { disabled: false };
+      try {
+        for (let i = 0; i < allowed.length; i += 450) {
+          const batch = writeBatch(db);
+          allowed.slice(i, i + 450).forEach(l => batch.update(doc(db, "leads", l.id), { ...change, updatedAt: serverTimestamp() }));
+          await batch.commit();
+        }
+        const skipped = leads.length - allowed.length;
+        const who = allowed.length === 1 ? (allowed[0].name || "Lead") : `${allowed.length} contacts`;
+        showToast(`${who} ${disable ? "disabled" : "enabled again"}${skipped ? ` (${skipped} assigned to another rep skipped)` : ""}`, "success");
+        if (fromResearch) closeModal("researchModal");
+        if (ids.length === 1 && (fromResearch || document.getElementById("detailModal").classList.contains("active"))) {
+          closeModal("detailModal");
+          if (!disable) openDetail(ids[0]);
+        }
+      } catch (e) {
+        console.error(e);
+        showToast(`Failed to ${disable ? "disable" : "enable"}`, "error");
+      }
+    };
+    window.disableSelected = async function () {
+      const ids = [...selectedLeadIds];
+      if (!ids.length) return;
+      await setLeadsDisabled(ids, !showDisabledOnly);
+      clearLeadSelection();
+    };
+
     // ── MULTI-SELECT ───────────────────────────────────────────────
     // Tick leads (or a whole company) in All Leads, then assign them all to a rep at once.
     const selectedLeadIds = new Set();
@@ -3043,6 +3105,8 @@
       if (bar) bar.hidden = !n || activeView !== "admin";
       const count = document.getElementById("bulkCount");
       if (count) count.textContent = n;
+      const disBtn = document.getElementById("bulkDisableBtn");
+      if (disBtn) disBtn.textContent = showDisabledOnly ? "✅ Enable again" : "🚫 Disable";
       document.querySelectorAll("#leadTableBody .grp-check").forEach(cb => {
         const leads = tableGroups.get(cb.dataset.group)?.leads || [];
         const picked = leads.filter(l => selectedLeadIds.has(l.id)).length;
@@ -3088,7 +3152,9 @@
       const tbody = document.getElementById("leadTableBody");
       const searching = !!(document.getElementById("searchInput")?.value || "").trim();
       if (!leads.length) {
-        tbody.innerHTML = `<tr class="state-row"><td colspan="6"><strong>No leads found</strong><p>Import a CSV or click + Add Lead.</p></td></tr>`;
+        tbody.innerHTML = showDisabledOnly
+          ? `<tr class="state-row"><td colspan="6"><strong>No disabled contacts</strong><p>Click 🚫 Disabled again to go back to your leads.</p></td></tr>`
+          : `<tr class="state-row"><td colspan="6"><strong>No leads found</strong><p>Import a CSV or click + Add Lead.</p></td></tr>`;
         return;
       }
       const MAX_TABLE_ROWS = 1200;
@@ -3113,12 +3179,12 @@
         const touch = l.lastContacted?.toDate
           ? `<div>${l.contactCount||0} contact${(l.contactCount||0)===1?"":"s"} · ${lastC}</div>${fu ? `<div class="touch-flag">Follow up · ${fu.days} day${fu.days===1?"":"s"} ago</div>` : `<div class="td-sub">${relDays(l.lastContacted.toDate())}</div>`}`
           : (fu ? `<div class="touch-flag">Not contacted yet</div>` : `<div class="td-muted">—</div>`);
-        return `<tr class="${fu ? "needs-followup" : ""}">
+        return `<tr class="${l.disabled ? "lead-disabled" : fu ? "needs-followup" : ""}">
           <td class="c-name" title="${esc(l.name||'')}">
             <div class="name-wrap">
               <input type="checkbox" class="sel-check" ${selectedLeadIds.has(l.id) ? "checked" : ""} onchange="toggleLeadSelect('${l.id}', this.checked)" aria-label="Select ${esc(l.name||"lead")}">
               <div style="min-width:0">
-                <div class="td-name"><a href="#" onclick="openDetail('${l.id}');return false;" style="color:inherit;text-decoration:none">${esc(l.name||"—")}</a></div>
+                <div class="td-name"><a href="#" onclick="openDetail('${l.id}');return false;" style="color:inherit;text-decoration:none">${esc(l.name||"—")}</a>${l.disabled ? `<span class="dis-tag">Disabled</span>` : ""}</div>
                 ${(l.title||l.industry)?`<div class="td-sub">${esc(l.title||l.industry)}</div>`:""}
               </div>
             </div>
@@ -3137,7 +3203,7 @@
       };
 
       const rowsHtml = Array.from(groups.values()).map(group => {
-        const open = searching || leadsOpenCompanies.has(group.groupKey);
+        const open = searching || showDisabledOnly || leadsOpenCompanies.has(group.groupKey);
         const due = group.leads.filter(leadFollowUp).length;
         const lastDates = group.leads.map(l => l.lastContacted?.toDate ? l.lastContacted.toDate() : null).filter(Boolean);
         const last = lastDates.length ? new Date(Math.max(...lastDates.map(d => d.getTime()))) : null;
@@ -3172,7 +3238,9 @@
       }).join("");
       const openCount = Array.from(groups.values()).filter(g => searching || leadsOpenCompanies.has(g.groupKey)).length;
       const barText = document.getElementById("leadsBarText");
-      if (barText) barText.textContent = `${groups.size} compan${groups.size===1?"y":"ies"} · ${limitedLeads.length} lead${limitedLeads.length===1?"":"s"}${openCount ? "" : " · tap a company to see its people"}`;
+      if (barText) barText.textContent = showDisabledOnly
+        ? `Showing ${limitedLeads.length} disabled contact${limitedLeads.length===1?"":"s"}. Tick them to enable again.`
+        : `${groups.size} compan${groups.size===1?"y":"ies"} · ${limitedLeads.length} lead${limitedLeads.length===1?"":"s"}${openCount ? "" : " · tap a company to see its people"}`;
       const limitNotice = leads.length > MAX_TABLE_ROWS
         ? `<tr class="limit-note"><td colspan="6">Showing first ${MAX_TABLE_ROWS.toLocaleString()} of ${leads.length.toLocaleString()} filtered leads. Narrow the search or filters to see more.</td></tr>`
         : "";
@@ -3222,7 +3290,7 @@
       const status  = document.getElementById("wsFilterStatus")?.value || "";
       const sort    = document.getElementById("wsSort")?.value || "priority";
 
-      const allMine = getVisibleLeads().filter(l => l.assignedTo === me);
+      const allMine = getVisibleLeads().filter(l => l.assignedTo === me && !l.disabled);
 
       // Stats cover everything assigned to me, whatever the filters.
       document.getElementById("wsTitle").textContent = `${me}'s Workspace`;
@@ -3717,7 +3785,9 @@
         .map(st => `<option${(l.status||"New")===st?" selected":""}>${st}</option>`).join("");
 
       // Summary: status, owner, last touch
-      let html = `<div class="ld-summary">
+      let html = l.disabled ? `<div class="ld-disabled"><span>🚫 <b>Disabled</b>${l.disabledReason ? ` · ${esc(l.disabledReason)}` : ""}${l.disabledBy ? ` · by ${esc(l.disabledBy)}` : ""}. Hidden from lists, counters and follow-ups.</span>
+        <button class="btn btn-secondary btn-sm" type="button" onclick="setLeadsDisabled(['${l.id}'], false)">Enable again</button></div>` : "";
+      html += `<div class="ld-summary">
         <label class="ld-chip">Status
           <select class="status-select status-${esc(l.status||"New")}" onchange="this.className='status-select status-'+this.value;updateStatus('${l.id}',this.value)">${statusOpts}</select>
         </label>
@@ -3734,6 +3804,7 @@
       if (site)  act.push(`<a class="ld-action" href="#" onclick="openUrl('${esc(site)}');return false">🌐 Website</a>`);
       if (li)    act.push(`<a class="ld-action" href="#" onclick="openUrl('${esc(li.url)}');return false">in ${li.search ? "Find on LinkedIn" : "LinkedIn"}</a>`);
       act.push(`<button class="ld-action" type="button" onclick="openResearch('${l.id}')" title="Research only this person">🔎 ${l.research ? "Research person again" : "Research person"}</button>`);
+      if (!l.disabled) act.push(`<button class="ld-action" type="button" onclick="setLeadsDisabled(['${l.id}'], true)" title="Hide this person from lists and follow-ups (you can enable them again)">🚫 Disable (no info found)</button>`);
       html += `<div class="ld-actions">${act.join("")}</div>`;
 
       // Contact details
@@ -3757,8 +3828,8 @@
           .sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
         html += `<div class="ld-section-title">People at ${esc(l.company)} <span class="ld-count">${others.length + 1}</span></div>
           <div class="ld-people">
-            ${others.map(p => `<button class="ld-person" type="button" onclick="openDetail('${p.id}')">
-                <span><b>${esc(p.name || "Unnamed")}</b>${(p.title || p.industry) ? `<small>${esc(p.title || p.industry)}</small>` : ""}</span>
+            ${others.map(p => `<button class="ld-person${p.disabled ? " is-disabled" : ""}" type="button" onclick="openDetail('${p.id}')">
+                <span><b>${esc(p.name || "Unnamed")}</b>${p.disabled ? `<span class="dis-tag">Disabled</span>` : ""}${(p.title || p.industry) ? `<small>${esc(p.title || p.industry)}</small>` : ""}</span>
                 <span class="status-badge status-${esc(p.status || "New")}">${esc(p.status || "New")}</span>
               </button>`).join("")}
             <div class="ld-people-actions">
@@ -4291,8 +4362,8 @@
       const host = rsUrlKey(url).split("/")[0];
       return `<a href="#" onclick="openUrl('${esc(url)}');return false" title="${esc(url)}">source: ${esc(host)}</a>`;
     }
-    function rsCompanyLeads() {
-      return rsState.groupKey ? getCompanyLeads(rsState.groupKey).filter(isLeadVisibleToCurrentUser) : [];
+    function rsCompanyLeads(includeDisabled) {
+      return rsState.groupKey ? getCompanyLeads(rsState.groupKey).filter(l => isLeadVisibleToCurrentUser(l) && (includeDisabled || !l.disabled)) : [];
     }
 
     window.openResearch = function (id) {
@@ -4367,7 +4438,8 @@
         <div class="rs-engines">
           <button type="button" class="rs-engine" onclick="runResearch('1min')"><b>✨ Research with 1min.ai</b><span>Uses your 1min.ai credits. No Claude charge.</span></button>
           <button type="button" class="rs-engine" onclick="runResearch('claude')"><b>🔎 Research with Claude (cheap)</b><span>Usually a few cents per ${who}. Shows the cost after.</span></button>
-        </div>`;
+        </div>
+        ${who === "person" && !allLeads[rsState.id]?.disabled ? `<div class="rs-giveup">Can't find anything on them? <button type="button" onclick="setLeadsDisabled(['${rsState.id}'], true, true)">🚫 Disable this person</button></div>` : ""}`;
     }
     window.showResearchChoices = showResearchChoices;
 
@@ -4540,7 +4612,7 @@ ${shape}`;
         });
       const canEdit = canCurrentUserManageLeadAssignment(match);
       const mode = !canEdit ? "same" : Object.keys(fills).length ? "update" : Object.keys(replaces).length ? "replace" : "same";
-      return { ...p, email, guess, match, fills, replaces, differs, canEdit, mode, selected: mode === "update" };
+      return { ...p, email, guess, match, fills, replaces, differs, canEdit, mode, selected: mode === "update", reenable: !!match.disabled };
     }
 
     function renderResearch(result, stats) {
@@ -4556,7 +4628,7 @@ ${shape}`;
           ["industry", "Industry", C.industry, C.source],
           ["employeeRange", "Company size", C.employee_range, C.source]
         ], { website: d.website, address: d.extras.address, city: d.extras.city, industry: d.industry, employeeRange: formatDetailValue(d.extras.employeeRange) });
-        const companyLeads = rsCompanyLeads();
+        const companyLeads = rsCompanyLeads(true); // match disabled people too, so they aren't added twice
         people = (result.people || []).filter(p => String(p.name || "").trim())
           .map(p => rsPlanPerson(p, companyLeads)).filter(Boolean);
       } else {
@@ -4600,7 +4672,8 @@ ${shape}`;
               : p.mode === "update" ? `<span class="rs-tag">In the tracker · add ${esc(Object.keys(p.fills).map(rsFieldName).join(", "))}</span>`
               : p.mode === "replace" ? `<span class="rs-tag warn">In the tracker · tick to replace ${esc(Object.keys(p.replaces).map(rsFieldName).join(", "))}</span>`
               : `<span class="rs-tag muted">${p.match && !p.canEdit ? "In the tracker · assigned to another rep" : "In the tracker · nothing new"}</span>`;
-            const left = p.status === "left" ? `<span class="rs-tag warn">May have left the company</span>` : "";
+            const left = (p.status === "left" ? `<span class="rs-tag warn">May have left the company</span>` : "") +
+              (p.reenable && p.mode !== "same" ? `<span class="rs-tag">Disabled · saving enables them again</span>` : "");
             return `<label class="rs-item" style="cursor:${p.mode === "same" ? "default" : "pointer"}">
               ${p.mode === "same" ? "<span>✓</span>" : `<input type="checkbox" data-rs-person="${i}" ${p.selected ? "checked" : ""}>`}
               <span><b>${esc(p.name)}</b>${p.title ? ` · ${esc(p.title)}` : ""} ${tag} ${left}
@@ -4626,6 +4699,7 @@ ${shape}`;
         ${pointsHtml}
         ${typeof stats.costUsd === "number" ? `<div class="rs-cost">💲 This research cost about <b>${formatResearchCost(stats.costUsd)}</b> <span>(estimate at list prices; see console.anthropic.com → Usage for the exact amount)</span></div>` : ""}
         ${stats.engine === "1min" ? `<div class="rs-cost">✨ Researched with 1min.ai, using your 1min.ai credits. No Claude charge.</div>` : ""}
+        ${rsState.mode === "person" && !allLeads[rsState.id]?.disabled ? `<div class="rs-giveup">Nothing useful? <button type="button" onclick="setLeadsDisabled(['${rsState.id}'], true, true)">🚫 Disable this person</button></div>` : ""}
         <div class="rs-foot">${stats.engine === "1min" ? "" : `Searched the web ${stats.searches || 0} time${stats.searches === 1 ? "" : "s"} and read ${stats.fetches || 0} page${stats.fetches === 1 ? "" : "s"}. `}Check the sources before you rely on anything here.</div>`;
 
       const body = document.getElementById("rsBody");
@@ -4699,7 +4773,7 @@ ${shape}`;
 
         const updates = rsState.people.filter(p => p.selected && (p.mode === "update" || p.mode === "replace"));
         for (const p of updates) {
-          await updateDoc(doc(db, "leads", p.match.id), { ...(p.mode === "replace" ? p.replaces : p.fills), updatedAt: serverTimestamp() });
+          await updateDoc(doc(db, "leads", p.match.id), { ...(p.mode === "replace" ? p.replaces : p.fills), ...(p.reenable ? { disabled: false } : {}), updatedAt: serverTimestamp() });
         }
         const added = rsState.people.filter(p => p.selected && p.mode === "new");
         const d = companyDefaults(rsState.groupKey || getCompanyGroupKey(allLeads[rsState.id]?.company || ""));

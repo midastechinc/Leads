@@ -4595,12 +4595,13 @@ ${shape}`;
       const found = await apifyCall("website", { website });
       let result;
       const targets = isCompany ? rsCompanyLeads(true) : [l];
-      const personPhones = new Set(found.emails.map(e => String(e.phone || "").replace(/\D/g, "")).filter(Boolean));
+      const phoneDigits = v => String(v || "").replace(/\D/g, "").replace(/^1(?=\d{10})/, "");
+      const personPhones = new Set(found.emails.map(e => phoneDigits(e.phone)).filter(Boolean));
       const items = [
         ...found.emails.map(e => ({ kind: "email", value: e.value, source: e.source, generic: GENERIC_EMAIL.test(e.value),
           person: e.name ? { name: e.name, title: e.title || "", phone: e.phone ? formatPhone(e.phone) : "" } : null })),
         // Phones that belong to a person are shown with their email instead.
-        ...found.phones.filter(p => !personPhones.has(String(p.value).replace(/\D/g, "")))
+        ...found.phones.filter(p => !personPhones.has(phoneDigits(p.value)))
           .map(p => ({ kind: "phone", value: formatPhone(p.value), source: p.source }))
       ].map(it => ({ ...it, target: "" }));
       // Pre-select: the person named next to the email, or an email that matches someone's name.
@@ -5061,7 +5062,11 @@ ${shape}`;
         const out = {};
         if (f.kind !== "email" || !f.person || !lead) return out;
         if (f.person.phone && !cleanPhone(lead.phone)) out.phone = f.person.phone;
-        if (f.person.title && !String(lead.title || "").trim()) out.title = f.person.title;
+        // A title saved as just a label ("Position:") by an earlier scan counts as empty.
+        const titleNow = String(lead.title || "").trim();
+        const titleIsLabel = /^[a-z /]+:$/i.test(titleNow);
+        if (f.person.title && (!titleNow || titleIsLabel)) out.title = f.person.title;
+        else if (titleIsLabel) out.title = "";
         if (f.person.name && (!String(lead.name || "").trim() || looksLikeEmailName(lead.name, f.value))) out.name = f.person.name;
         return out;
       };

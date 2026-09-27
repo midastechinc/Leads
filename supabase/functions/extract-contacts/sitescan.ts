@@ -15,8 +15,39 @@ export interface FoundEmail extends Found { name?: string; title?: string; phone
 const PHONE_RE = /(?:\+?1[\s.-]?)?\(?[2-9]\d{2}\)?[\s.-]?\d{3}[\s.-]?\d{4}(?:\s*(?:x|ext\.?|extension)\s*\d{1,5})?/i;
 // "Joseph Virgilio", "Dr. Priya Shah", "Caroline C. H. Wang", "Philip H. Meretsky, K.C."
 const NAME_RE = /^(?:(?:Dr|Mr|Mrs|Ms)\.?\s+)?[A-Z][a-zA-Z'’-]+(?:\s+(?:[A-Z]\.\s*)+)?(?:\s+(?:de |van |da |di )?[A-Z][a-zA-Z'’-]+){1,2}(?:,\s*[A-Z][A-Za-z.]{1,6})?$/;
-const NOT_A_NAME = /\b(law|legal|llp|inc|ltd|corp|group|clinic|health|dental|accounting|cpa|services|team|contact|office|firm|street|st|avenue|ave|road|rd|suite|ontario|canada|toronto|download|email|website|fax|phone|about|home|menu|read|more|view|google|maps|practice|areas|our|us|the|and|of|for|with|professional|corporation|associates|partners|centre|center)\b/i;
+const NOT_A_NAME = /\b(law|legal|llp|inc|ltd|corp|group|clinic|health|dental|accounting|cpa|services|team|contact|office|firm|street|st|avenue|ave|road|rd|suite|ontario|canada|toronto|download|email|website|fax|phone|about|home|menu|read|more|view|google|maps|practice|areas|our|us|the|and|of|for|with|professional|corporation|associates|partners|centre|center|lawyer|lawyers|clerk|assistant|manager|partner|associate|director|founding|founder|owner|principal|accountant|paralegal|counsel|president|ceo|cfo|coo|coordinator|administrator|officer|receptionist|physician|doctor|dentist|nurse|hygienist|senior|junior|managing|chief|head|lead|vice|executive|consultant|advisor|specialist|technician|supervisor|agent|broker|bookkeeper|controller|analyst)\b/i;
 const GENERIC_EMAIL = /^(info|admin|office|contact|hello|reception|mail|inquiries|enquiries|general|support|accounts|billing|careers|jobs|hr|law|legal|team|clinic|frontdesk|appointments)\b/i;
+const TITLE_LABEL = /^(position|title|role|designation|job title)\s*:\s*(.*)$/i;
+const PHONE_LABEL = /^(tel|telephone|phone|direct|direct line|office|cell|mobile|t)\b\.?\s*:?\s*(.*)$/i;
+// A line that can be a job title: short, not a label, email, phone, address or name.
+const titleOk = (t: string) => !!t && t.length <= 60 && !/:\s*$/.test(t) && !/@/.test(t) && !PHONE_RE.test(t) &&
+  !/\d{3,}/.test(t) && !isNameLine(t) && !/^(e-?mail|fax|address|website|personal experience|bio|biography)\b/i.test(t);
+// The title under a name: "B.A., LL.B", or the value of a "Position:" label (same line or next line).
+function titleAfter(lines: string[], nameIdx: number, emailIdx: number) {
+  for (let k = nameIdx + 1; k <= Math.min(nameIdx + 4, emailIdx - 1); k++) {
+    const t = lines[k];
+    const m = t.match(TITLE_LABEL);
+    if (m) return titleOk(m[2]) ? m[2] : (k + 1 < emailIdx && titleOk(lines[k + 1]) ? lines[k + 1] : "");
+    if (/:\s*$/.test(t)) continue; // some other label, e.g. "Address:"
+    return titleOk(t) ? t : "";
+  }
+  return "";
+}
+// A phone near the email: a number between the name and the email, or one under a "Tel:" label
+// just after the email. Fax numbers are skipped.
+function phoneNear(lines: string[], nameIdx: number, emailIdx: number) {
+  for (let k = nameIdx + 1; k < emailIdx; k++) {
+    const pm = lines[k].match(PHONE_RE);
+    if (pm && !/fax/i.test(lines[k]) && !/fax/i.test(lines[k - 1] || "")) return pm[0].trim();
+  }
+  for (let k = emailIdx; k <= Math.min(lines.length - 1, emailIdx + 3); k++) {
+    const label = lines[k].match(PHONE_LABEL);
+    if (!label) continue;
+    const pm = (label[2] || "").match(PHONE_RE) || (lines[k + 1] || "").match(PHONE_RE);
+    if (pm) return pm[0].trim();
+  }
+  return "";
+}
 const isNameLine = (t: string) => t.length <= 40 && NAME_RE.test(t) && !NOT_A_NAME.test(t);
 
 // Splits a page into its visible text lines, with hidden emails written out as text.
@@ -50,20 +81,15 @@ export function peopleByEmail(rawHtml: string) {
         const parts = lines[j].toLowerCase().replace(/,.*$/, "").replace(/^(dr|mr|mrs|ms)\.?\s+/, "").split(/[^a-z]+/).filter((x) => x.length > 1);
         const last = parts[parts.length - 1] || "";
         if (last && local.includes(last)) { nameIdx = j; strong = true; break; }
+        if (parts[0] && local === parts[0] && i - j <= 12) { nameIdx = j; strong = true; break; } // sharon@ for Sharon Fraccaro
         // A nearby name only counts if the email could be theirs (phm@ for Philip H. Meretsky).
         const first = parts[0] || "";
         if (nameIdx < 0 && i - j <= 8 && first && (local.startsWith(first[0]) || local.includes(first))) nameIdx = j;
       }
       if (nameIdx < 0) continue;
       const name = lines[nameIdx].replace(/\s+/g, " ");
-      const next = lines[nameIdx + 1] || "";
-      const title = nameIdx + 1 < i && next.length <= 60 && !/@/.test(next) && !PHONE_RE.test(next) && !isNameLine(next) ? next : "";
-      let phone = "";
-      for (let k = nameIdx + 1; k <= Math.min(lines.length - 1, i + 1) && !phone; k++) {
-        if (k === i + 1 && strong === false) break;
-        const pm = lines[k].match(PHONE_RE);
-        if (pm && !/fax/i.test(lines[k])) phone = pm[0].trim();
-      }
+      const title = titleAfter(lines, nameIdx, i);
+      const phone = phoneNear(lines, nameIdx, i);
       const prev = out.get(email);
       if (!prev || (strong && !prev.strong)) out.set(email, { name, title: title || prev?.title, phone: phone || prev?.phone, strong });
       else {

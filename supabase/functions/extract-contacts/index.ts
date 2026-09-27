@@ -10,8 +10,9 @@
 //
 // On Railway it also relays Social Studio's 1min.ai requests (POST /1min/chat-with-ai
 // and /1min/features), so the 1min.ai key (ONEMIN_API_KEY) stays on the server too,
-// researches leads on the web (POST /research, see research.ts), and runs Apify scrapers
-// (POST /apify/places and /apify/website, see apify.ts).
+// researches leads on the web (POST /research, see research.ts), runs Apify scrapers
+// (POST /apify/places and /apify/website, see apify.ts), and relays chat requests to the
+// Midas LLM gateway (POST /llm/chat) with LLM_GATEWAY_KEY.
 import Anthropic from "npm:@anthropic-ai/sdk";
 import { createRemoteJWKSet, jwtVerify } from "npm:jose@5";
 import { type CompanyInput, type LeadInput, ResearchError, researchCompany, researchLead } from "./research.ts";
@@ -30,6 +31,10 @@ const ONEMIN_API_KEY = Deno.env.get("ONEMIN_API_KEY") ?? "";
 const ONEMIN_BASE_URL = Deno.env.get("ONEMIN_BASE_URL") ?? "https://api.1min.ai/api";
 const ONEMIN_ENDPOINTS = new Set(["chat-with-ai", "features"]);
 const MAX_ONEMIN_BODY_CHARS = 1_000_000; // ~4.8 MB decoded; the app sends a resized JPEG well under this
+const LLM_GATEWAY_URL = (Deno.env.get("LLM_GATEWAY_URL") ?? "").replace(/\/+$/, "");
+const LLM_GATEWAY_KEY = Deno.env.get("LLM_GATEWAY_KEY") ?? "";
+const LLM_GATEWAY_MODELS = new Set(["midas-fast", "midas-smart", "midas-vision", "midas-web"]);
+const MAX_LLM_BODY_CHARS = 1_000_000;
 
 const client = new Anthropic(); // reads ANTHROPIC_API_KEY
 
@@ -112,6 +117,49 @@ async function relayOneMin(req: Request, endpoint: string): Promise<Response> {
   } catch (err) {
     console.error("1min.ai relay failed:", err);
     return json(req, 502, { error: "Couldn't reach 1min.ai. Try again in a moment." });
+  }
+}
+
+// Body: { model: "midas-fast" | "midas-smart" | "midas-vision" | "midas-web", messages }.
+// Sends it to the Midas LLM gateway and answers { text, answeredBy }.
+async function relayGateway(req: Request): Promise<Response> {
+  if (!LLM_GATEWAY_URL || !LLM_GATEWAY_KEY) {
+    return json(req, 503, { error: "The AI gateway isn't set up on the server.", notConfigured: true });
+  }
+  const raw = await req.text();
+  if (raw.length > MAX_LLM_BODY_CHARS) return json(req, 413, { error: "That request is too large." });
+  let body: { model?: string; messages?: unknown; max_tokens?: number };
+  try {
+    body = JSON.parse(raw);
+  } catch {
+    return json(req, 400, { error: "The request wasn't valid JSON." });
+  }
+  const model = String(body.model ?? "");
+  if (!LLM_GATEWAY_MODELS.has(model)) return json(req, 400, { error: "Unknown AI gateway model." });
+  if (!Array.isArray(body.messages) || !body.messages.length) return json(req, 400, { error: "Send at least one message." });
+  try {
+    const upstream = await fetch(`${LLM_GATEWAY_URL}/chat/completions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${LLM_GATEWAY_KEY}` },
+      body: JSON.stringify({ model, messages: body.messages, ...(body.max_tokens ? { max_tokens: body.max_tokens } : {}) }),
+      signal: AbortSignal.timeout(150_000),
+    });
+    const data = await upstream.json().catch(() => ({}));
+    if (!upstream.ok) {
+      const message = data?.error?.message ?? `HTTP ${upstream.status}`;
+      console.error("AI gateway error:", upstream.status, String(message).slice(0, 300));
+      return json(req, upstream.status === 429 ? 429 : 502, {
+        error: upstream.status === 429
+          ? "The AI gateway is busy. Wait a minute and try again."
+          : "The AI gateway had a problem. Try again in a moment.",
+      });
+    }
+    const text = data?.choices?.[0]?.message?.content ?? "";
+    if (!text) return json(req, 502, { error: "The AI gateway returned an empty answer. Try again." });
+    return json(req, 200, { text, answeredBy: upstream.headers.get("x-litellm-model-id") ?? "" });
+  } catch (err) {
+    console.error("AI gateway relay failed:", err);
+    return json(req, 502, { error: "Couldn't reach the AI gateway. Try again in a moment." });
   }
 }
 
@@ -207,6 +255,7 @@ Deno.serve(PORT ? { port: Number(PORT) } : {}, async (req) => {
   const path = new URL(req.url).pathname;
   const oneMin = path.match(/^\/1min\/([a-z-]+)\/?$/);
   if (oneMin) return relayOneMin(req, oneMin[1]);
+  if (/^\/llm\/chat\/?$/.test(path)) return relayGateway(req);
   if (/^\/research\/?$/.test(path)) return handleResearch(req);
   if (/^\/apify\/(places|website)\/?$/.test(path)) return handleApify(req, path.includes("places") ? "places" : "website");
 

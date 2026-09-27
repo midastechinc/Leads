@@ -138,9 +138,11 @@ The same Railway service runs two Apify scrapers (`apify.ts`) with the `APIFY_TO
   - Pick a type of business and an area, and it lists up to 20, 40 or 100 businesses with phone, website, address, category and rating.
   - Businesses already in the tracker (same company name, website domain or phone) start unticked.
   - **Select all / None**, then **Add N leads**, saves them as "General contact" leads assigned to you, with `source: "google-maps"`.
-- **🌐 Scan company website (Apify)** (a research option when the lead has a website) uses the Contact Details Scraper (`vdrmota/contact-info-scraper`).
+- **🌐 Scan company website** (a research option when the lead has a website) runs two readers side by side and merges them: a free reader in the service (`sitescan.ts`), and Apify's Contact Details Scraper (`vdrmota/contact-info-scraper`).
+  - The free reader opens the home page and up to 13 contact, team and about pages.
+  - It decodes hidden emails: Cloudflare email protection, `mailto:` links, HTML-encoded characters and "name [at] firm [dot] com".
   - It crawls up to about 25 pages of the site for emails, phone numbers and LinkedIn links.
-  - Emails and LinkedIn links matching a person's name are offered in the usual review screen. Everything else found goes into the notes.
+  - Every email and phone found is listed with a **Save to** choice: a person, a new contact, or skip. Emails matching someone's name are chosen for you.
 
 Both use Apify credit. The free plan includes a monthly allowance, and the app shows what each run used. Set `APIFY_PLACES_ACTOR` / `APIFY_CONTACTS_ACTOR` to use different scrapers.
 

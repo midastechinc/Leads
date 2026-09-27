@@ -5,7 +5,7 @@
 // Actors are run through the Apify API and polled until they finish; results are trimmed to what
 // the app needs. Actor IDs can be overridden with APIFY_PLACES_ACTOR / APIFY_CONTACTS_ACTOR.
 
-import { type Found, scanSite } from "./sitescan.ts";
+import { type Found, type FoundEmail, scanSite } from "./sitescan.ts";
 
 const APIFY_TOKEN = Deno.env.get("APIFY_TOKEN") ?? "";
 const APIFY_BASE_URL = Deno.env.get("APIFY_BASE_URL") ?? "https://api.apify.com/v2";
@@ -108,7 +108,8 @@ export async function scanWebsite(website: string) {
   ]);
 
   const emails = new Map<string, string>(), phones = new Map<string, string>(), linkedins = new Map<string, string>();
-  const phoneKey = (p: string) => p.replace(/\D/g, "").replace(/^1(?=\d{10})/, "").slice(0, 10);
+  const phoneKey = (p: string) => p.replace(/\D/g, "").replace(/^1(?=\d{10})/, "");
+  const emailInfo = new Map<string, FoundEmail>();
   const addAll = (list: Found[], map: Map<string, string>, keyOf: (v: string) => string) =>
     list.forEach(({ value, source }) => { const k = keyOf(value); if (value && k && !map.has(k)) map.set(k, `${value}\u0000${source}`); });
 
@@ -116,6 +117,7 @@ export async function scanWebsite(website: string) {
   if (own.status === "fulfilled") {
     pages += own.value.pages.length;
     addAll(own.value.emails, emails, (v) => v.toLowerCase());
+    own.value.emails.forEach((e) => { if (e.name || e.title || e.phone) emailInfo.set(e.value.toLowerCase(), e); });
     addAll(own.value.phones, phones, phoneKey);
     addAll(own.value.linkedins, linkedins, (v) => v.toLowerCase().replace(/\/+$/, ""));
   } else {
@@ -145,7 +147,10 @@ export async function scanWebsite(website: string) {
     pages,
     apifyPages,
     reachable: own.status === "fulfilled" ? own.value.reachable : apifyPages > 0,
-    emails: split(emails),
+    emails: split(emails).map((e) => {
+      const who = emailInfo.get(e.value.toLowerCase());
+      return who ? { ...e, name: who.name, title: who.title, phone: who.phone } : e;
+    }),
     phones: split(phones),
     linkedins: split(linkedins),
     costUsd,

@@ -1464,6 +1464,7 @@
     .pl-chips button:hover { border-color: var(--blue); color: var(--blue); }
     .rs-found { grid-template-columns: 22px 1fr auto; align-items: center; }
     .rs-found-main { min-width: 0; overflow-wrap: anywhere; }
+    .rs-person { font-size: 12px; color: var(--gray-700); margin-top: 3px; }
     .rs-found select { padding: 7px 9px; border: 1px solid var(--border); border-radius: 10px; font: 13px inherit; font-family: inherit; background: var(--surface); max-width: 210px; }
     @media (max-width: 640px) { .rs-found { grid-template-columns: 22px 1fr; } .rs-found select { grid-column: 2; max-width: none; width: 100%; } }
     .rs-giveup { margin-top: 14px; font-size: 12px; color: var(--gray-500); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -2307,7 +2308,8 @@
       ]);
       return Object.keys(lead).filter(key =>
         !coreKeys.has(key) &&
-        !shouldHideDetailField(key)
+        !shouldHideDetailField(key) &&
+        !(lead[key] && typeof lead[key] === "object" && !lead[key].toDate) // nested data can't be edited as text
       ).sort((a,b) => a.localeCompare(b));
     }
     function setInputValue(id, value) {
@@ -4593,16 +4595,27 @@ ${shape}`;
       const found = await apifyCall("website", { website });
       let result;
       const targets = isCompany ? rsCompanyLeads(true) : [l];
+      const personPhones = new Set(found.emails.map(e => String(e.phone || "").replace(/\D/g, "")).filter(Boolean));
       const items = [
-        ...found.emails.map(e => ({ kind: "email", value: e.value, source: e.source, generic: GENERIC_EMAIL.test(e.value) })),
-        ...found.phones.map(p => ({ kind: "phone", value: formatPhone(p.value), source: p.source }))
+        ...found.emails.map(e => ({ kind: "email", value: e.value, source: e.source, generic: GENERIC_EMAIL.test(e.value),
+          person: e.name ? { name: e.name, title: e.title || "", phone: e.phone ? formatPhone(e.phone) : "" } : null })),
+        // Phones that belong to a person are shown with their email instead.
+        ...found.phones.filter(p => !personPhones.has(String(p.value).replace(/\D/g, "")))
+          .map(p => ({ kind: "phone", value: formatPhone(p.value), source: p.source }))
       ].map(it => ({ ...it, target: "" }));
-      // Pre-select emails that clearly belong to someone we have.
+      // Pre-select: the person named next to the email, or an email that matches someone's name.
+      items.filter(it => it.kind === "email").forEach(it => {
+        const byName = it.person && targets.find(t => samePerson(t.name, it.person.name));
+        if (byName) it.target = isCompany ? byName.id : "self";
+      });
       targets.forEach(t => {
+        if (items.some(it => it.target === (isCompany ? t.id : "self"))) return;
         const e = emailForName(t.name, found.emails);
         const item = e && items.find(it => it.kind === "email" && it.value === e.value && !it.target);
         if (item) item.target = isCompany ? t.id : "self";
       });
+      // Named people we don't have yet default to "New contact" in company research.
+      if (isCompany) items.forEach(it => { if (it.kind === "email" && !it.target && it.person && !it.generic) it.target = "new"; });
       if (isCompany) {
         const people = targets.map(p => {
           const li = linkedinForName(p.name, found.linkedins);
@@ -4625,6 +4638,16 @@ ${shape}`;
       rsState.found = items;
       return { result, stats: { engine: "apify", pages: found.pages, costUsd: found.costUsd, site: domainOf(website) } };
     }
+    // "Dr. Priya Shah" vs "Priya Shah", "Philip H. Meretsky, K.C." vs "Philip Meretsky"
+    function samePerson(a, b) {
+      const t = x => nameTokens(String(x || "").replace(/,.*$/, ""));
+      const A = t(a), B = t(b);
+      if (!A.length || !B.length) return false;
+      return A[A.length - 1] === B[B.length - 1] && A[0][0] === B[0][0];
+    }
+    // Leads created from an email address before names were detected look like "Jvirgilio".
+    const looksLikeEmailName = (name, email) => !/\s/.test(String(name || "").trim()) &&
+      norm(name || "") === norm(String(email || "").split("@")[0]);
     function formatPhone(v) {
       const s = String(v || "").trim();
       const digits = s.replace(/\D/g, "").replace(/^1(?=\d{10})/, "");
@@ -4933,7 +4956,7 @@ ${shape}`;
         const who = isCompany ? rsCompanyLeads(true) : [];
         const first = String(l?.name || "").replace(/^(dr|mr|mrs|ms|miss)\.?\s+/i, "").split(" ")[0] || "this person";
         const opts = it => isCompany
-          ? `<option value="">Skip</option>${who.map(p => `<option value="${p.id}"${it.target === p.id ? " selected" : ""}>${esc(p.name || "Unnamed")}'s ${it.kind}</option>`).join("")}${it.kind === "email" ? `<option value="new"${it.target === "new" ? " selected" : ""}>➕ New contact</option>` : ""}`
+          ? `<option value="">Skip</option>${who.map(p => `<option value="${p.id}"${it.target === p.id ? " selected" : ""}>${esc(p.name || "Unnamed")}'s ${it.kind}</option>`).join("")}${it.kind === "email" ? `<option value="new"${it.target === "new" ? " selected" : ""}>➕ New contact${it.person ? `: ${esc(it.person.name)}` : ""}</option>` : ""}`
           : `<option value="">Skip</option><option value="self"${it.target === "self" ? " selected" : ""}>Use as ${esc(first)}'s ${it.kind}</option>`;
         return `<div class="rs-h">Found on the website (${found.length})</div>
           <p class="rs-hint">Choose where each one should be saved. Emails that match a name are chosen for you.</p>
@@ -4941,6 +4964,7 @@ ${shape}`;
             <div class="rs-item rs-found">
               <span>${it.kind === "email" ? "✉️" : "📞"}</span>
               <span class="rs-found-main"><b>${esc(it.value)}</b>${it.generic ? ` <span class="rs-tag muted">general</span>` : ""}
+                ${it.person ? `<div class="rs-person">👤 ${esc([it.person.name, it.person.title, it.person.phone].filter(Boolean).join(" · "))}</div>` : ""}
                 <div class="rs-meta">${rsSourceLink(it.source)}</div></span>
               <select data-rs-found="${i}" aria-label="Save ${esc(it.value)} to">${opts(it)}</select>
             </div>`).join("")}</div>`;
@@ -5031,14 +5055,33 @@ ${shape}`;
       // Emails and phones from the website scan, by where the rep chose to save them.
       const picks = (rsState.found || []).filter(f => f.target);
       const valueOf = f => f.kind === "email" ? f.value.toLowerCase() : f.value;
-      if (!isCompany) picks.filter(f => f.target === "self").forEach(f => { fields[f.kind] = valueOf(f); });
+      // What to write on an existing lead for a picked email: the email, plus the person's phone,
+      // title and real name where the lead is missing them.
+      const extrasFor = (lead, f) => {
+        const out = {};
+        if (f.kind !== "email" || !f.person || !lead) return out;
+        if (f.person.phone && !cleanPhone(lead.phone)) out.phone = f.person.phone;
+        if (f.person.title && !String(lead.title || "").trim()) out.title = f.person.title;
+        if (f.person.name && (!String(lead.name || "").trim() || looksLikeEmailName(lead.name, f.value))) out.name = f.person.name;
+        return out;
+      };
+      if (!isCompany) picks.filter(f => f.target === "self").forEach(f => {
+        const extra = extrasFor(allLeads[rsState.id], f);
+        Object.keys(extra).forEach(k => { if (!(k in fields)) fields[k] = extra[k]; });
+        fields[f.kind] = valueOf(f);
+      });
       const btn = document.getElementById("rsSaveBtn");
       btn.disabled = true;
       try {
         let skipped = 0;
         if (isCompany) {
           const byLead = {};
-          picks.filter(f => f.target && f.target !== "new").forEach(f => { (byLead[f.target] ||= {})[f.kind] = valueOf(f); });
+          picks.filter(f => f.target && f.target !== "new").forEach(f => {
+            const change = (byLead[f.target] ||= {});
+            const extra = extrasFor(allLeads[f.target], f);
+            Object.keys(extra).forEach(k => { if (!(k in change)) change[k] = extra[k]; });
+            change[f.kind] = valueOf(f);
+          });
           for (const [id, change] of Object.entries(byLead)) {
             const target = allLeads[id];
             if (!target || !canCurrentUserManageLeadAssignment(target)) { skipped++; continue; }
@@ -5047,10 +5090,10 @@ ${shape}`;
           const dNew = companyDefaults(rsState.groupKey);
           for (const f of picks.filter(p => p.target === "new")) {
             const local = f.value.split("@")[0];
-            const name = f.generic ? `${dNew.company} (general)` : local.split(/[._-]+/).filter(Boolean).map(w => w[0].toUpperCase() + w.slice(1)).join(" ");
+            const name = f.person?.name || (f.generic ? `${dNew.company} (general)` : local.split(/[._-]+/).filter(Boolean).map(w => w[0].toUpperCase() + w.slice(1)).join(" "));
             await addDoc(collection(db, "leads"), {
-              name, company: dNew.company, email: f.value.toLowerCase(), phone: "", website: dNew.website || "", linkedin: "",
-              title: f.generic ? "General contact" : "", industry: dNew.industry || "",
+              name, company: dNew.company, email: f.value.toLowerCase(), phone: f.person?.phone || "", website: dNew.website || "", linkedin: "",
+              title: f.person?.title || (f.generic ? "General contact" : ""), industry: dNew.industry || "",
               assignedTo: dNew.rep, status: "New", contactCount: 0, lastContacted: null,
               createdAt: serverTimestamp(), updatedAt: serverTimestamp(), source: "website-scan", ...dNew.extras
             });
@@ -5674,9 +5717,12 @@ ${shape}`;
       if (reps.length === 1) return reps[0];
       return "Mixed";
     }
+    // App-managed fields (research results, disable flags) are shown elsewhere and must not be
+    // edited as plain text, or saving the edit form would overwrite them.
+    const APP_FIELDS = new Set(["prospectid", "research", "companyresearch", "disabled", "disabledreason", "disabledby", "disabledat"]);
     function shouldHideDetailField(key) {
       const normalized = String(key || "").toLowerCase().replace(/[\s_\-]+/g, "");
-      return normalized === "prospectid";
+      return APP_FIELDS.has(normalized);
     }
     function formatFieldLabel(key) {
       const raw = String(key || "").trim();

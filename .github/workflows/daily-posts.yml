@@ -34,5 +34,7 @@ jobs:
           SUPABASE_URL:      ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           ONEMIN_API_KEY:    ${{ secrets.ONEMIN_API_KEY }}
+          LLM_GATEWAY_URL:   ${{ secrets.LLM_GATEWAY_URL }}
+          LLM_GATEWAY_KEY:   ${{ secrets.LLM_GATEWAY_KEY }}
         run: node generate-posts.mjs
         working-directory: scripts

@@ -153,8 +153,30 @@ Both use Apify credit. The free plan includes a monthly allowance, and the app s
 | `ANTHROPIC_API_KEY` | none (required) | Claude API key |
 | `APIFY_TOKEN` | none | Apify API token for Find new leads and website scans |
 | `ONEMIN_API_KEY` | none | 1min.ai key used for Social Studio's requests (Railway only) |
+| `LLM_GATEWAY_URL` | none | Midas AI Gateway address, `https://ai.midastech.support/v1` (Railway only) |
+| `LLM_GATEWAY_KEY` | none | The gateway key for this app (`leads-app`). It must be allowed to use `midas-smart` and `midas-web` |
 | `FIREBASE_PROJECT_ID` | `midas-leads-a8b13` | Which Firebase project's sign-ins are accepted |
 | `ALLOWED_ORIGINS` | `https://midastechinc.github.io` | Comma-separated sites allowed to call the function from a browser |
 
 ---
 Midas Tech Inc · IT Services & Cybersecurity · www.midastech.ca · info@midastech.ca · 905-787-2038
+
+## Midas AI Gateway (Social Studio)
+
+Social Studio's **Midas AI Gateway** model (the default) writes posts with the gateway's free
+models (`midas-smart`) and searches the news with `midas-web` (1min.ai web search). It goes
+through `POST /llm/chat` on the Railway service, which holds the gateway key, and only answers
+signed-in lead tracker users.
+
+To turn it on, add two variables to the Railway service and let it redeploy:
+
+```
+LLM_GATEWAY_URL=https://ai.midastech.support/v1
+LLM_GATEWAY_KEY=sk-...   # the leads-app key from the gateway
+```
+
+Until they're set, or whenever the gateway fails, Social Studio uses 1min.ai directly with
+GPT-4o Mini, so posts still get made. Image generation always uses 1min.ai.
+
+The GitHub Actions post generator (`scripts/generate-posts.mjs`) uses the gateway the same way
+when the repository secrets `LLM_GATEWAY_URL` and `LLM_GATEWAY_KEY` are set.

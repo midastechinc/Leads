@@ -10,11 +10,17 @@ import { createClient } from '@supabase/supabase-js';
 const SUPABASE_URL    = process.env.SUPABASE_URL;
 const SUPABASE_KEY    = process.env.SUPABASE_ANON_KEY;
 const ONEMIN_API_KEY  = process.env.ONEMIN_API_KEY;
+// Midas LLM gateway (optional). When both are set, posts are written with the
+// gateway's free models (midas-smart) and news is searched with midas-web;
+// 1min.ai is used directly only if the gateway fails.
+const LLM_GATEWAY_URL = (process.env.LLM_GATEWAY_URL || '').replace(/\/+$/, '');
+const LLM_GATEWAY_KEY = process.env.LLM_GATEWAY_KEY;
+const USE_GATEWAY     = Boolean(LLM_GATEWAY_URL && LLM_GATEWAY_KEY);
 const MODEL           = 'gpt-4o';
 const CURRENT_YEAR    = new Date().getFullYear();
 
-if (!SUPABASE_URL || !SUPABASE_KEY || !ONEMIN_API_KEY) {
-  console.error('❌ Missing required environment variables: SUPABASE_URL, SUPABASE_ANON_KEY, ONEMIN_API_KEY');
+if (!SUPABASE_URL || !SUPABASE_KEY || (!ONEMIN_API_KEY && !USE_GATEWAY)) {
+  console.error('❌ Missing required environment variables: SUPABASE_URL, SUPABASE_ANON_KEY, and ONEMIN_API_KEY or LLM_GATEWAY_URL + LLM_GATEWAY_KEY');
   process.exit(1);
 }
 
@@ -137,8 +143,30 @@ const PREFERRED_SOURCES = [
   'CSO Online (csoonline.com)',
 ].join(', ');
 
+// ── Midas LLM gateway call ───────────────────────────────────────────────────
+async function callGateway(prompt, webSearch) {
+  const res = await fetch(`${LLM_GATEWAY_URL}/chat/completions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${LLM_GATEWAY_KEY}` },
+    body: JSON.stringify({ model: webSearch ? 'midas-web' : 'midas-smart', messages: [{ role: 'user', content: prompt }] }),
+    signal: AbortSignal.timeout(150_000),
+  });
+  const data = await res.json().catch(() => ({}));
+  const text = data?.choices?.[0]?.message?.content;
+  if (!res.ok || !text) throw new Error(`gateway: ${data?.error?.message || `HTTP ${res.status}`}`);
+  console.log(`   (answered by ${res.headers.get('x-litellm-model-id') || 'gateway'})`);
+  return text;
+}
+
 // ── 1min.ai API call ─────────────────────────────────────────────────────────
 async function call1min(prompt, webSearch = false) {
+  if (USE_GATEWAY) {
+    try { return await callGateway(prompt, webSearch); }
+    catch (err) {
+      if (!ONEMIN_API_KEY) throw err;
+      console.warn(`⚠️  ${err.message} — using 1min.ai directly`);
+    }
+  }
   const body = {
     type: 'UNIFY_CHAT_WITH_AI',
     model: MODEL,

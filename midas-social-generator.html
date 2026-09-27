@@ -540,12 +540,13 @@ body.lt-shell .saved-filters .filter-input,body.lt-shell .saved-filters .filter-
   <p class="note">🔑 The 1min.ai key is kept on the server (Railway variable <code>ONEMIN_API_KEY</code>), not in this page. Stay signed in to the lead tracker in this browser to generate posts.</p>
   <div class="lbl lbl-t">AI model</div>
   <div class="chips" id="modelChips">
-    <div class="chip on" data-model="gpt-4o-mini">GPT-4o Mini (fast)</div>
+    <div class="chip on" data-model="midas-gateway">Midas AI Gateway (free models first)</div>
+    <div class="chip" data-model="gpt-4o-mini">GPT-4o Mini (fast)</div>
     <div class="chip" data-model="gpt-4o">GPT-4o (smarter)</div>
     <div class="chip" data-model="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</div>
     <div class="chip" data-model="gemini-1.5-flash">Gemini 1.5 Flash</div>
   </div>
-  <p class="note">Each post you generate uses 1min.ai credits.</p>
+  <p class="note">Midas AI Gateway writes posts with free models and searches the news with 1min.ai web search, so it uses far fewer credits. The other models use 1min.ai credits for every post.</p>
 </div>
 
 <div class="ss-layout">
@@ -1062,7 +1063,31 @@ async function oneMinFetch(endpoint, body) {
   return r;
 }
 
+// Midas AI Gateway (ai.midastech.support), through the same server, which holds the gateway key.
+// Posts use midas-smart (free models first); news search uses midas-web (1min.ai web search).
+async function callGateway(prompt, webSearch) {
+  const token = await window.getLeadTrackerIdToken?.();
+  if (!token) throw new Error('Sign in to the lead tracker in this browser first, then try again.');
+  const r = await fetch(`${AI_SERVER_URL}/llm/chat`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-firebase-token": token },
+    body: JSON.stringify({ model: webSearch ? "midas-web" : "midas-smart", messages: [{ role: "user", content: prompt }] })
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok || !data.text) throw new Error(data.error || `HTTP ${r.status}`);
+  console.info('AI gateway answered with', data.answeredBy || 'unknown model');
+  return data.text;
+}
+
 async function call1min(model, prompt, webSearch=false) {
+  if (model === 'midas-gateway') {
+    try { return await callGateway(prompt, webSearch); }
+    catch (e) {
+      // If the gateway isn't set up or is down, use 1min.ai directly so posts still get made.
+      console.warn('AI gateway failed, using 1min.ai directly:', e.message);
+      model = 'gpt-4o-mini';
+    }
+  }
   const body={type:"UNIFY_CHAT_WITH_AI",model,promptObject:{prompt}};
   if(webSearch) body.promptObject.settings={webSearchSettings:{webSearch:true,numOfSite:5,maxWord:1500}};
   const r=await oneMinFetch("chat-with-ai", body);

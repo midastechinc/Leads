@@ -10,10 +10,12 @@
 //
 // On Railway it also relays Social Studio's 1min.ai requests (POST /1min/chat-with-ai
 // and /1min/features), so the 1min.ai key (ONEMIN_API_KEY) stays on the server too,
-// and researches leads on the web (POST /research, see research.ts).
+// researches leads on the web (POST /research, see research.ts), and runs Apify scrapers
+// (POST /apify/places and /apify/website, see apify.ts).
 import Anthropic from "npm:@anthropic-ai/sdk";
 import { createRemoteJWKSet, jwtVerify } from "npm:jose@5";
 import { type CompanyInput, type LeadInput, ResearchError, researchCompany, researchLead } from "./research.ts";
+import { ApifyError, findPlaces, scanWebsite } from "./apify.ts";
 
 const FIREBASE_PROJECT_ID = Deno.env.get("FIREBASE_PROJECT_ID") ?? "midas-leads-a8b13";
 const FIREBASE_JWKS = createRemoteJWKSet(new URL(
@@ -149,6 +151,33 @@ async function handleResearch(req: Request): Promise<Response> {
   }
 }
 
+// Body for places: { query, location, max }. Body for website: { website }.
+async function handleApify(req: Request, kind: "places" | "website"): Promise<Response> {
+  let body: { query?: string; location?: string; max?: number; website?: string };
+  try {
+    body = await req.json();
+  } catch {
+    return json(req, 400, { error: "The request wasn't valid JSON." });
+  }
+  try {
+    if (kind === "places") {
+      const query = String(body.query ?? "").trim().slice(0, 120);
+      const location = String(body.location ?? "").trim().slice(0, 120);
+      if (!query || !location) return json(req, 400, { error: "Enter what kind of business and where." });
+      const result = await findPlaces(query, location, Number(body.max) || 20);
+      console.log("apify places:", JSON.stringify({ query, location, found: result.places.length, costUsd: result.costUsd }));
+      return json(req, 200, result);
+    }
+    const result = await scanWebsite(String(body.website ?? ""));
+    console.log("apify website:", JSON.stringify({ website: body.website, pages: result.pages, emails: result.emails.length, costUsd: result.costUsd }));
+    return json(req, 200, result);
+  } catch (err) {
+    if (err instanceof ApifyError) return json(req, err.status, { error: err.message });
+    console.error("apify failed:", err);
+    return json(req, 500, { error: "Something went wrong with Apify." });
+  }
+}
+
 async function signedInUser(req: Request): Promise<string | null> {
   const token = req.headers.get("x-firebase-token");
   if (!token) return null;
@@ -179,6 +208,7 @@ Deno.serve(PORT ? { port: Number(PORT) } : {}, async (req) => {
   const oneMin = path.match(/^\/1min\/([a-z-]+)\/?$/);
   if (oneMin) return relayOneMin(req, oneMin[1]);
   if (/^\/research\/?$/.test(path)) return handleResearch(req);
+  if (/^\/apify\/(places|website)\/?$/.test(path)) return handleApify(req, path.includes("places") ? "places" : "website");
 
   let body: { image?: string; mediaType?: string; company?: string; website?: string };
   try {

@@ -414,7 +414,7 @@
     .c-name .name-wrap { display: flex; align-items: flex-start; gap: 10px; }
     .c-name .name-wrap .sel-check { margin-top: 2px; }
     .grp-select { display: flex; align-items: center; padding: 0 2px; }
-    .leads-bar .sel-all { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 700; color: var(--gray-600); }
+    .leads-bar .sel-all, .ws-expand .sel-all { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 700; color: var(--gray-600); }
     .bulk-bar { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%); z-index: 60; display: flex; align-items: center; gap: 10px; padding: 10px 12px 10px 18px; border-radius: 999px; background: #2b2520; color: #fff; box-shadow: 0 12px 30px rgba(0,0,0,0.28); font-size: 14px; white-space: nowrap; }
     .bulk-bar[hidden] { display: none; }
     .bulk-bar b { font-weight: 800; }
@@ -428,7 +428,8 @@
       #leadsTable tr.group-row .grp-toggle { flex: 1 1 calc(100% - 40px); }
       #leadsTable tr.group-row .group-actions { width: 100%; justify-content: flex-start; padding-left: 57px; flex-wrap: wrap; }
       .group-row .rep-badge { min-width: 0; }
-      .bulk-bar { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); left: 16px; right: 16px; transform: none; justify-content: space-between; }
+      .bulk-bar { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); left: 16px; right: 16px; transform: none; justify-content: space-between; gap: 6px; padding: 8px 8px 8px 14px; font-size: 13px; }
+      .bulk-bar button { padding: 8px 10px; }
       .grp-name { white-space: normal; }
     }
     .state-row td { text-align: center; padding: 48px; color: var(--gray-400); white-space: normal; }
@@ -1645,6 +1646,7 @@
           <option value="contacts">Most contacts</option>
         </select>
         <div class="ws-expand">
+          <label class="sel-all" title="Select every lead shown"><input type="checkbox" class="sel-check" id="wsSelAll" onchange="selectAllShownLeads(this.checked)"> Select all</label>
           <button type="button" onclick="setAllWsCompanies(true)">Expand all</button>
           <button type="button" onclick="setAllWsCompanies(false)">Collapse all</button>
         </div>
@@ -2959,7 +2961,8 @@
     window.switchView = function (v) {
       activeView = v;
       document.body.dataset.view = v;
-      updateSelectionUi(); // the bulk-assign bar only belongs on All Leads
+      selectedLeadIds.clear(); // each view starts with nothing ticked
+      updateSelectionUi(); // the bulk-assign bar belongs on All Leads and My Workspace
       document.querySelectorAll(".view").forEach(el => el.classList.remove("active"));
       document.querySelectorAll(".view-tab").forEach(el => el.classList.remove("active"));
       document.getElementById(`view-${v}`).classList.add("active");
@@ -3111,14 +3114,25 @@
     window.disableSelected = async function () {
       const ids = [...selectedLeadIds];
       if (!ids.length) return;
-      await setLeadsDisabled(ids, !showDisabledOnly);
+      await setLeadsDisabled(ids, !(showDisabledOnly && activeView === "admin"));
       clearLeadSelection();
     };
 
     // ── MULTI-SELECT ───────────────────────────────────────────────
-    // Tick leads (or a whole company) in All Leads, then assign them all to a rep at once.
+    // Tick leads (or a whole company) in All Leads or My Workspace, then assign them all to a rep at once.
     const selectedLeadIds = new Set();
     let tableGroups = new Map();
+    let wsShownLeads = [];
+    const selectionView = () => activeView === "workspace" ? "workspace" : "admin";
+    const shownLeadsForSelection = () => selectionView() === "workspace" ? wsShownLeads : lastTableLeads;
+    function rerenderSelectionView() {
+      if (selectionView() === "workspace") renderWorkspace(); else renderTable(lastTableLeads);
+    }
+    window.toggleWsGroupSelect = function (cb) {
+      (cb.dataset.ids || "").split(",").filter(Boolean)
+        .forEach(id => cb.checked ? selectedLeadIds.add(id) : selectedLeadIds.delete(id));
+      renderWorkspace();
+    };
     window.toggleLeadSelect = function (id, on) {
       if (on) selectedLeadIds.add(id); else selectedLeadIds.delete(id);
       updateSelectionUi();
@@ -3128,34 +3142,41 @@
       renderTable(lastTableLeads);
     };
     window.selectAllShownLeads = function (on) {
-      lastTableLeads.forEach(l => on ? selectedLeadIds.add(l.id) : selectedLeadIds.delete(l.id));
-      renderTable(lastTableLeads);
+      shownLeadsForSelection().forEach(l => on ? selectedLeadIds.add(l.id) : selectedLeadIds.delete(l.id));
+      rerenderSelectionView();
     };
     window.clearLeadSelection = function () {
       selectedLeadIds.clear();
-      renderTable(lastTableLeads);
+      rerenderSelectionView();
     };
     function updateSelectionUi() {
       [...selectedLeadIds].forEach(id => { if (!allLeads[id]) selectedLeadIds.delete(id); });
       const n = selectedLeadIds.size;
       const bar = document.getElementById("bulkBar");
-      if (bar) bar.hidden = !n || activeView !== "admin";
+      if (bar) bar.hidden = !n || (activeView !== "admin" && activeView !== "workspace");
       const count = document.getElementById("bulkCount");
       if (count) count.textContent = n;
       const disBtn = document.getElementById("bulkDisableBtn");
-      if (disBtn) disBtn.textContent = showDisabledOnly ? "✅ Enable again" : "🚫 Disable";
+      if (disBtn) disBtn.textContent = showDisabledOnly && activeView === "admin" ? "✅ Enable again" : "🚫 Disable";
       document.querySelectorAll("#leadTableBody .grp-check").forEach(cb => {
         const leads = tableGroups.get(cb.dataset.group)?.leads || [];
         const picked = leads.filter(l => selectedLeadIds.has(l.id)).length;
         cb.checked = !!leads.length && picked === leads.length;
         cb.indeterminate = picked > 0 && picked < leads.length;
       });
-      const all = document.getElementById("selAllLeads");
-      if (all) {
-        const picked = lastTableLeads.filter(l => selectedLeadIds.has(l.id)).length;
-        all.checked = !!lastTableLeads.length && picked === lastTableLeads.length;
-        all.indeterminate = picked > 0 && picked < lastTableLeads.length;
-      }
+      document.querySelectorAll("#leadQueue .ws-grp-check").forEach(cb => {
+        const ids = (cb.dataset.ids || "").split(",").filter(Boolean);
+        const picked = ids.filter(id => selectedLeadIds.has(id)).length;
+        cb.checked = !!ids.length && picked === ids.length;
+        cb.indeterminate = picked > 0 && picked < ids.length;
+      });
+      [["selAllLeads", lastTableLeads], ["wsSelAll", wsShownLeads]].forEach(([id, list]) => {
+        const all = document.getElementById(id);
+        if (!all) return;
+        const picked = list.filter(l => selectedLeadIds.has(l.id)).length;
+        all.checked = !!list.length && picked === list.length;
+        all.indeterminate = picked > 0 && picked < list.length;
+      });
     }
     window.openAssignSelected = function () {
       const leads = [...selectedLeadIds].map(id => allLeads[id]).filter(Boolean);
@@ -3343,6 +3364,7 @@
         (!wsFollowupOnly || wsNeedsFollowup(l)) &&
         (!search || [l.name, l.company, l.title, l.email].some(v => String(v||"").toLowerCase().includes(search)))
       );
+      wsShownLeads = myLeads;
 
       // Group by company
       const groups = new Map();
@@ -3390,6 +3412,7 @@
         (filtered ? "" : "Tap a company to see its people.");
 
       const queue = document.getElementById("leadQueue");
+      updateSelectionUi();
       if (!myLeads.length) {
         queue.innerHTML = allMine.length
           ? `<div class="empty-workspace"><div class="big">🔎</div><strong>Nothing matches</strong><p>${wsFollowupOnly ? "No leads need a follow-up right now. Nice work." : "Try a different search or status."}</p></div>`
@@ -3413,6 +3436,7 @@
           return `<div class="ws-person">
             <div style="min-width:0">
               <div class="ws-person-top">
+                <input type="checkbox" class="sel-check" ${selectedLeadIds.has(l.id) ? "checked" : ""} onchange="toggleLeadSelect('${l.id}', this.checked)" aria-label="Select ${esc(l.name||"lead")}">
                 <span class="ws-dot ${pri}" title="${pri==="high"?"Follow up now":pri==="med"?"Follow up soon":pri==="done"?"Closed":"Recently contacted"}"></span>
                 <button type="button" class="ws-pname" onclick="openDetail('${l.id}')">${esc(l.name||"—")}</button>
                 ${(l.title||l.industry) ? `<span class="ws-ptitle">${esc(l.title||l.industry)}</span>` : ""}
@@ -3434,6 +3458,8 @@
         }).join("");
         return `<details class="ws-company pri-${c.priority}" data-key="${esc(c.key)}"${isOpen ? " open" : ""}>
           <summary>
+            <input type="checkbox" class="sel-check ws-grp-check" data-ids="${c.leads.map(l => l.id).join(",")}" ${c.leads.every(l => selectedLeadIds.has(l.id)) ? "checked" : ""}
+              onclick="event.stopPropagation()" onchange="toggleWsGroupSelect(this)" aria-label="Select everyone at ${esc(c.name)}">
             <span class="ws-chev" aria-hidden="true">▶</span>
             <span class="ws-avatar" style="background:${colorFor(c.name)}" aria-hidden="true">${esc(initial)}</span>
             <span class="ws-co-main">
@@ -3461,6 +3487,7 @@
         if (document.getElementById("wsSearch")?.value.trim()) return;
         if (d.open) wsOpenCompanies.add(d.dataset.key); else wsOpenCompanies.delete(d.dataset.key);
       }));
+      updateSelectionUi();
     };
 
     // ── ASSIGN COMPANY ─────────────────────────────────────────────

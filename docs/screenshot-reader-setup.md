@@ -130,11 +130,26 @@ Both AI options show what they found with sources:
 - **Company research** checks everyone you have at the company, flags people who may have left, and finds more. Its People list has **Select all / None**.
 - Guessed emails start unticked, and nothing is saved until you choose.
 
+## Apify: find new leads and scan websites
+
+The same Railway service runs two Apify scrapers (`apify.ts`) with the `APIFY_TOKEN` variable:
+
+- **🗺️ Find new leads** (All Leads toolbar) uses the Google Maps scraper (`compass/crawler-google-places`).
+  - Pick a type of business and an area, and it lists up to 20, 40 or 100 businesses with phone, website, address, category and rating.
+  - Businesses already in the tracker (same company name, website domain or phone) start unticked.
+  - **Select all / None**, then **Add N leads**, saves them as "General contact" leads assigned to you, with `source: "google-maps"`.
+- **🌐 Scan company website (Apify)** (a research option when the lead has a website) uses the Contact Details Scraper (`vdrmota/contact-info-scraper`).
+  - It crawls up to about 25 pages of the site for emails, phone numbers and LinkedIn links.
+  - Emails and LinkedIn links matching a person's name are offered in the usual review screen. Everything else found goes into the notes.
+
+Both use Apify credit. The free plan includes a monthly allowance, and the app shows what each run used. Set `APIFY_PLACES_ACTOR` / `APIFY_CONTACTS_ACTOR` to use different scrapers.
+
 ## Changing the settings
 
 | Setting | Default | What it does |
 |---|---|---|
 | `ANTHROPIC_API_KEY` | none (required) | Claude API key |
+| `APIFY_TOKEN` | none | Apify API token for Find new leads and website scans |
 | `ONEMIN_API_KEY` | none | 1min.ai key used for Social Studio's requests (Railway only) |
 | `FIREBASE_PROJECT_ID` | `midas-leads-a8b13` | Which Firebase project's sign-ins are accepted |
 | `ALLOWED_ORIGINS` | `https://midastechinc.github.io` | Comma-separated sites allowed to call the function from a browser |

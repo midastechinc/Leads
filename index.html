@@ -1459,6 +1459,9 @@
     .rs-note { padding: 10px 12px; border-radius: 12px; background: #fff4e5; color: #8a4b00; font-size: 13px; }
     .rs-foot { font-size: 12px; color: var(--gray-500); margin-top: 6px; }
     .rs-hint { font-size: 12px; color: var(--gray-500); margin: -2px 0 10px; }
+    .pl-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+    .pl-chips button { border: 1px solid var(--border); background: rgba(255,255,255,0.8); border-radius: 999px; padding: 6px 11px; font: 700 12px inherit; font-family: inherit; cursor: pointer; color: var(--gray-700); }
+    .pl-chips button:hover { border-color: var(--blue); color: var(--blue); }
     .rs-giveup { margin-top: 14px; font-size: 12px; color: var(--gray-500); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     .rs-giveup button { border: 1px solid var(--border); background: rgba(255,255,255,0.8); border-radius: 999px; padding: 5px 11px; font: 700 12px inherit; font-family: inherit; color: var(--gray-700); cursor: pointer; }
     .rs-giveup button:hover { border-color: var(--red); color: var(--red); }
@@ -1466,7 +1469,7 @@
     .rs-link { display: inline-flex; align-items: center; gap: 7px; padding: 9px 13px; border-radius: 12px; border: 1px solid var(--border); background: linear-gradient(180deg, #fffdf9, #f5efe4); color: var(--gray-800); font: 700 13px/1 inherit; font-family: inherit; text-decoration: none; }
     .rs-link:hover { border-color: rgba(29,78,216,0.3); color: var(--blue); }
     .rs-link span { font-weight: 800; color: var(--blue); }
-    .rs-engines { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .rs-engines { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
     .rs-engine { display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 14px; border-radius: 14px; border: 1px solid var(--border); background: rgba(255,255,255,0.8); cursor: pointer; font-family: inherit; }
     .rs-engine:hover { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(29,78,216,0.10); }
     .rs-engine b { font-size: 14px; color: var(--gray-900); }
@@ -1572,6 +1575,7 @@
           <button class="btn btn-danger" id="clearAllBtn" style="display:none" onclick="closeAdminMenu();clearAllLeads()">Clear all leads…</button>
         </div>
       </details>
+      <button class="btn btn-secondary shot-open-btn" onclick="openFindLeads()">🗺️ Find new leads</button>
       <button class="btn btn-secondary shot-open-btn" onclick="openScreenshotReader()">📷 From screenshot</button>
       <button class="btn btn-primary"   onclick="openAddLead()">+ Add Lead</button>
     </div>
@@ -1962,6 +1966,33 @@
     <button type="button" class="bulk-assign" onclick="openAssignSelected()">Assign to rep…</button>
     <button type="button" class="bulk-disable" id="bulkDisableBtn" onclick="disableSelected()">🚫 Disable</button>
     <button type="button" class="bulk-clear" onclick="clearLeadSelection()">Clear</button>
+  </div>
+
+  <!-- ══ Find New Leads (Google Maps via Apify) ══ -->
+  <div class="modal-overlay" id="placesModal">
+    <div class="modal modal-wide">
+      <h2>Find new leads on Google Maps</h2>
+      <p class="modal-sub">Search businesses by type and area. You choose which ones to add.</p>
+      <div class="pl-chips">
+        <button type="button" onclick="pickPlacesPreset('medical clinic')">🏥 Medical clinics</button>
+        <button type="button" onclick="pickPlacesPreset('dental clinic')">🦷 Dental clinics</button>
+        <button type="button" onclick="pickPlacesPreset('accounting firm')">📊 Accounting firms</button>
+        <button type="button" onclick="pickPlacesPreset('law firm')">⚖️ Law firms</button>
+        <button type="button" onclick="pickPlacesPreset('warehouse')">📦 Warehouses</button>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Type of business</label><input type="text" id="plQuery" value="accounting firm" onkeydown="if(event.key==='Enter')searchPlaces()"></div>
+        <div class="form-group"><label>Where</label><input type="text" id="plLocation" value="Richmond Hill, Ontario" onkeydown="if(event.key==='Enter')searchPlaces()"></div>
+      </div>
+      <div class="form-group"><label>How many businesses</label>
+        <select id="plMax"><option value="20">Up to 20</option><option value="40" selected>Up to 40</option><option value="100">Up to 100</option></select></div>
+      <div id="plResults"></div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal('placesModal')">Close</button>
+        <button class="btn btn-secondary" id="plSearchBtn" onclick="searchPlaces()">🗺️ Search</button>
+        <button class="btn btn-primary" id="plSaveBtn" onclick="savePlaces()" hidden>Add leads</button>
+      </div>
+    </div>
   </div>
 
   <!-- ══ Lead Research Modal ══ -->
@@ -4425,6 +4456,8 @@
 
     function showResearchChoices() {
       const who = rsState.mode === "company" ? "company" : "person";
+      const hasSite = realUrl(rsState.mode === "company" ? companyDefaults(rsState.groupKey).website
+        : (allLeads[rsState.id]?.website || companyDefaults(getCompanyGroupKey(allLeads[rsState.id]?.company || "")).website));
       document.getElementById("rsSaveBtn").hidden = true;
       document.getElementById("rsRetryBtn").hidden = true;
       document.getElementById("rsBackBtn").hidden = true;
@@ -4438,6 +4471,7 @@
         <div class="rs-engines">
           <button type="button" class="rs-engine" onclick="runResearch('1min')"><b>✨ Research with 1min.ai</b><span>Uses your 1min.ai credits. No Claude charge.</span></button>
           <button type="button" class="rs-engine" onclick="runResearch('claude')"><b>🔎 Research with Claude (cheap)</b><span>Usually a few cents per ${who}. Shows the cost after.</span></button>
+          ${hasSite ? `<button type="button" class="rs-engine" onclick="runResearch('apify')"><b>🌐 Scan company website (Apify)</b><span>Finds emails, phones and LinkedIn links on ${esc(domainOf(hasSite))}. Uses Apify credit (free monthly allowance).</span></button>` : ""}
         </div>
         ${who === "person" && !allLeads[rsState.id]?.disabled ? `<div class="rs-giveup">Can't find anything on them? <button type="button" onclick="setLeadsDisabled(['${rsState.id}'], true, true)">🚫 Disable this person</button></div>` : ""}`;
     }
@@ -4506,6 +4540,195 @@ ${shape}`;
       return { result, stats: { engine: "1min" } };
     }
 
+    // ── APIFY (via the Railway service, which holds APIFY_TOKEN) ────
+    async function apifyCall(kind, body) {
+      if (!SHOT_READER_URL) throw new Error("Apify needs the Railway service. See docs/screenshot-reader-setup.md.");
+      if (!auth.currentUser) throw new Error("Sign in again, then retry.");
+      const token = await auth.currentUser.getIdToken();
+      let res;
+      try {
+        res = await fetch(`${SHOT_READER_URL.replace(/\/+$/, "")}/apify/${kind}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-firebase-token": token },
+          body: JSON.stringify(body)
+        });
+      } catch {
+        throw new Error("Couldn't reach the Apify service. Check your connection and try again.");
+      }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Apify didn't work. Try again.");
+      return data;
+    }
+
+    // Picks the email that belongs to a person: "yabrahams@", "yemisi.abrahams@", "yemisi@" for Yemisi Abrahams.
+    const nameTokens = name => String(name || "").toLowerCase().replace(/\b(dr|mr|mrs|ms|k\.c|kc|cpa|llb|md)\b\.?/g, " ").split(/[^a-z]+/).filter(x => x.length > 1);
+    function emailForName(name, emails) {
+      const t = nameTokens(name);
+      if (!t.length) return null;
+      const first = t[0], last = t[t.length - 1];
+      const local = e => e.value.split("@")[0];
+      return emails.find(e => { const l = local(e); return l.includes(last) && (l.includes(first) || l.startsWith(first[0]) || l === last); }) ||
+        emails.find(e => { const l = local(e); return l === first || l.startsWith(first + ".") || l === first + last[0]; }) || null;
+    }
+    function linkedinForName(name, links) {
+      const t = nameTokens(name);
+      if (t.length < 2) return null;
+      return links.find(li => /linkedin\.com\/in\//i.test(li.value) && li.value.toLowerCase().includes(t[t.length - 1]) && li.value.toLowerCase().includes(t[0])) || null;
+    }
+    const GENERIC_EMAIL = /^(info|admin|office|contact|hello|reception|mail|inquiries|enquiries|general|support|accounts|billing|careers|jobs|hr)\b/i;
+
+    // Scans the company website with Apify and turns what it finds into a research result for the review screen.
+    async function apifyWebsiteResearch() {
+      const isCompany = rsState.mode === "company";
+      const l = isCompany ? null : allLeads[rsState.id];
+      const d = companyDefaults(isCompany ? rsState.groupKey : getCompanyGroupKey(l?.company || ""));
+      const website = (l && l.website) || d.website;
+      if (!website) throw new Error("There's no website on this lead to scan. Add one, or use another option.");
+      const found = await apifyCall("website", { website });
+      const used = new Set();
+      const take = item => { if (item) used.add(item.value); return item; };
+      let result;
+      if (isCompany) {
+        const people = rsCompanyLeads().map(p => {
+          const email = take(emailForName(p.name, found.emails));
+          const li = take(linkedinForName(p.name, found.linkedins));
+          if (!email && !li) return null;
+          return { name: p.name, title: "", email: email?.value || "", email_status: email ? "found" : "not_found", phone: "", linkedin: li?.value || "", status: "current", source: email?.source || li?.source || "" };
+        }).filter(Boolean);
+        result = {
+          company: { name: d.company, website: "", phone: found.phones[0]?.value || "", address: "", city: "", industry: "", employee_range: "", description: "", source: found.phones[0]?.source || "" },
+          people, talking_points: [], notes: ""
+        };
+      } else {
+        const email = take(emailForName(l.name, found.emails));
+        const li = take(linkedinForName(l.name, found.linkedins));
+        result = {
+          person: { name: l.name, title: "", title_source: "", email: email?.value || "", email_status: email ? "found" : "not_found", email_source: email?.source || "",
+            phone: "", phone_source: "", linkedin: li?.value || "", linkedin_source: li?.source || "" },
+          talking_points: [], notes: ""
+        };
+      }
+      // Everything else found goes into the notes so nothing is lost.
+      const others = found.emails.filter(e => !used.has(e.value));
+      const general = others.filter(e => GENERIC_EMAIL.test(e.value)).map(e => e.value);
+      const personal = others.filter(e => !GENERIC_EMAIL.test(e.value)).map(e => e.value);
+      const bits = [];
+      if (general.length) bits.push(`General emails: ${general.join(", ")}`);
+      if (personal.length) bits.push(`Other emails on the site: ${personal.slice(0, 15).join(", ")}`);
+      if (found.phones.length) bits.push(`Phones on the site: ${found.phones.slice(0, 8).map(p => p.value).join(", ")}`);
+      if (!found.emails.length && !found.phones.length) bits.push(`No emails or phone numbers were found on ${domainOf(website)}.`);
+      result.notes = bits.join(" · ");
+      return { result, stats: { engine: "apify", pages: found.pages, costUsd: found.costUsd, site: domainOf(website) } };
+    }
+
+    // ── FIND NEW LEADS (Google Maps via Apify) ──────────────────────
+    let plState = { places: [], busy: false, query: "" };
+    window.openFindLeads = function () {
+      plState = { places: [], busy: false, query: "" };
+      document.getElementById("plResults").innerHTML = "";
+      document.getElementById("plSaveBtn").hidden = true;
+      document.getElementById("plSearchBtn").hidden = false;
+      document.getElementById("placesModal").classList.add("active");
+      setTimeout(() => document.getElementById("plQuery").focus(), 100);
+    };
+    window.pickPlacesPreset = function (query) {
+      document.getElementById("plQuery").value = query;
+    };
+    function placeDuplicate(p) {
+      const key = norm(p.name), domain = domainOf(p.website), phone = String(p.phone || "").replace(/\D/g, "").slice(-10);
+      return Object.values(allLeads).find(l =>
+        (key && getCompanyGroupKey(l.company || "") === key) ||
+        (domain && domainOf(l.website) === domain) ||
+        (phone.length === 10 && cleanPhone(l.phone).replace(/\D/g, "").slice(-10) === phone)) || null;
+    }
+    window.searchPlaces = async function () {
+      if (plState.busy) return;
+      const query = document.getElementById("plQuery").value.trim();
+      const location = document.getElementById("plLocation").value.trim();
+      const max = Number(document.getElementById("plMax").value) || 40;
+      if (!query || !location) return showToast("Enter the type of business and where", "error");
+      const box = document.getElementById("plResults");
+      plState.busy = true;
+      document.getElementById("plSaveBtn").hidden = true;
+      box.innerHTML = `<div class="rs-status"><span class="rs-spin"></span><span>Searching Google Maps for <b>${esc(query)}</b> in <b>${esc(location)}</b>… This usually takes 1 to 3 minutes. Keep this window open.</span></div>`;
+      try {
+        const data = await apifyCall("places", { query, location, max });
+        plState.query = query;
+        plState.places = (data.places || []).map(p => {
+          const dupe = placeDuplicate(p);
+          return { ...p, dupe, selected: !dupe };
+        });
+        renderPlaces(data.costUsd);
+      } catch (e) {
+        console.error(e);
+        box.innerHTML = `<div class="rs-status error">${esc(e.message || "The search didn't work. Try again.")}</div>`;
+      } finally {
+        plState.busy = false;
+      }
+    };
+    function renderPlaces(costUsd) {
+      const places = plState.places, box = document.getElementById("plResults");
+      if (!places.length) {
+        box.innerHTML = `<div class="rs-status">No businesses were found. Try a different type of business or a bigger area.</div>`;
+        return;
+      }
+      const fresh = places.filter(p => !p.dupe).length;
+      box.innerHTML = `
+        <div class="rs-h rs-h-row"><span>Found ${places.length} · ${fresh} new</span>
+          <span class="rs-select"><button type="button" onclick="selectPlaces(true)">Select all</button><button type="button" onclick="selectPlaces(false)">None</button></span></div>
+        <div class="rs-list">${places.map((p, i) => `
+          <label class="rs-item" style="cursor:pointer">
+            <input type="checkbox" data-pl="${i}" ${p.selected ? "checked" : ""}>
+            <span><b>${esc(p.name)}</b>${p.category ? ` · ${esc(p.category)}` : ""}${p.rating ? ` · ⭐ ${p.rating}${p.reviews ? ` (${p.reviews})` : ""}` : ""}
+              ${p.dupe ? `<span class="rs-tag muted">Already in the tracker${p.dupe.company ? ` as ${esc(p.dupe.company)}` : ""}</span>` : ""}
+              <div class="rs-meta">${[p.phone, p.website ? domainOf(p.website) : "", p.address].filter(Boolean).map(esc).join(" · ")}
+                ${p.mapsUrl ? `<a href="${esc(p.mapsUrl)}" target="_blank" rel="noopener noreferrer">map</a>` : ""}</div></span>
+          </label>`).join("")}</div>
+        ${typeof costUsd === "number" && costUsd > 0 ? `<div class="rs-cost">🗺️ This search used <b>${formatResearchCost(costUsd)}</b> of Apify credit <span>(your Apify plan includes free monthly credit)</span></div>` : ""}`;
+      box.querySelectorAll("[data-pl]").forEach(cb => cb.addEventListener("change", () => { plState.places[cb.dataset.pl].selected = cb.checked; updatePlacesSaveBtn(); }));
+      document.getElementById("plSaveBtn").hidden = false;
+      updatePlacesSaveBtn();
+    }
+    window.selectPlaces = function (on) {
+      plState.places.forEach((p, i) => { p.selected = on; const cb = document.querySelector(`[data-pl="${i}"]`); if (cb) cb.checked = on; });
+      updatePlacesSaveBtn();
+    };
+    function updatePlacesSaveBtn() {
+      const n = plState.places.filter(p => p.selected).length;
+      const btn = document.getElementById("plSaveBtn");
+      btn.textContent = n ? `Add ${n} lead${n === 1 ? "" : "s"}` : "Add leads";
+      btn.disabled = !n;
+    }
+    window.savePlaces = async function () {
+      const chosen = plState.places.filter(p => p.selected);
+      if (!chosen.length) return;
+      const btn = document.getElementById("plSaveBtn");
+      btn.disabled = true;
+      let saved = 0;
+      try {
+        for (const p of chosen) {
+          await addDoc(collection(db, "leads"), {
+            name: p.name, company: p.name, title: "General contact", email: "",
+            phone: p.phone || "", website: p.website || "", linkedin: "",
+            address: p.address || "", city: p.city || "", state: p.province || "",
+            country: p.country === "CA" ? "Canada" : (p.country || ""),
+            industry: p.category || plState.query,
+            assignedTo: currentUser, status: "New", contactCount: 0, lastContacted: null,
+            createdAt: serverTimestamp(), updatedAt: serverTimestamp(), source: "google-maps",
+            ...(p.mapsUrl ? { googleMapsUrl: p.mapsUrl } : {}), ...(p.rating ? { googleRating: p.rating } : {})
+          });
+          saved++;
+        }
+        showToast(`Added ${saved} lead${saved === 1 ? "" : "s"}. Use 🔎 Research on each company to find its people.`, "success");
+        closeModal("placesModal");
+      } catch (e) {
+        console.error(e);
+        showToast(saved ? `Added ${saved}, then saving failed. Search again to see what's left.` : "Failed to add the leads", "error");
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
     const ONEMIN_RESEARCH_MODEL = "gpt-4o-mini";
 
     window.runResearch = async function (engine) {
@@ -4542,7 +4765,7 @@ ${shape}`;
       document.getElementById("rsSaveBtn").hidden = true;
       document.getElementById("rsRetryBtn").hidden = true;
       document.getElementById("rsBackBtn").hidden = true;
-      body.innerHTML = `<div class="rs-status"><span class="rs-spin"></span><span>${engine === "1min" ? "1min.ai is searching" : "Claude is searching"} the web for ${label}… ${wait} Keep this window open.</span></div>`;
+      body.innerHTML = `<div class="rs-status"><span class="rs-spin"></span><span>${engine === "apify" ? "Apify is scanning the company website for" : engine === "1min" ? "1min.ai is searching the web for" : "Claude is searching the web for"} ${label}… ${engine === "apify" ? "This usually takes 1 to 2 minutes." : wait} Keep this window open.</span></div>`;
       try {
         if (!SHOT_READER_URL) throw new Error("Research needs the Railway service. See docs/screenshot-reader-setup.md.");
         if (!auth.currentUser) throw new Error("Sign in again, then retry.");
@@ -4550,6 +4773,8 @@ ${shape}`;
         let data;
         if (engine === "1min") {
           data = await oneMinResearch(request, token);
+        } else if (engine === "apify") {
+          data = await apifyWebsiteResearch();
         } else {
           let res;
           try {
@@ -4697,10 +4922,11 @@ ${shape}`;
         ${rows.length ? `<div class="rs-h">${isCompany ? "Company details" : "Contact details"}</div><div class="rs-rows">${rowsHtml}</div>` : ""}
         ${peopleHtml}
         ${pointsHtml}
-        ${typeof stats.costUsd === "number" ? `<div class="rs-cost">💲 This research cost about <b>${formatResearchCost(stats.costUsd)}</b> <span>(estimate at list prices; see console.anthropic.com → Usage for the exact amount)</span></div>` : ""}
+        ${stats.engine === "apify" ? `<div class="rs-cost">🌐 Scanned ${stats.pages || 0} page${stats.pages === 1 ? "" : "s"} of ${esc(stats.site || "the website")} with Apify${typeof stats.costUsd === "number" && stats.costUsd > 0 ? `, using <b>${formatResearchCost(stats.costUsd)}</b> of Apify credit` : ""}.</div>`
+          : typeof stats.costUsd === "number" ? `<div class="rs-cost">💲 This research cost about <b>${formatResearchCost(stats.costUsd)}</b> <span>(estimate at list prices; see console.anthropic.com → Usage for the exact amount)</span></div>` : ""}
         ${stats.engine === "1min" ? `<div class="rs-cost">✨ Researched with 1min.ai, using your 1min.ai credits. No Claude charge.</div>` : ""}
         ${rsState.mode === "person" && !allLeads[rsState.id]?.disabled ? `<div class="rs-giveup">Nothing useful? <button type="button" onclick="setLeadsDisabled(['${rsState.id}'], true, true)">🚫 Disable this person</button></div>` : ""}
-        <div class="rs-foot">${stats.engine === "1min" ? "" : `Searched the web ${stats.searches || 0} time${stats.searches === 1 ? "" : "s"} and read ${stats.fetches || 0} page${stats.fetches === 1 ? "" : "s"}. `}Check the sources before you rely on anything here.</div>`;
+        <div class="rs-foot">${stats.engine === "1min" || stats.engine === "apify" ? "" : `Searched the web ${stats.searches || 0} time${stats.searches === 1 ? "" : "s"} and read ${stats.fetches || 0} page${stats.fetches === 1 ? "" : "s"}. `}Check the sources before you rely on anything here.</div>`;
 
       const body = document.getElementById("rsBody");
       body.querySelectorAll("[data-rs-row]").forEach(cb => cb.addEventListener("change", () => { rsState.rows[cb.dataset.rsRow].selected = cb.checked; updateResearchSaveBtn(); }));

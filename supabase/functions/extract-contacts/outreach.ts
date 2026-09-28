@@ -18,6 +18,8 @@ const MAILBOX = (Deno.env.get("OUTREACH_MAILBOX") ?? "").trim().toLowerCase();
 const DAILY_MAX = Math.max(1, Number(Deno.env.get("OUTREACH_DAILY_MAX")) || 30);
 const SENDER_NAME = Deno.env.get("OUTREACH_SENDER_NAME") ?? "Ali Jaffar";
 const PUBLIC_URL = (Deno.env.get("OUTREACH_PUBLIC_URL") ?? "").replace(/\/+$/, "");
+const LOGO_URL = Deno.env.get("OUTREACH_LOGO_URL") ?? "https://midastechinc.github.io/Leads/email-logo.png";
+const SIGNATURE_ON = (Deno.env.get("OUTREACH_SIGNATURE") ?? "on").toLowerCase() !== "off";
 const UNSUB_SECRET = Deno.env.get("OUTREACH_UNSUB_SECRET") ?? CLIENT_SECRET;
 const GRAPH = Deno.env.get("MS_GRAPH_URL") ?? "https://graph.microsoft.com/v1.0";
 const LOGIN = Deno.env.get("MS_LOGIN_URL") ?? "https://login.microsoftonline.com";
@@ -159,19 +161,38 @@ export async function unsubscribeLink(baseUrl: string, email: string) {
   return `${PUBLIC_URL || baseUrl}/u?e=${encodeURIComponent(email)}&t=${await hmac(email)}`;
 }
 
-// The CASL footer: who is sending, a mailing address, why they're getting it, and an unsubscribe.
+// The CASL footer: why they're getting it and an unsubscribe. Who is sending and the mailing address
+// are in the signature; without a signature (OUTREACH_SIGNATURE=off) the footer carries them.
 function footerHtml(unsub: string) {
   return `<div style="margin-top:24px;padding-top:12px;border-top:1px solid #ddd;color:#777;font-size:12px;line-height:1.5;font-family:Segoe UI,Arial,sans-serif">
-${esc(SENDER_NAME)} · Midas Tech Inc · IT Services &amp; Cybersecurity<br>
-30 Via Renzo Dr, Suite 200, Richmond Hill, ON L4S 0B8 · 905-787-2038 · <a href="https://www.midastech.ca" style="color:#0072BC">www.midastech.ca</a><br>
+${SIGNATURE_ON ? "" : `${esc(SENDER_NAME)} · Midas Tech Inc · IT Services &amp; Cybersecurity<br>
+30 Via Renzo Dr, Suite 200, Richmond Hill, ON L4S 0B8 · 905-787-2038 · <a href="https://www.midastech.ca" style="color:#0072BC">www.midastech.ca</a><br>`}
 You're getting this because your business email address is published online and this is about your business's IT.
 Don't want these emails? <a href="${esc(unsub)}" style="color:#0072BC">Unsubscribe</a> or reply "unsubscribe".
 </div>`;
 }
 
+// Ali's email signature. A table layout, because Outlook ignores most modern CSS.
+function signatureHtml() {
+  const a = "color:#0072BC;text-decoration:none";
+  return `<table cellpadding="0" cellspacing="0" border="0" style="margin-top:14px;font-family:Segoe UI,Arial,sans-serif;font-size:13px;line-height:1.45;color:#333333">
+<tr><td style="padding-right:16px;border-right:2px solid #0072BC;vertical-align:top;text-align:center">
+<a href="https://www.midastech.ca"><img src="${esc(LOGO_URL)}" width="140" alt="Midas Tech" style="display:block;border:0;width:140px;height:auto"></a>
+<div style="margin-top:8px;font-size:11px;color:#4D4D4D">Microsoft Partner<br>Certified</div></td>
+<td style="padding-left:16px;vertical-align:top">
+<div style="font-size:17px;font-weight:700;color:#333333">${esc(SENDER_NAME)}</div>
+<div style="color:#4D4D4D">Founder &amp; Chief Technology Officer (CTO)</div>
+<div style="margin-top:6px"><b>Midas Tech</b> — IT Support &amp; Networking Solutions</div>
+<div style="font-size:12px;color:#4D4D4D">Managed IT Services | Networking | Cybersecurity | Infrastructure</div>
+<div style="margin-top:6px">Direct: <a href="tel:+16477863361" style="${a}">+1 (647) 786-3361</a> | Office: <a href="tel:+19057872038" style="${a}">+1 (905) 787-2038</a></div>
+<div><a href="mailto:ali@midastech.ca" style="${a}">ali@midastech.ca</a> | <a href="https://www.midastech.ca" style="${a}">www.midastech.ca</a></div>
+<div>30 Via Renzo Dr, Suite 200, Richmond Hill, ON L4S 0B8</div>
+</td></tr></table>`;
+}
+
 function bodyHtml(text: string, unsub: string) {
   const paragraphs = text.trim().split(/\n{2,}/).map((p) => `<p style="margin:0 0 12px">${esc(p).replace(/\n/g, "<br>")}</p>`).join("");
-  return `<div style="font-family:Segoe UI,Arial,sans-serif;font-size:14px;color:#333;line-height:1.55">${paragraphs}</div>${footerHtml(unsub)}`;
+  return `<div style="font-family:Segoe UI,Arial,sans-serif;font-size:14px;color:#333;line-height:1.55">${paragraphs}</div>${SIGNATURE_ON ? signatureHtml() : ""}${footerHtml(unsub)}`;
 }
 
 export interface OutgoingEmail {

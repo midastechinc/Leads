@@ -5061,7 +5061,8 @@ ${shape}`;
       const fresh = {
         step,
         subject: step === 1 ? fillEmailTemplate(tpl.subject, l) : `Re: ${l.outreach.subject1 || fillEmailTemplate(getEmailTemplate(l, 1).subject, l)}`,
-        body: fillEmailTemplate(tpl.body, l),
+        // The server adds Ali's HTML signature, so the template's plain-text signature is dropped.
+        body: fillEmailTemplate(tpl.body, l).replace(/\n+Ali Jaffar\nMidas Tech Inc\.[\s\S]*$/, ""),
         approved: false,
         personalized: false
       };
@@ -5345,7 +5346,7 @@ ${facts.map(f => `- ${f}`).join("\n")}`;
       const sendBtn = document.getElementById("orSendBtn");
       if (sendBtn && !outreachBusy) sendBtn.textContent = approved ? `Send ${Math.min(approved, left)} approved` : "Send approved";
       if (!queue.length) {
-        box.innerHTML = `<div class="or-empty">Nothing due today. Add leads with <b>✉️ Outreach</b>: tick leads in All Leads or My Workspace, or open a lead and press <b>✉️ Add to email outreach</b>.</div>`;
+        box.innerHTML = `<div class="or-empty">Nothing due today. To add leads, tick them in All Leads or My Workspace and press <b>Outreach</b>, or open a lead and press <b>Add to email outreach</b>.</div>`;
         return;
       }
       box.innerHTML = queue.map(l => {
@@ -5366,7 +5367,7 @@ ${facts.map(f => `- ${f}`).join("\n")}`;
             <div class="or-edit">
               ${d.step === 1 ? `<input value="${esc(d.subject)}" oninput="editOutreachDraft('${l.id}','subject',this.value)" aria-label="Subject">` : `<p class="or-muted">Sent as a reply in the same thread as the first email.</p>`}
               <textarea oninput="editOutreachDraft('${l.id}','body',this.value)" aria-label="Email text">${esc(d.body)}</textarea>
-              <p class="or-muted">Your address, phone and an unsubscribe link are added below the email automatically.</p>
+              <p class="or-muted">Your signature (logo, title, phone numbers, address) and an unsubscribe link are added below the email automatically.</p>
               <div class="or-edit-actions">
                 ${d.step === 1 ? `<button class="btn btn-secondary btn-sm" type="button" onclick="personalizeOneOutreach('${l.id}')">✨ Personal first line</button>` : ""}
                 <button class="btn btn-secondary btn-sm" type="button" onclick="resetOutreachDraft('${l.id}')">Reset</button>

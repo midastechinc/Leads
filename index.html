@@ -4881,7 +4881,10 @@ ${shape}`;
     const OUTREACH_RAMP = [5, 10, 20, 30];               // daily limit in warm-up weeks 1, 2, 3, 4+
     const OUTREACH_STEP_NAMES = ["", "Intro", "Follow-up", "Quick checks", "Close the loop"];
     const OUTREACH_SETTINGS_KEY = "midas-outreach-settings";
+    // Ali's "Free 15-Minute IT & Cybersecurity Assessment" Bookings page, used until another link is saved in Settings.
+    const DEFAULT_BOOKING_URL = "https://bookings.cloud.microsoft/bookwithme/user/ca7a2c8351734923bc94c2af5ee84764@midastech.ca/meetingtype/Q7p_J0lQc0aeYCC0Izck5Q2?anonymous";
     let outreachSettings = { warmupStart: "", bookingUrl: "", lastReplyCheck: "", checklist: {} };
+    const bookingUrl = () => outreachSettings.bookingUrl || DEFAULT_BOOKING_URL;
     let outreachSettingsLoaded = false;
     let outreachSettingsLocalOnly = false;
     let outreachServer = null;         // { configured, mailbox, sentToday, dailyMax } from the server
@@ -5062,7 +5065,9 @@ ${shape}`;
         step,
         subject: step === 1 ? fillEmailTemplate(tpl.subject, l) : `Re: ${l.outreach.subject1 || fillEmailTemplate(getEmailTemplate(l, 1).subject, l)}`,
         // The server adds Ali's HTML signature, so the template's plain-text signature is dropped.
-        body: fillEmailTemplate(tpl.body, l).replace(/\n+Ali Jaffar\nMidas Tech Inc\.[\s\S]*$/, ""),
+        // Emails 1-3 also offer the booking link, for people who'd rather pick a time than reply.
+        body: fillEmailTemplate(tpl.body, l).replace(/\n+Ali Jaffar\nMidas Tech Inc\.[\s\S]*$/, "")
+          .replace(/\n\nThanks,$/, step < 4 ? `\n\nIf it's easier, just grab a time that suits you: ${bookingUrl()}\n\nThanks,` : "\n\nThanks,"),
         approved: false,
         personalized: false
       };
@@ -5161,7 +5166,7 @@ ${facts.map(f => `- ${f}`).join("\n")}`;
           const d = outreachDraft(l);
           return { leadId: l.id, to: outreachEmail(l), toName: greetingName(l) === "there" ? "" : l.name, subject: d.subject, body: d.body, replyToId: d.step > 1 ? (l.outreach.firstMsgId || "") : "" };
         });
-        const res = await outreachCall("send", { messages });
+        const res = await outreachCall("send", { messages, bookingUrl: bookingUrl() });
         outreachServer.sentToday = res.sentToday;
         let ok = 0; const failed = [];
         const today = todayKey();
@@ -5264,7 +5269,7 @@ ${facts.map(f => `- ${f}`).join("\n")}`;
       } catch (e) { showToast("Couldn't save", "error"); }
     };
     window.copyBookingLink = async function () {
-      const url = outreachSettings.bookingUrl;
+      const url = bookingUrl();
       if (!url) return showToast("Add your Bookings link in Outreach → Settings first.", "error");
       try { await navigator.clipboard.writeText(url); showToast("Booking link copied", "success"); }
       catch { prompt("Copy your booking link:", url); }
@@ -5303,7 +5308,7 @@ ${facts.map(f => `- ${f}`).join("\n")}`;
         ? `Sending from ${outreachServer.mailbox} as ${outreachServer.senderName}. Hard limit on the server: ${outreachServer.dailyMax} a day.${outreachSettingsLocalOnly ? " Settings are saved in this browser only (Firestore didn't allow appSettings)." : ""}`
         : (outreachServerError || "The Railway service isn't connected to Microsoft 365 yet.");
       const w = document.getElementById("orWarmup"); if (w && document.activeElement !== w) w.value = outreachSettings.warmupStart || "";
-      const b = document.getElementById("orBooking"); if (b && document.activeElement !== b) b.value = outreachSettings.bookingUrl || "";
+      const b = document.getElementById("orBooking"); if (b && document.activeElement !== b) b.value = bookingUrl();
       renderOutreachReplies(repliesOpen);
       renderOutreachQueue();
       renderOutreachUpcoming(all);

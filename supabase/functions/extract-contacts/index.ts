@@ -240,7 +240,7 @@ function publicBase(req: Request): string {
 
 // POST /outreach/status | verify { emails } | send { messages } | replies { since, addresses }
 async function handleOutreach(req: Request, action: string): Promise<Response> {
-  let body: { emails?: unknown[]; messages?: unknown[]; since?: string; addresses?: unknown[] } = {};
+  let body: { emails?: unknown[]; messages?: unknown[]; since?: string; addresses?: unknown[]; bookingUrl?: string } = {};
   try {
     const raw = await req.text();
     if (raw.length > 400_000) return json(req, 413, { error: "That request is too large." });
@@ -254,7 +254,7 @@ async function handleOutreach(req: Request, action: string): Promise<Response> {
     if (action === "send") {
       const messages = Array.isArray(body.messages) ? body.messages : [];
       if (!messages.length) return json(req, 400, { error: "Nothing to send." });
-      const result = await sendOutreach(messages as Parameters<typeof sendOutreach>[0], publicBase(req));
+      const result = await sendOutreach(messages as Parameters<typeof sendOutreach>[0], publicBase(req), String(body.bookingUrl ?? ""));
       console.log("outreach send:", JSON.stringify({ tried: messages.length, sent: result.results.filter((r) => r.ok).length, sentToday: result.sentToday }));
       return json(req, 200, result);
     }

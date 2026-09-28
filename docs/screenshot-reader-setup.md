@@ -155,6 +155,7 @@ Both use Apify credit. The free plan includes a monthly allowance, and the app s
 | `ONEMIN_API_KEY` | none | 1min.ai key used for Social Studio's requests (Railway only) |
 | `LLM_GATEWAY_URL` | none | Midas AI Gateway address, `https://ai.midastech.support/v1` (Railway only) |
 | `LLM_GATEWAY_KEY` | none | The gateway key for this app (`leads-app`). It must be allowed to use `midas-smart` and `midas-web` |
+| `MS_TENANT_ID`, `MS_CLIENT_ID`, `MS_CLIENT_SECRET`, `OUTREACH_MAILBOX` | none | Microsoft 365 mailbox for email outreach. See [outreach-setup.md](outreach-setup.md) |
 | `FIREBASE_PROJECT_ID` | `midas-leads-a8b13` | Which Firebase project's sign-ins are accepted |
 | `ALLOWED_ORIGINS` | `https://midastechinc.github.io` | Comma-separated sites allowed to call the function from a browser |
 

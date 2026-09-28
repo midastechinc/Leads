@@ -405,6 +405,216 @@
     .ld-disabled { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 10px 12px; border-radius: 12px; background: rgba(100,116,139,0.10); color: var(--gray-700); font-size: 13px; margin-bottom: 10px; }
     .ld-person.is-disabled { opacity: 0.55; }
     .bulk-bar .bulk-disable { background: rgba(255,255,255,0.12); color: #fff; }
+    /* ── Sales Kit ── */
+    .sk-bar { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; padding: 12px; margin-bottom: 12px; background: rgba(255,255,255,0.7); border: 1px solid var(--border); border-radius: 18px; }
+    .sk-bar label { display: grid; gap: 4px; font-size: 12px; font-weight: 700; color: var(--gray-600); }
+    .sk-bar select, .sk-bar input { min-width: 220px; max-width: 100%; border: 1px solid var(--gray-200); border-radius: 10px; padding: 8px 10px; font: inherit; background: #fff; }
+    .sk-chip { padding: 6px 12px; border-radius: 999px; background: var(--blue-light); color: var(--blue); font-weight: 700; font-size: 12px; }
+    .sk-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
+    .sk-tabs button { border: 1px solid var(--border); background: rgba(255,255,255,0.8); border-radius: 999px; padding: 9px 16px; font: inherit; font-weight: 700; color: var(--gray-600); cursor: pointer; }
+    .sk-tabs button[aria-selected="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
+    .sk-deck-actions { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; }
+    .sk-thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
+    .sk-thumb { border: 1px solid var(--border); background: #fff; border-radius: 14px; padding: 8px; cursor: pointer; text-align: left; font: inherit; color: var(--gray-700); display: grid; gap: 6px; }
+    .sk-thumb:hover { border-color: #00AEEF; box-shadow: 0 0 0 3px rgba(0,174,239,0.15); }
+    .sk-thumb > span { font-size: 12px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sk-slide-wrap { position: relative; width: 100%; aspect-ratio: 16 / 9; container-type: inline-size; border-radius: 8px; overflow: hidden; }
+    /* Slides are sized in cqw so they scale from thumbnail to full screen. Midas brand colours. */
+    .sk-slide { position: absolute; inset: 0; background: #fff; color: #333; font-family: "Segoe UI", Arial, sans-serif; font-size: 1.55cqw; line-height: 1.4; padding: 5% 6%; display: flex; flex-direction: column; justify-content: center; border-top: 0.6em solid #00AEEF; overflow: hidden; }
+    .sk-slide::after { content: "Midas Tech Inc · www.midastech.ca · 905-787-2038"; position: absolute; left: 6%; bottom: 3.5%; font-size: 0.7em; color: #808080; }
+    .sk-slide h1 { font-size: 3em; line-height: 1.12; color: #0072BC; margin: 0 0 0.4em; letter-spacing: -0.01em; }
+    .sk-slide h2 { font-size: 2.2em; color: #0072BC; margin: 0 0 0.7em; }
+    .sk-slide h3 { font-size: 1.2em; color: #4D4D4D; margin: 0.8em 0 0.3em; }
+    .sk-slide p { margin: 0 0 0.5em; }
+    .sk-s-title { background: linear-gradient(135deg, #0072BC, #00AEEF); color: #fff; border-top: none; }
+    .sk-s-title::after { color: rgba(255,255,255,0.8); }
+    .sk-s-title h1, .sk-s-title h2 { color: #fff; }
+    .sk-s-title .sk-big span { color: rgba(255,255,255,0.85); }
+    .sk-logo { height: 3.4em; width: auto; align-self: flex-start; margin-bottom: 1.2em; background: #fff; padding: 0.4em 0.7em; border-radius: 0.5em; }
+    .sk-sub { font-size: 1.35em; opacity: 0.92; }
+    .sk-meta { font-size: 1em; opacity: 0.85; margin-top: 1.2em; }
+    .sk-foot { font-size: 0.75em; color: #808080; margin-top: 1em; }
+    .sk-contact { margin-top: 1.4em; font-size: 0.95em; opacity: 0.95; }
+    .sk-big { margin: 0; padding-left: 1.2em; display: grid; gap: 0.6em; font-size: 1.3em; }
+    .sk-big b { display: block; }
+    .sk-big span { font-size: 0.8em; color: #4D4D4D; }
+    .sk-grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.9em; }
+    .sk-grid3 div, .sk-steps div, .sk-stats div { background: #f2f9fd; border-left: 0.3em solid #00AEEF; border-radius: 0.5em; padding: 0.8em 0.9em; }
+    .sk-grid3 b, .sk-steps b { display: block; color: #0072BC; font-size: 1.15em; margin-bottom: 0.2em; }
+    .sk-grid3 span, .sk-steps span { color: #4D4D4D; }
+    .sk-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.9em; }
+    .sk-stats b { display: block; font-size: 2.2em; color: #0072BC; line-height: 1.1; }
+    .sk-stats span { color: #4D4D4D; font-size: 0.95em; }
+    .sk-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.9em; }
+    .sk-list { margin: 0; padding-left: 1.2em; display: grid; gap: 0.5em; font-size: 1.15em; }
+    .sk-score { display: flex; gap: 1.5em; align-items: center; margin-bottom: 0.5em; }
+    .sk-ring { --p: 0; width: 7em; height: 7em; border-radius: 50%; background: conic-gradient(#00AEEF calc(var(--p) * 1%), #e6eef3 0); display: grid; place-items: center; align-content: center; position: relative; }
+    .sk-ring::before { content: ""; position: absolute; inset: 0.8em; border-radius: 50%; background: #fff; }
+    .sk-ring b, .sk-ring span { position: relative; line-height: 1; }
+    .sk-ring b { font-size: 2.2em; color: #0072BC; }
+    .sk-ring span { font-size: 0.8em; color: #808080; }
+    .sk-level { font-size: 1.6em; font-weight: 800; }
+    .sk-level.l-Good { color: #0f8a5f; } .sk-level.l-Somegaps { color: #b7791f; } .sk-level.l-Atrisk { color: #c2413b; }
+    .sk-plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.9em; }
+    .sk-plans > div { position: relative; border: 0.12em solid #d6e6f0; border-radius: 0.7em; padding: 1em; background: #fff; }
+    .sk-plans > div.rec { border-color: #00AEEF; box-shadow: 0 0 0 0.2em rgba(0,174,239,0.18); }
+    .sk-plans em { position: absolute; top: -0.8em; left: 1em; background: #00AEEF; color: #fff; font-style: normal; font-size: 0.75em; font-weight: 700; padding: 0.15em 0.7em; border-radius: 999px; }
+    .sk-plans em.plain { background: #4D4D4D; }
+    .sk-plans b { display: block; font-size: 1.3em; color: #0072BC; }
+    .sk-plans strong { display: block; font-size: 1.8em; color: #333; margin: 0.1em 0 0.3em; }
+    .sk-plans small { font-size: 0.45em; color: #808080; font-weight: 400; margin-left: 0.2em; }
+    .sk-plans ul { margin: 0; padding-left: 1.1em; font-size: 0.85em; display: grid; gap: 0.25em; }
+    /* the Packages tab reuses the plan cards at normal page size */
+    .sk-plans-page { font-size: 14px; margin-bottom: 14px; gap: 14px; }
+    .sk-plans-page > div { padding: 20px 16px 16px; }
+    .sk-plans-page strong { font-size: 30px; }
+    .sk-plans-page small { font-size: 12px; }
+    .sk-plans-page ul { font-size: 13px; margin: 10px 0; }
+    .sk-price-edit { display: inline-flex; align-items: baseline; }
+    .sk-price-edit input { width: 3.4em; field-sizing: content; min-width: 1.5ch; border: none; border-bottom: 2px dashed #b9d7ea; font: inherit; color: inherit; background: transparent; padding: 0; }
+    .sk-price-edit input:focus { outline: none; border-bottom-color: #00AEEF; }
+    .sk-addons { display: grid; gap: 6px; }
+    .sk-addons > div { display: grid; grid-template-columns: 1fr auto 90px; gap: 10px; align-items: center; padding: 8px 10px; background: #fff; border: 1px solid var(--border); border-radius: 10px; }
+    .sk-addons input { width: 64px; }
+    .sk-terms { margin: 12px 0 6px; padding-left: 18px; color: var(--gray-600); display: grid; gap: 3px; }
+    .sk-quote-form { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-bottom: 12px; align-items: end; }
+    .sk-quote-form label { display: grid; gap: 4px; font-size: 12px; font-weight: 700; color: var(--gray-600); }
+    .sk-quote-form input[type=number], .sk-quote-form select { border: 1px solid var(--gray-200); border-radius: 10px; padding: 8px 10px; font: inherit; background: #fff; }
+    .sk-quote-form .or-check-row { display: flex; font-size: 13px; }
+    .sk-quote, .sk-table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; }
+    .sk-quote td, .sk-table td, .sk-table th { padding: 9px 12px; border-bottom: 1px solid var(--border); text-align: left; vertical-align: top; }
+    .sk-quote td:last-child { text-align: right; white-space: nowrap; font-weight: 700; }
+    .sk-quote tr.tot td { background: var(--blue-light); color: var(--blue); font-size: 15px; }
+    .sk-table th { background: var(--surface-2); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--gray-500); }
+    .sk-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+    .sk-cols > .or-card { margin-bottom: 14px; }
+    .sk-agenda { margin-top: 10px; }
+    .sk-agenda b { color: var(--gray-900); }
+    .sk-agenda ul, .sk-list-sm { margin: 4px 0 0; padding-left: 18px; color: var(--gray-700); display: grid; gap: 3px; }
+    .sk-agenda p { margin: 2px 0 0; color: var(--gray-600); }
+    .sk-q { display: flex; gap: 12px; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+    .sk-q > div:first-child { flex: 1 1 320px; display: grid; gap: 2px; }
+    .sk-ans { display: flex; gap: 6px; }
+    .sk-ans button { border: 1px solid var(--gray-200); background: #fff; border-radius: 999px; padding: 6px 14px; font: inherit; font-weight: 700; cursor: pointer; color: var(--gray-600); }
+    .sk-ans button[aria-pressed="true"].a-yes { background: var(--green); border-color: var(--green); color: #fff; }
+    .sk-ans button[aria-pressed="true"].a-no { background: var(--red); border-color: var(--red); color: #fff; }
+    .sk-ans button[aria-pressed="true"].a-unsure { background: var(--yellow); border-color: var(--yellow); color: #fff; }
+    .sk-score-mini { font-weight: 700; color: var(--gray-700); }
+    .sk-score-mini b { font-size: 22px; color: #0072BC; }
+    .sk-notes { display: grid; gap: 4px; margin: 12px 0; font-weight: 700; color: var(--gray-700); }
+    .sk-notes textarea { min-height: 110px; border: 1px solid var(--gray-200); border-radius: 10px; padding: 10px; font: inherit; }
+    .sk-obj { border-bottom: 1px solid var(--border); padding: 8px 0; }
+    .sk-obj summary { cursor: pointer; font-weight: 700; color: var(--gray-900); }
+    .sk-obj p { margin: 6px 0 2px; color: var(--gray-700); }
+    .sk-pre { white-space: pre-wrap; background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 12px; font: inherit; font-size: 13px; color: var(--gray-700); }
+    .sk-comp { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
+    .sk-comp > div { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 12px; display: grid; gap: 4px; align-content: start; }
+    .sk-comp b { color: var(--gray-900); font-size: 15px; }
+    .sk-comp strong { color: #0072BC; }
+    .sk-comp p { margin: 0; color: var(--gray-700); font-size: 13px; }
+    .sk-comp a, .or-card a { color: var(--blue); font-weight: 700; font-size: 13px; }
+    .sk-present { position: fixed; inset: 0; z-index: 1000; background: #0b1620; display: flex; flex-direction: column; align-items: center; justify-content: center; outline: none; }
+    .sk-present .sk-stage { width: min(100vw, 177.78vh); padding: 0; }
+    .sk-present .sk-slide-wrap { border-radius: 0; }
+    .sk-present .sk-controls { position: fixed; bottom: 14px; right: 14px; display: flex; gap: 6px; align-items: center; opacity: 0.35; transition: opacity .2s; }
+    .sk-present .sk-controls:hover { opacity: 1; }
+    .sk-present .sk-controls button { background: rgba(255,255,255,0.15); color: #fff; border: none; border-radius: 8px; padding: 8px 12px; font: inherit; font-weight: 700; cursor: pointer; }
+    .sk-present .sk-count { color: #fff; font-weight: 700; padding: 0 6px; }
+    .sk-present .sk-notes-pane { position: fixed; left: 14px; bottom: 60px; max-width: min(520px, 90vw); background: rgba(255,255,255,0.95); color: #333; padding: 12px 14px; border-radius: 12px; font-size: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.3); }
+    @media (max-width: 760px) {
+      .sk-plans-page { grid-template-columns: 1fr; }
+      .sk-addons > div { grid-template-columns: 1fr auto; }
+      .sk-addons > div .or-muted { grid-column: 1 / -1; order: 3; }
+      .sk-bar select, .sk-bar input { min-width: 0; width: 100%; }
+      .sk-bar label { flex: 1 1 100%; }
+    }
+    .view-tab { position: relative; }
+    @media (max-width: 900px) { .vt-count { position: absolute; top: 3px; right: 6px; margin: 0; } }
+    /* ── Email outreach ── */
+    .bulk-bar .bulk-outreach { background: rgba(255,255,255,0.12); color: #fff; }
+    .vt-count[hidden] { display: none !important; }
+    .vt-count { display: inline-block; min-width: 18px; margin-left: 6px; padding: 1px 6px; border-radius: 999px; background: var(--red); color: #fff; font-size: 11px; line-height: 16px; }
+    .or-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
+    .or-stat { background: rgba(255,255,255,0.8); border: 1px solid var(--border); border-radius: 16px; padding: 12px 14px; }
+    .or-stat .n { font-size: 24px; font-weight: 800; color: var(--gray-900); line-height: 1.1; }
+    .or-stat .l { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--gray-500); margin-top: 3px; }
+    .or-stat.warn { border-color: rgba(194,65,59,0.35); background: var(--red-light); }
+    .or-stat.good .n { color: var(--green); }
+    .or-card { background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(249,244,235,0.92)); border: 1px solid var(--border); border-radius: 18px; box-shadow: var(--shadow-sm); padding: 16px; margin-bottom: 14px; }
+    .or-card h3 { font-size: 16px; font-weight: 800; color: var(--gray-900); }
+    .or-card-head { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; margin-bottom: 12px; }
+    .or-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .or-actions .sel-all, .or-check-row { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-weight: 700; color: var(--gray-600); }
+    .or-muted { color: var(--gray-500); font-size: 13px; }
+    .or-empty { padding: 18px; text-align: center; color: var(--gray-500); background: rgba(255,255,255,0.6); border: 1px dashed var(--gray-200); border-radius: 14px; }
+    .or-item { border: 1px solid var(--border); border-radius: 14px; background: #fff; margin-bottom: 10px; }
+    .or-item.approved { border-color: rgba(15,138,95,0.45); box-shadow: 0 0 0 2px rgba(15,138,95,0.08); }
+    .or-item-top { display: flex; gap: 10px; align-items: center; padding: 10px 12px; flex-wrap: wrap; }
+    .or-item-who { flex: 1 1 220px; min-width: 0; }
+    .or-item-who b { color: var(--gray-900); }
+    .or-item-who .or-muted { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .or-subject { font-weight: 700; color: var(--gray-700); flex: 2 1 240px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .or-step { font-size: 11px; font-weight: 800; padding: 3px 8px; border-radius: 999px; background: var(--blue-light); color: var(--blue); white-space: nowrap; }
+    .or-step.s1 { background: var(--gold-soft); color: #7a5314; }
+    .or-badge { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+    .or-badge.valid { background: var(--green-light); color: var(--green); }
+    .or-badge.risky { background: var(--yellow-light); color: var(--yellow); }
+    .or-badge.invalid, .or-badge.stop { background: var(--red-light); color: var(--red); }
+    .or-badge.unknown { background: var(--gray-50); color: var(--gray-500); }
+    .or-item details > summary { cursor: pointer; padding: 0 12px 10px; color: var(--blue); font-weight: 700; font-size: 12px; list-style: none; }
+    .or-item details > summary::-webkit-details-marker { display: none; }
+    .or-edit { padding: 0 12px 12px; display: grid; gap: 8px; }
+    .or-edit input, .or-edit textarea, .or-settings-grid input { width: 100%; border: 1px solid var(--gray-200); border-radius: 10px; padding: 9px 11px; font: inherit; background: #fff; color: var(--gray-800); }
+    .or-edit textarea { min-height: 220px; resize: vertical; line-height: 1.5; }
+    .or-edit-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .or-reply { border: 1px solid var(--border); border-left: 4px solid var(--green); border-radius: 14px; background: #fff; padding: 12px; margin-bottom: 10px; }
+    .or-reply.k-not_interested { border-left-color: var(--gray-400); }
+    .or-reply-top { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; justify-content: space-between; }
+    .or-reply blockquote { margin: 8px 0; padding: 8px 12px; background: var(--surface-2); border-radius: 10px; color: var(--gray-700); white-space: pre-wrap; }
+    .or-up { display: flex; gap: 10px; align-items: center; padding: 8px 4px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+    .or-up:last-child { border-bottom: none; }
+    .or-up .when { width: 92px; font-weight: 700; color: var(--gray-600); }
+    .or-up .who { flex: 1 1 200px; min-width: 0; }
+    .or-link { background: none; border: none; padding: 0; color: var(--gray-900); font: inherit; font-weight: 700; cursor: pointer; text-align: left; }
+    .or-link:hover { color: var(--blue); text-decoration: underline; }
+    .or-settings > summary { cursor: pointer; list-style: none; }
+    .or-settings > summary::-webkit-details-marker { display: none; }
+    .or-settings > summary h3::before { content: "⚙️ "; }
+    .or-settings-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin: 12px 0; }
+    .or-settings-grid label { display: grid; gap: 5px; font-weight: 700; color: var(--gray-700); font-size: 13px; }
+    .or-settings-grid small { font-weight: 400; color: var(--gray-500); }
+    .or-notice { padding: 12px 14px; border-radius: 14px; margin-bottom: 14px; background: var(--yellow-light); border: 1px solid rgba(183,121,31,0.3); color: var(--gray-700); }
+    .or-notice b { color: var(--gray-900); }
+    /* Setup checklist */
+    .ck { background: linear-gradient(180deg, rgba(255,255,255,0.96), rgba(249,244,235,0.92)); border: 1px solid var(--border); border-radius: 18px; box-shadow: var(--shadow-sm); margin-bottom: 14px; }
+    .ck > summary { display: flex; gap: 12px; align-items: center; padding: 14px 16px; cursor: pointer; list-style: none; flex-wrap: wrap; }
+    .ck > summary::-webkit-details-marker { display: none; }
+    .ck > summary h3 { font-size: 16px; font-weight: 800; color: var(--gray-900); flex: 1 1 auto; }
+    .ck-bar { flex: 0 0 160px; height: 8px; border-radius: 999px; background: var(--gray-100); overflow: hidden; }
+    .ck-bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--green), #34c38f); }
+    .ck-body { padding: 0 16px 16px; }
+    .ck-group { margin-top: 12px; }
+    .ck-group h4 { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--gray-500); margin-bottom: 6px; }
+    .ck-item { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border-radius: 12px; background: #fff; border: 1px solid var(--border); margin-bottom: 6px; cursor: pointer; }
+    .ck-item input { margin-top: 3px; width: 17px; height: 17px; flex: 0 0 auto; accent-color: var(--green); }
+    .ck-item.done { background: var(--green-light); }
+    .ck-item.done .ck-t { text-decoration: line-through; color: var(--gray-500); }
+    .ck-t { font-weight: 700; color: var(--gray-800); }
+    .ck-d { display: block; font-size: 12.5px; color: var(--gray-500); margin-top: 2px; }
+    .ck-d code { background: var(--surface-2); padding: 1px 5px; border-radius: 6px; font-size: 12px; }
+    .ck-meta { font-size: 11px; font-weight: 700; color: var(--gray-400); white-space: nowrap; margin-left: auto; }
+    .ck-routine { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; margin-top: 8px; }
+    .ck-routine div { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; }
+    .ck-routine b { display: block; margin-bottom: 4px; color: var(--gray-900); }
+    .ck-routine ul { margin: 0; padding-left: 18px; color: var(--gray-600); font-size: 13px; }
+    .ld-outreach { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+    @media (max-width: 640px) {
+      .or-card { padding: 12px; }
+      .or-actions { width: 100%; }
+      .or-actions .btn-primary { margin-left: auto; }
+      .ck-bar { flex-basis: 100%; }
+      .or-up .when { width: auto; }
+    }
     /* Same width for every rep badge so the company buttons line up */
     .group-row .group-actions { flex-wrap: nowrap; }
     .group-row .rep-badge { min-width: 118px; }
@@ -1364,7 +1574,9 @@
 
     /* ── Phones: bottom tab bar, compact header, no zoom on inputs, sheet-style pop-ups ── */
     .vt-ico { margin-right: 6px; }
-    @media (max-width: 1200px) { .h1-brand { display: none; } .view-tab { white-space: nowrap; } }
+    .view-tab { white-space: nowrap; }
+    @media (max-width: 1440px) { .h1-brand { display: none; } .view-tab { padding: 8px 12px; } }
+    @media (min-width: 901px) and (max-width: 1100px) { .view-tab .vt-ico { display: none; } }
     @media (max-width: 900px) {
       body { padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px)); }
       /* backdrop-filter would make the header the containing block for the fixed tab bar */
@@ -1377,13 +1589,13 @@
       .user-badge button { padding: 5px 9px; }
       .view-tabs {
         position: fixed; left: 0; right: 0; bottom: 0; z-index: 300; width: auto !important;
-        display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px;
+        display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 2px;
         padding: 6px 6px calc(6px + env(safe-area-inset-bottom, 0px)); border-radius: 0; border: none;
         border-top: 1px solid rgba(255,255,255,0.1);
         background: linear-gradient(180deg, rgba(35,31,25,0.98), rgba(24,21,17,0.99));
         box-shadow: 0 -8px 24px rgba(0,0,0,0.18);
       }
-      .view-tab { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 7px 2px; border-radius: 12px; font-size: 11px; line-height: 1.1; min-height: 52px; text-align: center; }
+      .view-tab { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 7px 2px; border-radius: 12px; font-size: 10.5px; line-height: 1.1; min-height: 52px; text-align: center; white-space: normal; letter-spacing: 0; }
       .vt-ico { margin: 0; font-size: 18px; line-height: 1; }
       .toast { bottom: calc(80px + env(safe-area-inset-bottom, 0px)); left: 16px; right: 16px; max-width: none; }
 
@@ -1528,10 +1740,12 @@
     <h1><span class="h1-brand">Midas Tech &mdash; </span>Lead Tracker</h1>
     <div class="header-right">
       <div class="view-tabs">
-        <button class="view-tab active" onclick="switchView('admin')"><span class="vt-ico" aria-hidden="true">👥</span><span class="vt-label">All Leads</span></button>
-        <button class="view-tab" onclick="switchView('workspace')"><span class="vt-ico" aria-hidden="true">🗂️</span><span class="vt-label">My Workspace</span></button>
-        <button class="view-tab" id="linkedinTab" onclick="switchView('linkedin')"><span class="vt-ico" aria-hidden="true">🔗</span><span class="vt-label">LinkedIn</span></button>
-        <button class="view-tab" onclick="switchView('social')"><span class="vt-ico" aria-hidden="true">📣</span><span class="vt-label">Social Posts</span></button>
+        <button class="view-tab active" data-v="admin" onclick="switchView('admin')"><span class="vt-ico" aria-hidden="true">👥</span><span class="vt-label">All Leads</span></button>
+        <button class="view-tab" data-v="workspace" onclick="switchView('workspace')"><span class="vt-ico" aria-hidden="true">🗂️</span><span class="vt-label">My Workspace</span></button>
+        <button class="view-tab" id="linkedinTab" data-v="linkedin" onclick="switchView('linkedin')"><span class="vt-ico" aria-hidden="true">🔗</span><span class="vt-label">LinkedIn</span></button>
+        <button class="view-tab" data-v="social" onclick="switchView('social')"><span class="vt-ico" aria-hidden="true">📣</span><span class="vt-label">Social Posts</span></button>
+        <button class="view-tab" data-v="outreach" onclick="switchView('outreach')"><span class="vt-ico" aria-hidden="true">✉️</span><span class="vt-label">Outreach</span><span class="vt-count" id="outreachTabCount" hidden></span></button>
+        <button class="view-tab" data-v="saleskit" onclick="switchView('saleskit')"><span class="vt-ico" aria-hidden="true">💼</span><span class="vt-label">Sales Kit</span></button>
       </div>
       <div class="user-badge">
         <strong id="userDisplay">—</strong>
@@ -1809,6 +2023,62 @@
     <div class="sp-lightbox" id="spLightbox" role="dialog" aria-label="Image preview"><img alt=""></div>
   </div>
 
+  <!-- ══════════════════════════════
+       OUTREACH VIEW (email sequences sent from Microsoft 365)
+  ══════════════════════════════ -->
+  <div class="view" id="view-outreach">
+    <div class="workspace">
+      <div class="workspace-header">
+        <div>
+          <div class="workspace-title">Email Outreach</div>
+          <div class="workspace-sub">Approve today's emails, send them from your Microsoft 365 mailbox, and see who replied. Follow-ups are scheduled for you.</div>
+        </div>
+        <div class="sp-sched">
+          <button class="btn btn-secondary" type="button" id="orCheckBtn" onclick="checkOutreachReplies(true)">↻ Check replies</button>
+        </div>
+      </div>
+      <div id="orChecklist"></div>
+      <div class="or-stats" id="orStats"></div>
+      <div id="orReplies"></div>
+      <section class="or-card">
+        <div class="or-card-head">
+          <div>
+            <h3>Today's emails</h3>
+            <p class="or-muted" id="orQueueSub"></p>
+          </div>
+          <div class="or-actions">
+            <label class="sel-all"><input type="checkbox" class="sel-check" id="orSelAll" onchange="approveAllOutreach(this.checked)"> Approve all</label>
+            <button class="btn btn-secondary btn-sm" type="button" onclick="personalizeAllOutreach()" title="Write a personal first line from each lead's research">✨ Personalize</button>
+            <button class="btn btn-primary" type="button" id="orSendBtn" onclick="sendApprovedOutreach()">Send approved</button>
+          </div>
+        </div>
+        <div id="orQueue"></div>
+      </section>
+      <section class="or-card">
+        <div class="or-card-head"><div><h3>Coming up</h3><p class="or-muted">Follow-ups due in the next 14 days. Replies, bounces and unsubscribes stop a sequence automatically.</p></div></div>
+        <div id="orUpcoming"></div>
+      </section>
+      <details class="or-card or-settings">
+        <summary><h3>Settings</h3></summary>
+        <div class="or-settings-grid">
+          <label>Warm-up started<input type="date" id="orWarmup"><small>Daily limit: 5 in week 1, 10 in week 2, 20 in week 3, then 30.</small></label>
+          <label>Booking link<input type="url" id="orBooking" placeholder="https://outlook.office.com/bookwithme/…"><small>Your Microsoft Bookings page. The "Copy booking link" button on replies uses it.</small></label>
+        </div>
+        <button class="btn btn-primary btn-sm" type="button" onclick="saveOutreachSettingsForm()">Save settings</button>
+        <p class="or-muted" id="orMailboxInfo" style="margin-top:10px"></p>
+      </details>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════
+       SALES KIT VIEW (meeting deck, packages, market research; content in sales-kit.js)
+  ══════════════════════════════ -->
+  <div class="view" id="view-saleskit">
+    <div class="workspace" id="salesKitRoot">
+      <div class="empty-workspace"><div class="big">💼</div><strong>Loading the sales kit…</strong></div>
+    </div>
+  </div>
+
   <!-- ══ Log Activity Modal ══ -->
   <div class="modal-overlay" id="activityModal">
     <div class="modal">
@@ -1971,6 +2241,7 @@
   <div class="bulk-bar" id="bulkBar" hidden>
     <span><b id="bulkCount">0</b> selected</span>
     <button type="button" class="bulk-assign" onclick="openAssignSelected()">Assign to rep…</button>
+    <button type="button" class="bulk-outreach" onclick="addSelectedToOutreach()" title="Start the 4-email sequence for the selected leads">✉️ Outreach</button>
     <button type="button" class="bulk-disable" id="bulkDisableBtn" onclick="disableSelected()">🚫 Disable</button>
     <button type="button" class="bulk-clear" onclick="clearLeadSelection()">Clear</button>
   </div>
@@ -2968,12 +3239,13 @@
       document.getElementById(`view-${v}`).classList.add("active");
       // Lead pipeline counters only belong on the lead views.
       const metricsBar = document.getElementById("metricsBar");
-      if (metricsBar) metricsBar.style.display = (v === "social" || v === "linkedin" || v === "workspace") ? "none" : "";
-      const tabIndex = v === "admin" ? 0 : v === "workspace" ? 1 : v === "linkedin" ? 2 : 3;
-      document.querySelectorAll(".view-tab")[tabIndex].classList.add("active");
+      if (metricsBar) metricsBar.style.display = v === "admin" ? "" : "none";
+      document.querySelector(`.view-tab[data-v="${v}"]`)?.classList.add("active");
       if (v === "workspace") renderWorkspace();
       if (v === "linkedin") loadLinkedInDashboard();
       if (v === "social") loadSocialPosts();
+      if (v === "outreach") openOutreachView();
+      if (v === "saleskit") window.SalesKit?.render(document.getElementById("salesKitRoot"), salesKitHost);
     };
 
     function refreshLeadViews() {
@@ -2981,6 +3253,7 @@
       updateMetrics();
       updateFilterDropdowns();
       if (activeView === "workspace") renderWorkspace();
+      if (activeView === "outreach") renderOutreach(); else updateOutreachTabCount();
     }
 
     // ── METRICS ────────────────────────────────────────────────────
@@ -3771,6 +4044,7 @@
       }
       const variantLabel = FIRM_TYPE_LABELS[detectFirmType(lead)];
       wrap.innerHTML = `<div class="extras-heading">Email Drafts <span style="font-weight:400;text-transform:none;letter-spacing:0;">— ${esc(variantLabel)} template</span></div>
+        ${outreachLeadHtml(lead)}
         <div class="email-draft-btns">
           ${[1,2,3,4].map(step => {
             const sent = emailDraftHistory[step];
@@ -4572,6 +4846,625 @@ ${shape}`;
       result.talking_points = Array.isArray(result.talking_points) ? result.talking_points : [];
       return { result, stats: { engine: "1min" } };
     }
+
+    // ── SALES KIT HOST (sales-kit.js renders the view; this gives it the tracker's data) ──
+    async function loadAppSettings(name) {
+      try { const snap = await getDoc(doc(db, "appSettings", name)); if (snap.exists()) return snap.data(); }
+      catch (e) { try { return JSON.parse(localStorage.getItem(`midas-${name}-settings`) || "null"); } catch {} }
+      try { return JSON.parse(localStorage.getItem(`midas-${name}-settings`) || "null"); } catch { return null; }
+    }
+    async function saveAppSettings(name, patch) {
+      try { localStorage.setItem(`midas-${name}-settings`, JSON.stringify({ ...(JSON.parse(localStorage.getItem(`midas-${name}-settings`) || "{}")), ...patch })); } catch {}
+      try { await setDoc(doc(db, "appSettings", name), { ...patch, updatedAt: serverTimestamp() }, { merge: true }); }
+      catch (e) { console.warn(`${name} settings saved in this browser only:`, e); }
+    }
+    const salesKitHost = {
+      leads: () => getVisibleLeads().filter(l => !l.disabled).map(l => ({ id: l.id, name: l.name, company: l.company, title: l.title, industry: l.industry, assessment: l.assessment || null })),
+      industryOf: l => detectFirmType(allLeads[l.id] || l),
+      saveAssessment: async (id, data) => {
+        await updateDoc(doc(db, "leads", id), { assessment: data, updatedAt: serverTimestamp() });
+        await addDoc(collection(db, "activities"), { leadId: id, type: "Meeting", notes: `Quick IT assessment: ${data.score}/100 (${data.level})${data.gaps?.length ? `. Gaps: ${data.gaps.slice(0, 4).join("; ")}` : ""}${data.notes ? `\nNotes: ${data.notes}` : ""}`, user: currentUser, date: serverTimestamp() });
+      },
+      loadSettings: () => loadAppSettings("salesKit"),
+      saveSettings: patch => saveAppSettings("salesKit", patch),
+      toast: (m, t) => showToast(m, t)
+    };
+
+    // ── EMAIL OUTREACH ─────────────────────────────────────────────
+    // The 4-email sequence (EMAIL_TEMPLATES) sent from the Microsoft 365 outreach mailbox through the
+    // Railway service (/outreach/*). Nothing is sent without approval: every day the Outreach view lists
+    // the emails due, the rep checks and approves them, then presses Send. Follow-ups go out as replies
+    // in the same thread. The server adds the CASL footer (sender, address, unsubscribe link).
+    // A lead's sequence lives on the lead: lead.outreach = { status, step, nextDue, firstMsgId, subject1,
+    // emailCheck, reply, handledIds, ... }; lead.doNotContact marks unsubscribes.
+    const OUTREACH_GAP_DAYS = { 2: 3, 3: 4, 4: 7 };      // business days before each follow-up
+    const OUTREACH_RAMP = [5, 10, 20, 30];               // daily limit in warm-up weeks 1, 2, 3, 4+
+    const OUTREACH_STEP_NAMES = ["", "Intro", "Follow-up", "Quick checks", "Close the loop"];
+    const OUTREACH_SETTINGS_KEY = "midas-outreach-settings";
+    let outreachSettings = { warmupStart: "", bookingUrl: "", lastReplyCheck: "", checklist: {} };
+    let outreachSettingsLoaded = false;
+    let outreachSettingsLocalOnly = false;
+    let outreachServer = null;         // { configured, mailbox, sentToday, dailyMax } from the server
+    let outreachServerError = "";
+    const outreachDrafts = {};         // leadId -> { step, subject, body, approved, personalized }
+    let outreachBusy = false;
+
+    const todayKey = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    function addBusinessDays(fromKey, days) {
+      const d = new Date(`${fromKey}T12:00:00`);
+      let left = days;
+      while (left > 0) { d.setDate(d.getDate() + 1); if (d.getDay() !== 0 && d.getDay() !== 6) left--; }
+      return todayKey(d);
+    }
+    const fmtDay = key => {
+      if (!key) return "";
+      if (key <= todayKey()) return "Today";
+      if (key === todayKey(new Date(Date.now() + 86400000))) return "Tomorrow";
+      return new Date(`${key}T12:00:00`).toLocaleDateString("en-CA", { weekday: "short", month: "short", day: "numeric" });
+    };
+
+    // ── settings (shared in Firestore, with this browser as a fallback) ──
+    async function loadOutreachSettings() {
+      if (outreachSettingsLoaded) return;
+      try {
+        const snap = await getDoc(doc(db, "appSettings", "outreach"));
+        if (snap.exists()) outreachSettings = { ...outreachSettings, ...snap.data() };
+      } catch (e) {
+        outreachSettingsLocalOnly = true;
+        try { outreachSettings = { ...outreachSettings, ...JSON.parse(localStorage.getItem(OUTREACH_SETTINGS_KEY) || "{}") }; } catch {}
+      }
+      outreachSettings.checklist = outreachSettings.checklist || {};
+      outreachSettingsLoaded = true;
+    }
+    async function saveOutreachSettings(patch) {
+      outreachSettings = { ...outreachSettings, ...patch };
+      try { localStorage.setItem(OUTREACH_SETTINGS_KEY, JSON.stringify(outreachSettings)); } catch {}
+      if (outreachSettingsLocalOnly) return;
+      try { await setDoc(doc(db, "appSettings", "outreach"), { ...patch, updatedAt: serverTimestamp() }, { merge: true }); }
+      catch (e) { outreachSettingsLocalOnly = true; console.warn("Outreach settings saved in this browser only:", e); }
+    }
+    window.saveOutreachSettingsForm = async function () {
+      const warmupStart = document.getElementById("orWarmup").value;
+      const bookingUrl = document.getElementById("orBooking").value.trim();
+      await saveOutreachSettings({ warmupStart, bookingUrl });
+      showToast("Settings saved", "success");
+      renderOutreach();
+    };
+
+    // ── server calls ──
+    async function outreachCall(action, body = {}) {
+      if (!SHOT_READER_URL) throw new Error("Outreach needs the Railway service.");
+      if (!auth.currentUser) throw new Error("Sign in again, then retry.");
+      const token = await auth.currentUser.getIdToken();
+      let res;
+      try {
+        res = await fetch(`${SHOT_READER_URL.replace(/\/+$/, "")}/outreach/${action}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "x-firebase-token": token },
+          body: JSON.stringify(body)
+        });
+      } catch {
+        throw new Error("Couldn't reach the email service. Check your connection and try again.");
+      }
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const err = new Error(data.error || (res.status === 404 ? "The email service isn't deployed yet. Redeploy the Railway service." : "The email service had a problem. Try again."));
+        err.notConfigured = !!data.notConfigured || res.status === 404;
+        throw err;
+      }
+      return data;
+    }
+    async function refreshOutreachServer() {
+      try { outreachServer = await outreachCall("status"); outreachServerError = ""; }
+      catch (e) { outreachServer = null; outreachServerError = e.message; }
+    }
+
+    // ── which leads can be emailed ──
+    function outreachEmail(lead) { return splitEmail(cleanEmail(lead?.email)).address; }
+    // Returns why a lead can't be emailed, or "" when it can.
+    function outreachBlocker(lead) {
+      if (!lead) return "Lead not found";
+      if (lead.doNotContact) return "Unsubscribed / do not contact";
+      if (lead.disabled) return "Disabled";
+      const { address, note } = splitEmail(cleanEmail(lead.email));
+      if (!address) return "No email address";
+      // CASL: cold email only goes to addresses the business published. Guessed addresses are skipped.
+      if (/unverified|guess|pattern|not found/i.test(note)) return "Email is a guess, not a published address";
+      if (lead.outreach?.emailCheck?.status === "invalid") return `Email doesn't work (${lead.outreach.emailCheck.reason || "invalid"})`;
+      return "";
+    }
+    const outreachActive = l => l?.outreach?.status === "active" && !l.doNotContact && !l.disabled;
+    const outreachLeads = () => getVisibleLeads().filter(l => l.outreach);
+
+    // ── starting a sequence ──
+    async function startOutreach(ids) {
+      const leads = ids.map(id => allLeads[id]).filter(Boolean);
+      const skipped = [];
+      const candidates = [];
+      leads.forEach(l => {
+        if (outreachActive(l)) return skipped.push(`${l.name || l.company}: already in outreach`);
+        if (l.outreach && ["replied", "done"].includes(l.outreach.status)) return skipped.push(`${l.name || l.company}: already emailed (${l.outreach.status})`);
+        const why = outreachBlocker(l);
+        if (why) return skipped.push(`${l.name || l.company}: ${why}`);
+        if (!canCurrentUserManageLeadAssignment(l)) return skipped.push(`${l.name || l.company}: assigned to another rep`);
+        candidates.push(l);
+      });
+      if (!candidates.length) {
+        showToast(skipped.length ? `Nobody added. ${skipped[0]}${skipped.length > 1 ? ` (+${skipped.length - 1} more)` : ""}` : "Nothing to add", "error");
+        return 0;
+      }
+      let checks = {};
+      try {
+        const { results } = await outreachCall("verify", { emails: candidates.map(outreachEmail) });
+        (results || []).forEach(r => { checks[r.email] = r; });
+      } catch (e) { console.warn("Email check skipped:", e); }
+      let added = 0;
+      const today = todayKey();
+      for (const l of candidates) {
+        const c = checks[outreachEmail(l)];
+        const emailCheck = c ? { status: c.status, reason: c.reason, at: new Date().toISOString() } : { status: "unknown", reason: "Not checked", at: new Date().toISOString() };
+        if (c?.status === "invalid") {
+          skipped.push(`${l.name || l.company}: ${c.reason}`);
+          await updateDoc(doc(db, "leads", l.id), { "outreach.emailCheck": emailCheck, updatedAt: serverTimestamp() }).catch(() => {});
+          continue;
+        }
+        try {
+          await updateDoc(doc(db, "leads", l.id), {
+            outreach: { status: "active", step: 0, nextDue: today, startedAt: today, startedBy: currentUser, emailCheck, handledIds: [] },
+            updatedAt: serverTimestamp()
+          });
+          added++;
+        } catch (e) { console.error(e); skipped.push(`${l.name || l.company}: couldn't save`); }
+      }
+      showToast(`${added} lead${added === 1 ? "" : "s"} added to outreach${skipped.length ? ` · ${skipped.length} skipped (${skipped[0]}${skipped.length > 1 ? "…" : ""})` : ""}`, added ? "success" : "error");
+      return added;
+    }
+    window.addSelectedToOutreach = async function () {
+      const ids = [...selectedLeadIds];
+      if (!ids.length) return;
+      const added = await startOutreach(ids);
+      if (added) clearLeadSelection();
+    };
+    window.addLeadToOutreach = async function (id) {
+      await startOutreach([id]);
+      if (currentLeadId === id) setTimeout(() => renderEmailDraftSection(allLeads[id]), 400);
+    };
+    window.stopLeadOutreach = async function (id, reason = "Stopped by hand") {
+      const l = allLeads[id];
+      if (!l?.outreach) return;
+      await updateDoc(doc(db, "leads", id), { "outreach.status": "stopped", "outreach.stopReason": reason, updatedAt: serverTimestamp() });
+      delete outreachDrafts[id];
+      showToast("Outreach stopped for this lead", "success");
+      if (currentLeadId === id) setTimeout(() => renderEmailDraftSection(allLeads[id]), 400);
+    };
+
+    // ── today's queue ──
+    function outreachDayLimit() {
+      const start = outreachSettings.warmupStart;
+      const cap = outreachServer?.dailyMax || 30;
+      if (!start) return Math.min(OUTREACH_RAMP[0], cap);
+      const days = Math.floor((new Date(`${todayKey()}T12:00:00`) - new Date(`${start}T12:00:00`)) / 86400000);
+      const week = Math.max(0, Math.floor(days / 7));
+      return Math.min(OUTREACH_RAMP[Math.min(week, OUTREACH_RAMP.length - 1)], cap);
+    }
+    function outreachQueue() {
+      const today = todayKey();
+      return getVisibleLeads()
+        .filter(l => outreachActive(l) && (l.outreach.step || 0) < 4 && (l.outreach.nextDue || today) <= today)
+        .sort((a, b) => (b.outreach.step || 0) - (a.outreach.step || 0) || String(a.outreach.nextDue).localeCompare(String(b.outreach.nextDue)) || String(a.company || "").localeCompare(String(b.company || "")));
+    }
+    function outreachDraft(l) {
+      const step = (l.outreach.step || 0) + 1;
+      const d = outreachDrafts[l.id];
+      if (d && d.step === step) return d;
+      const tpl = getEmailTemplate(l, step);
+      const fresh = {
+        step,
+        subject: step === 1 ? fillEmailTemplate(tpl.subject, l) : `Re: ${l.outreach.subject1 || fillEmailTemplate(getEmailTemplate(l, 1).subject, l)}`,
+        body: fillEmailTemplate(tpl.body, l),
+        approved: false,
+        personalized: false
+      };
+      outreachDrafts[l.id] = fresh;
+      return fresh;
+    }
+    window.toggleOutreachApprove = function (id, on) {
+      const l = allLeads[id]; if (!l) return;
+      outreachDraft(l).approved = on;
+      renderOutreachQueue();
+    };
+    window.approveAllOutreach = function (on) {
+      outreachQueue().forEach(l => { outreachDraft(l).approved = on && l.outreach.emailCheck?.status !== "invalid"; });
+      renderOutreachQueue();
+    };
+    window.editOutreachDraft = function (id, field, value) {
+      const l = allLeads[id]; if (!l) return;
+      outreachDraft(l)[field] = value;
+    };
+    window.resetOutreachDraft = function (id) {
+      delete outreachDrafts[id];
+      renderOutreachQueue();
+    };
+
+    // A personal first line from the lead's research, written by the free AI gateway (1min.ai as fallback).
+    function researchFacts(l) {
+      const pts = [...(l.research?.talkingPoints || []), ...(l.companyResearch?.talkingPoints || [])].map(t => t.point).filter(Boolean);
+      const notes = [l.research?.notes, l.companyResearch?.notes].filter(Boolean);
+      return [...pts, ...notes].slice(0, 6);
+    }
+    async function aiText(prompt) {
+      if (!auth.currentUser) throw new Error("Sign in again, then retry.");
+      const token = await auth.currentUser.getIdToken();
+      const base = SHOT_READER_URL.replace(/\/+$/, "");
+      const headers = { "Content-Type": "application/json", "x-firebase-token": token };
+      try {
+        const res = await fetch(`${base}/llm/chat`, { method: "POST", headers, body: JSON.stringify({ model: "midas-smart", messages: [{ role: "user", content: prompt }], max_tokens: 200 }) });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok && data.text) return data.text;
+      } catch {}
+      const res = await fetch(`${base}/1min/chat-with-ai`, { method: "POST", headers, body: JSON.stringify({ type: "UNIFY_CHAT_WITH_AI", model: "gpt-4o-mini", promptObject: { prompt } }) });
+      const data = await res.json().catch(() => ({}));
+      const raw = data?.aiRecord?.aiRecordDetail?.resultObject;
+      const text = Array.isArray(raw) ? raw.join("\n") : raw;
+      if (!res.ok || !text) throw new Error("The AI writer didn't answer. Try again.");
+      return text;
+    }
+    async function personalizeOutreach(l) {
+      const d = outreachDraft(l);
+      if (d.step !== 1 || d.personalized) return false;
+      const facts = researchFacts(l);
+      if (!facts.length) return false;
+      const prompt = `Write ONE friendly, specific opening sentence (max 30 words) for a cold email from Ali at Midas Tech, a Richmond Hill IT and cybersecurity company, to ${l.name || "the owner"}${l.title ? `, ${l.title}` : ""} at ${l.company || "their company"}.
+Base it on one of these researched facts. Don't flatter, don't mention IT or selling, no exclamation marks, no greeting, no quotes. Reply with the sentence only.
+Facts:
+${facts.map(f => `- ${f}`).join("\n")}`;
+      let line = (await aiText(prompt)).trim().split("\n").find(x => x.trim()) || "";
+      line = line.replace(/^["'“”]+|["'“”]+$/g, "").trim();
+      if (!line || line.length > 260) return false;
+      d.body = d.body.replace(/^(Hi [^\n]*,\n\n)/, `$1${line}\n\n`);
+      d.personalized = true;
+      return true;
+    }
+    window.personalizeOneOutreach = async function (id) {
+      const l = allLeads[id]; if (!l) return;
+      if (!researchFacts(l).length) return showToast("Research this lead first (🔎), then personalize.", "error");
+      try { showToast("Writing a first line…"); if (await personalizeOutreach(l)) showToast("First line added. Check it before sending.", "success"); else showToast("Nothing to add for this one.", "error"); }
+      catch (e) { showToast(e.message, "error"); }
+      renderOutreachQueue();
+    };
+    window.personalizeAllOutreach = async function () {
+      const list = outreachQueue().filter(l => outreachDraft(l).step === 1 && !outreachDraft(l).personalized && researchFacts(l).length);
+      if (!list.length) return showToast("No first emails with research to personalize. Research leads with 🔎 first.", "error");
+      showToast(`Writing ${list.length} first line${list.length === 1 ? "" : "s"}…`);
+      let n = 0;
+      for (const l of list) { try { if (await personalizeOutreach(l)) n++; } catch (e) { console.warn(e); } }
+      showToast(`${n} email${n === 1 ? "" : "s"} personalized. Check them before sending.`, n ? "success" : "error");
+      renderOutreachQueue();
+    };
+
+    // ── sending ──
+    window.sendApprovedOutreach = async function () {
+      if (outreachBusy) return;
+      if (!outreachServer?.configured) return showToast(outreachServerError || "Email sending isn't set up yet. Finish the Microsoft 365 steps in the checklist.", "error");
+      const approved = outreachQueue().filter(l => outreachDraft(l).approved && !outreachBlocker(l));
+      if (!approved.length) return showToast("Tick the emails you want to send first.", "error");
+      const left = Math.max(0, outreachDayLimit() - (outreachServer.sentToday || 0));
+      if (!left) return showToast(`Today's warm-up limit (${outreachDayLimit()}) is reached. The rest will wait for tomorrow.`, "error");
+      const batch = approved.slice(0, left);
+      if (!confirm(`Send ${batch.length} email${batch.length === 1 ? "" : "s"} from ${outreachServer.mailbox}?${approved.length > batch.length ? `\n\n${approved.length - batch.length} more will wait for tomorrow (warm-up limit).` : ""}`)) return;
+      outreachBusy = true;
+      const btn = document.getElementById("orSendBtn");
+      if (btn) { btn.disabled = true; btn.textContent = "Sending…"; }
+      try {
+        const messages = batch.map(l => {
+          const d = outreachDraft(l);
+          return { leadId: l.id, to: outreachEmail(l), toName: greetingName(l) === "there" ? "" : l.name, subject: d.subject, body: d.body, replyToId: d.step > 1 ? (l.outreach.firstMsgId || "") : "" };
+        });
+        const res = await outreachCall("send", { messages });
+        outreachServer.sentToday = res.sentToday;
+        let ok = 0; const failed = [];
+        const today = todayKey();
+        for (const r of res.results || []) {
+          const l = allLeads[r.leadId]; if (!l) continue;
+          if (!r.ok) { failed.push(`${l.name || l.company}: ${r.error}`); continue; }
+          const d = outreachDraft(l);
+          const upd = {
+            "outreach.step": d.step,
+            "outreach.lastSentAt": today,
+            "outreach.status": d.step >= 4 ? "done" : "active",
+            "outreach.nextDue": d.step >= 4 ? "" : addBusinessDays(today, OUTREACH_GAP_DAYS[d.step + 1]),
+            contactCount: increment(1), lastContacted: serverTimestamp(), updatedAt: serverTimestamp()
+          };
+          if (d.step === 1) { upd["outreach.firstMsgId"] = r.id || ""; upd["outreach.subject1"] = d.subject; }
+          if (!l.status || l.status === "New") upd.status = "Contacted";
+          try {
+            await updateDoc(doc(db, "leads", l.id), upd);
+            await addDoc(collection(db, "activities"), {
+              leadId: l.id, type: "Email", notes: `Sent outreach email ${d.step} (${OUTREACH_STEP_NAMES[d.step]}): ${d.subject}`,
+              emailStep: d.step, emailVariant: detectFirmType(l), outreach: true, user: currentUser, date: serverTimestamp()
+            });
+          } catch (e) { console.error(e); }
+          delete outreachDrafts[l.id];
+          ok++;
+        }
+        if (!outreachSettings.warmupStart && ok) await saveOutreachSettings({ warmupStart: today });
+        showToast(`${ok} email${ok === 1 ? "" : "s"} sent${failed.length ? ` · ${failed.length} not sent: ${failed[0]}` : ""}`, failed.length && !ok ? "error" : "success");
+      } catch (e) {
+        showToast(e.message, "error");
+      } finally {
+        outreachBusy = false;
+        if (btn) { btn.disabled = false; }
+        setTimeout(renderOutreach, 300);
+      }
+    };
+
+    // ── replies, bounces, unsubscribes ──
+    const REPLY_LABELS = { reply: "Replied", not_interested: "Not interested", unsubscribe: "Unsubscribed", bounce: "Bounced", auto_reply: "Auto-reply" };
+    window.checkOutreachReplies = async function (byHand) {
+      if (!outreachServer?.configured) { if (byHand) showToast(outreachServerError || "Email sending isn't set up yet.", "error"); return; }
+      const btn = document.getElementById("orCheckBtn");
+      if (btn) { btn.disabled = true; btn.textContent = "Checking…"; }
+      try {
+        const watched = outreachLeads().filter(l => ["active", "done", "replied"].includes(l.outreach.status) && l.outreach.lastSentAt);
+        const byEmail = {};
+        watched.forEach(l => { const e = outreachEmail(l); if (e) (byEmail[e] = byEmail[e] || []).push(l); });
+        const since = outreachSettings.lastReplyCheck
+          ? new Date(new Date(outreachSettings.lastReplyCheck).getTime() - 2 * 3600000).toISOString()
+          : new Date(Date.now() - 30 * 86400000).toISOString();
+        const { replies = [], checkedAt } = await outreachCall("replies", { since, addresses: Object.keys(byEmail) });
+        let found = 0;
+        for (const r of replies) {
+          // Unsubscribes from the link can come from anyone emailed before, so match every lead with that email.
+          const leads = byEmail[r.from] || (r.kind === "unsubscribe" ? getVisibleLeads().filter(l => outreachEmail(l) === r.from) : []);
+          for (const l of leads) {
+            if ((l.outreach?.handledIds || []).includes(r.id)) continue;
+            const handled = [...(l.outreach?.handledIds || []), r.id].slice(-50);
+            const upd = { "outreach.handledIds": handled, updatedAt: serverTimestamp() };
+            if (r.kind === "auto_reply") {
+              // Out of office: push the next email back a few days.
+              if (outreachActive(l)) upd["outreach.nextDue"] = addBusinessDays(todayKey(), 3);
+            } else {
+              upd["outreach.status"] = r.kind === "reply" ? "replied" : "stopped";
+              upd["outreach.stopReason"] = REPLY_LABELS[r.kind];
+              if (r.kind === "unsubscribe") { upd.doNotContact = true; upd.doNotContactAt = new Date().toISOString(); }
+              if (r.kind === "bounce") upd["outreach.emailCheck"] = { status: "invalid", reason: "Bounced", at: new Date().toISOString() };
+              if (r.kind === "reply" || r.kind === "not_interested") {
+                upd["outreach.reply"] = { kind: r.kind, subject: r.subject || "", preview: r.preview || "", at: r.receivedAt || "", open: true };
+                found++;
+              }
+            }
+            try {
+              await updateDoc(doc(db, "leads", l.id), upd);
+              if (r.kind !== "auto_reply") await addDoc(collection(db, "activities"), {
+                leadId: l.id, type: "Email", notes: `${REPLY_LABELS[r.kind]}: ${r.subject || ""}${r.preview ? ` — ${r.preview.slice(0, 300)}` : ""}`,
+                outreach: true, user: currentUser, date: serverTimestamp()
+              });
+            } catch (e) { console.error(e); }
+          }
+        }
+        await saveOutreachSettings({ lastReplyCheck: checkedAt || new Date().toISOString() });
+        if (byHand || found) showToast(found ? `${found} new repl${found === 1 ? "y" : "ies"} to answer` : "No new replies", found ? "success" : "");
+      } catch (e) {
+        if (byHand) showToast(e.message, "error");
+      } finally {
+        if (btn) { btn.disabled = false; btn.textContent = "↻ Check replies"; }
+        setTimeout(renderOutreach, 300);
+      }
+    };
+    window.resolveOutreachReply = async function (id, action) {
+      const l = allLeads[id]; if (!l) return;
+      const upd = { "outreach.reply.open": false, updatedAt: serverTimestamp() };
+      if (action === "qualified") upd.status = "Qualified";
+      if (action === "dead") upd.status = "Dead";
+      try {
+        await updateDoc(doc(db, "leads", id), upd);
+        if (action !== "done") await addDoc(collection(db, "activities"), { leadId: id, type: "Email", notes: `Reply handled: marked ${upd.status}`, user: currentUser, date: serverTimestamp() });
+        showToast(action === "qualified" ? "Marked Qualified 🎉" : "Done", "success");
+      } catch (e) { showToast("Couldn't save", "error"); }
+    };
+    window.copyBookingLink = async function () {
+      const url = outreachSettings.bookingUrl;
+      if (!url) return showToast("Add your Bookings link in Outreach → Settings first.", "error");
+      try { await navigator.clipboard.writeText(url); showToast("Booking link copied", "success"); }
+      catch { prompt("Copy your booking link:", url); }
+    };
+
+    // ── rendering ──
+    window.openOutreachView = async function () {
+      await loadOutreachSettings();
+      renderOutreach();
+      await refreshOutreachServer();
+      renderOutreach();
+      const last = outreachSettings.lastReplyCheck ? new Date(outreachSettings.lastReplyCheck).getTime() : 0;
+      if (outreachServer?.configured && Date.now() - last > 30 * 60000) checkOutreachReplies(false);
+    };
+    function renderOutreach() {
+      if (activeView !== "outreach") return updateOutreachTabCount();
+      renderSetupChecklist();
+      const all = outreachLeads();
+      const queue = outreachQueue();
+      const repliesOpen = all.filter(l => l.outreach.reply?.open);
+      const active = all.filter(outreachActive).length;
+      const unsub = getVisibleLeads().filter(l => l.doNotContact).length;
+      const limit = outreachDayLimit();
+      const sent = outreachServer?.sentToday ?? 0;
+      const conn = outreachServer?.configured;
+      document.getElementById("orStats").innerHTML = [
+        [conn ? "✓" : "✗", conn ? "Mailbox connected" : "Mailbox not connected", conn ? "good" : "warn"],
+        [`${sent}/${limit}`, "Sent today (warm-up limit)", sent >= limit ? "warn" : ""],
+        [queue.length, "Due today", ""],
+        [active, "In a sequence", ""],
+        [repliesOpen.length, "Replies to answer", repliesOpen.length ? "good" : ""],
+        [unsub, "Do not contact", ""]
+      ].map(([n, l, c]) => `<div class="or-stat ${c}"><div class="n">${esc(n)}</div><div class="l">${esc(l)}</div></div>`).join("");
+      const info = document.getElementById("orMailboxInfo");
+      if (info) info.textContent = conn
+        ? `Sending from ${outreachServer.mailbox} as ${outreachServer.senderName}. Hard limit on the server: ${outreachServer.dailyMax} a day.${outreachSettingsLocalOnly ? " Settings are saved in this browser only (Firestore didn't allow appSettings)." : ""}`
+        : (outreachServerError || "The Railway service isn't connected to Microsoft 365 yet.");
+      const w = document.getElementById("orWarmup"); if (w && document.activeElement !== w) w.value = outreachSettings.warmupStart || "";
+      const b = document.getElementById("orBooking"); if (b && document.activeElement !== b) b.value = outreachSettings.bookingUrl || "";
+      renderOutreachReplies(repliesOpen);
+      renderOutreachQueue();
+      renderOutreachUpcoming(all);
+      updateOutreachTabCount();
+    }
+    function updateOutreachTabCount() {
+      const el = document.getElementById("outreachTabCount");
+      if (!el) return;
+      const n = getVisibleLeads().filter(l => l.outreach?.reply?.open).length;
+      el.hidden = !n; el.textContent = n;
+    }
+    function renderOutreachReplies(list) {
+      const box = document.getElementById("orReplies");
+      if (!list.length) { box.innerHTML = ""; return; }
+      box.innerHTML = `<section class="or-card"><div class="or-card-head"><div><h3>💬 Replies to answer (${list.length})</h3><p class="or-muted">Answer them from Outlook, then mark what happened. Their sequence has stopped.</p></div></div>
+        ${list.map(l => { const r = l.outreach.reply; return `<div class="or-reply k-${esc(r.kind)}">
+          <div class="or-reply-top"><button class="or-link" onclick="openDetail('${l.id}')">${esc(l.name || l.company || "Lead")}</button><span class="or-muted">${esc(l.company || "")} · ${esc(outreachEmail(l))}</span>
+            <span class="or-badge ${r.kind === "reply" ? "valid" : "unknown"}">${esc(REPLY_LABELS[r.kind] || r.kind)}</span></div>
+          <blockquote><b>${esc(r.subject)}</b>\n${esc(r.preview || "")}</blockquote>
+          <div class="or-edit-actions">
+            <a class="btn btn-secondary btn-sm" href="https://outlook.office.com/mail/" target="_blank" rel="noopener">Open Outlook</a>
+            <button class="btn btn-secondary btn-sm" type="button" onclick="copyBookingLink()">📅 Copy booking link</button>
+            <button class="btn btn-primary btn-sm" type="button" onclick="resolveOutreachReply('${l.id}','qualified')">Mark Qualified</button>
+            <button class="btn btn-secondary btn-sm" type="button" onclick="resolveOutreachReply('${l.id}','dead')">Not interested</button>
+            <button class="btn btn-secondary btn-sm" type="button" onclick="resolveOutreachReply('${l.id}','done')">Done</button>
+          </div></div>`; }).join("")}</section>`;
+    }
+    function renderOutreachQueue() {
+      if (activeView !== "outreach") return;
+      const queue = outreachQueue();
+      const box = document.getElementById("orQueue");
+      const limit = outreachDayLimit();
+      const left = Math.max(0, limit - (outreachServer?.sentToday ?? 0));
+      const approved = queue.filter(l => outreachDraft(l).approved).length;
+      document.getElementById("orQueueSub").textContent = queue.length
+        ? `${queue.length} due · ${approved} approved · ${left} more can go today. Open an email to read or edit it.`
+        : "";
+      const all = document.getElementById("orSelAll");
+      if (all) { all.checked = !!queue.length && approved === queue.length; all.indeterminate = approved > 0 && approved < queue.length; }
+      const sendBtn = document.getElementById("orSendBtn");
+      if (sendBtn && !outreachBusy) sendBtn.textContent = approved ? `Send ${Math.min(approved, left)} approved` : "Send approved";
+      if (!queue.length) {
+        box.innerHTML = `<div class="or-empty">Nothing due today. Add leads with <b>✉️ Outreach</b>: tick leads in All Leads or My Workspace, or open a lead and press <b>✉️ Add to email outreach</b>.</div>`;
+        return;
+      }
+      box.innerHTML = queue.map(l => {
+        const d = outreachDraft(l);
+        const chk = l.outreach.emailCheck || { status: "unknown", reason: "Not checked" };
+        const blocker = outreachBlocker(l);
+        return `<div class="or-item ${d.approved ? "approved" : ""}">
+          <div class="or-item-top">
+            <input type="checkbox" class="sel-check" ${d.approved ? "checked" : ""} ${blocker ? "disabled" : ""} onchange="toggleOutreachApprove('${l.id}', this.checked)" aria-label="Approve email to ${esc(l.name || "")}">
+            <div class="or-item-who"><button class="or-link" onclick="openDetail('${l.id}')">${esc(l.name || l.company || "Lead")}</button>
+              <span class="or-muted">${esc([l.title, l.company].filter(Boolean).join(" · "))} · ${esc(outreachEmail(l))}</span></div>
+            <span class="or-step ${d.step === 1 ? "s1" : ""}">${d.step}. ${OUTREACH_STEP_NAMES[d.step]}</span>
+            <span class="or-badge ${esc(chk.status)}" title="${esc(chk.reason || "")}">${chk.status === "valid" ? "✓ email ok" : chk.status === "risky" ? "⚠ " + (/shared/i.test(chk.reason) ? "shared inbox" : "check email") : chk.status === "invalid" ? "✗ bad email" : "email not checked"}</span>
+            ${d.personalized ? `<span class="or-badge valid">✨ personal</span>` : ""}
+          </div>
+          ${blocker ? `<p class="or-muted" style="padding:0 12px 10px">Can't send: ${esc(blocker)}</p>` : ""}
+          <details><summary>${esc(d.subject)} ▾</summary>
+            <div class="or-edit">
+              ${d.step === 1 ? `<input value="${esc(d.subject)}" oninput="editOutreachDraft('${l.id}','subject',this.value)" aria-label="Subject">` : `<p class="or-muted">Sent as a reply in the same thread as the first email.</p>`}
+              <textarea oninput="editOutreachDraft('${l.id}','body',this.value)" aria-label="Email text">${esc(d.body)}</textarea>
+              <p class="or-muted">Your address, phone and an unsubscribe link are added below the email automatically.</p>
+              <div class="or-edit-actions">
+                ${d.step === 1 ? `<button class="btn btn-secondary btn-sm" type="button" onclick="personalizeOneOutreach('${l.id}')">✨ Personal first line</button>` : ""}
+                <button class="btn btn-secondary btn-sm" type="button" onclick="resetOutreachDraft('${l.id}')">Reset</button>
+                <button class="btn btn-secondary btn-sm" type="button" onclick="stopLeadOutreach('${l.id}')">Stop this sequence</button>
+              </div>
+            </div>
+          </details>
+        </div>`;
+      }).join("");
+    }
+    function renderOutreachUpcoming(all) {
+      const today = todayKey(), until = addBusinessDays(today, 10);
+      const up = all.filter(l => outreachActive(l) && l.outreach.nextDue > today && l.outreach.nextDue <= until)
+        .sort((a, b) => a.outreach.nextDue.localeCompare(b.outreach.nextDue));
+      const stopped = all.filter(l => ["stopped", "done", "replied"].includes(l.outreach.status));
+      const counts = {};
+      stopped.forEach(l => { const k = l.outreach.status === "done" ? "Finished all 4" : l.outreach.stopReason || l.outreach.status; counts[k] = (counts[k] || 0) + 1; });
+      document.getElementById("orUpcoming").innerHTML =
+        (up.length ? up.map(l => `<div class="or-up"><span class="when">${esc(fmtDay(l.outreach.nextDue))}</span>
+          <span class="who"><button class="or-link" onclick="openDetail('${l.id}')">${esc(l.name || l.company)}</button> <span class="or-muted">${esc(l.company || "")}</span></span>
+          <span class="or-step">${(l.outreach.step || 0) + 1}. ${OUTREACH_STEP_NAMES[(l.outreach.step || 0) + 1]}</span></div>`).join("")
+          : `<div class="or-empty">No follow-ups scheduled.</div>`) +
+        (Object.keys(counts).length ? `<p class="or-muted" style="margin-top:10px">Finished or stopped: ${Object.entries(counts).map(([k, n]) => `${esc(k)} ${n}`).join(" · ")}</p>` : "");
+    }
+
+    // ── lead window: outreach status and buttons ──
+    function outreachLeadHtml(l) {
+      const o = l.outreach;
+      const why = outreachBlocker(l);
+      if (l.doNotContact) return `<div class="ld-outreach"><span class="or-badge stop">🚫 Do not contact (unsubscribed)</span></div>`;
+      if (o && outreachActive(l)) return `<div class="ld-outreach"><span class="or-badge valid">✉️ In outreach · ${o.step ? `sent ${o.step} of 4` : "starting"} · next ${esc(fmtDay(o.nextDue))}</span>
+        <button class="btn btn-secondary btn-sm" type="button" onclick="stopLeadOutreach('${l.id}')">Stop</button></div>`;
+      if (o && o.status !== "active") return `<div class="ld-outreach"><span class="or-badge unknown">✉️ Outreach ${esc(o.status === "done" ? "finished" : (o.stopReason || o.status).toLowerCase())}${o.step ? ` after email ${o.step}` : ""}</span></div>`;
+      return `<div class="ld-outreach">${why ? `<span class="or-muted">Email outreach: ${esc(why)}</span>` : `<button class="btn btn-primary btn-sm" type="button" onclick="addLeadToOutreach('${l.id}')">✉️ Add to email outreach</button><span class="or-muted">Sends the 4 emails below from your outreach mailbox, after you approve each one.</span>`}</div>`;
+    }
+
+    // ── setup checklist (Ali's manual steps) ──
+    const SETUP_CHECKLIST = [
+      { group: "1. Sending domain and mailbox (week 1)", items: [
+        ["domain", "Buy a second domain for outreach", "For example <code>midastech-it.ca</code> or <code>getmidastech.ca</code> (about $20/year). Never cold-email from midastech.ca, so your main email keeps landing in inboxes.", "15 min"],
+        ["m365domain", "Add the domain to your Microsoft 365", "Microsoft 365 admin center → Settings → Domains → Add domain. Follow the DNS records it shows.", "20 min"],
+        ["mailbox", "Create the outreach mailbox", "One Exchange Online (Plan 1) or Business Basic user, e.g. <code>ali@midastech-it.ca</code> (about $8/month). Set its display name to Ali Jaffar and add your normal signature photo if you like.", "15 min"],
+        ["dns", "Turn on SPF, DKIM and DMARC for the new domain", "SPF: <code>v=spf1 include:spf.protection.outlook.com -all</code>. DKIM: Defender portal → Email authentication → DKIM → enable. DMARC TXT at <code>_dmarc</code>: <code>v=DMARC1; p=none; rua=mailto:info@midastech.ca</code>.", "30 min"],
+        ["redirect", "Point the new domain's website at midastech.ca", "A redirect, so anyone who types the domain lands on your real site.", "10 min"],
+        ["warmup", "Warm up the mailbox for 2 weeks", "Send a few normal emails a day to clients, friends and colleagues and ask them to reply. Set the Warm-up date in Settings below the day you start cold emails.", "5 min/day"]
+      ]},
+      { group: "2. Connect the mailbox to the lead tracker", items: [
+        ["entra", "Register an app in Microsoft Entra", "Entra admin center → App registrations → New: name it <code>Lead tracker outreach</code>. Copy the Application (client) ID and Directory (tenant) ID. Certificates & secrets → New client secret; copy the value. Don't add any API permissions here.", "10 min"],
+        ["rbac", "Allow the app to use only the outreach mailbox", "Run the 4 Exchange PowerShell commands in <code>docs/outreach-setup.md</code>. They let the app send and read mail for the outreach mailbox only, and nothing else in your company.", "15 min"],
+        ["railway", "Add 4 variables in Railway", "Service Leads → Variables: <code>MS_TENANT_ID</code>, <code>MS_CLIENT_ID</code>, <code>MS_CLIENT_SECRET</code>, <code>OUTREACH_MAILBOX</code>. Railway redeploys by itself. The Mailbox tile above turns ✓ when it works.", "5 min"],
+        ["rules", "Allow the appSettings collection in Firestore (optional)", "So these ticks and the Outreach settings are shared across your devices. See <code>docs/outreach-setup.md</code>. Without it they're kept in this browser.", "5 min"],
+        ["bookings", "Create a Microsoft Bookings page", "Service: \"Free 15-min IT & Cybersecurity Assessment\", Teams or phone. Paste its link in Outreach → Settings.", "20 min"],
+        ["approve", "Read and approve the 4 email templates", "Open any lead → Email drafts. Tell Claude what to change in the wording; they're sent in your name.", "30 min"]
+      ]},
+      { group: "3. Free marketing (weeks 1–4)", items: [
+        ["gbp", "Claim and complete your Google Business Profile", "business.google.com: categories (IT services, Computer security service), services, hours, photos, and the free assessment offer as a post.", "45 min"],
+        ["reviews", "Ask 10 current clients for a Google review", "Send them the review link from your Business Profile. Reviews are what win \"IT support near me\" searches.", "20 min"],
+        ["site", "Add a \"Free 15-minute IT & Cybersecurity Assessment\" page to midastech.ca", "With your Bookings link. Claude can write the page text for healthcare, accounting firms and warehouses.", "30 min"],
+        ["partners", "Pick 3 referral partners to approach", "Bookkeepers, accountants, office-equipment and phone-system dealers who serve the same small businesses.", "30 min"],
+        ["linkedin", "Update your LinkedIn headline and Featured section", "Headline: who you help and the free assessment. Pin a post about it.", "20 min"]
+      ]},
+      { group: "4. Sales meetings", items: [
+        ["prices", "Set your package prices in the Sales Kit", "Sales Kit → Packages. The suggested prices come from Ontario market research; change them to yours.", "20 min"],
+        ["deck", "Rehearse the meeting deck once", "Sales Kit → Meeting deck → Present. About 20 minutes including questions.", "30 min"],
+        ["agreement", "Get a simple service agreement template ready", "Scope, monthly price per user, 30-day notice, onboarding fee, privacy (PIPEDA/PHIPA) clause. Have a lawyer glance at it once.", "1 hr"]
+      ]}
+    ];
+    const SETUP_ROUTINE = [
+      ["Every weekday · 20–30 min", ["Outreach tab: read and approve today's emails, then Send", "Answer replies (they show at the top) and send your booking link", "5–10 LinkedIn connection requests to owners and office managers", "A few phone calls to clinics and warehouses from Find new leads"]],
+      ["Every week · 30 min", ["Mark leads Qualified / Proposal / Closed / Dead after calls", "Add 20–30 new leads with 🗺️ Find new leads and 🌐 website scans, then ✉️ Outreach", "Post 2–3 times on LinkedIn (Social Posts tab)"]],
+      ["Every month · 15 min", ["Check the Apify credit and Railway bill", "See which industry replies most, and do more of that", "Ask new clients for a Google review"]]
+    ];
+    function renderSetupChecklist() {
+      const box = document.getElementById("orChecklist");
+      if (!box) return;
+      const done = outreachSettings.checklist || {};
+      const items = SETUP_CHECKLIST.flatMap(g => g.items);
+      const n = items.filter(([id]) => done[id]).length;
+      // Collapsed by default so today's emails stay in view; the summary shows the next step.
+      const open = !!box.querySelector("details")?.open;
+      const next = items.find(([id]) => !done[id]);
+      box.innerHTML = `<details class="ck" ${open ? "open" : ""}>
+        <summary><h3>📋 Your setup checklist</h3><span class="or-muted">${n} of ${items.length} done${next ? ` · Next: ${esc(next[1])}` : " 🎉"}</span><span class="ck-bar"><i style="width:${Math.round(n / items.length * 100)}%"></i></span></summary>
+        <div class="ck-body">
+          ${SETUP_CHECKLIST.map(g => `<div class="ck-group"><h4>${esc(g.group)}</h4>
+            ${g.items.map(([id, t, d, time]) => `<label class="ck-item ${done[id] ? "done" : ""}"><input type="checkbox" ${done[id] ? "checked" : ""} onchange="toggleSetupItem('${id}', this.checked)">
+              <span><span class="ck-t">${esc(t)}</span><span class="ck-d">${d}</span></span><span class="ck-meta">${esc(time)}</span></label>`).join("")}</div>`).join("")}
+          <div class="ck-group"><h4>Your routine once it's running</h4><div class="ck-routine">
+            ${SETUP_ROUTINE.map(([h, list]) => `<div><b>${esc(h)}</b><ul>${list.map(x => `<li>${esc(x)}</li>`).join("")}</ul></div>`).join("")}
+          </div></div>
+        </div></details>`;
+    }
+    window.toggleSetupItem = async function (id, on) {
+      const checklist = { ...(outreachSettings.checklist || {}) };
+      if (on) checklist[id] = new Date().toISOString(); else delete checklist[id];
+      await saveOutreachSettings({ checklist });
+      renderSetupChecklist();
+    };
 
     // ── APIFY (via the Railway service, which holds APIFY_TOKEN) ────
     async function apifyCall(kind, body) {
@@ -6811,5 +7704,6 @@ ${shape}`;
     function norm(s) { return String(s).toLowerCase().replace(/[^a-z0-9]/g,""); }
 
   </script>
+  <script src="sales-kit.js" defer></script>
 </body>
 </html>

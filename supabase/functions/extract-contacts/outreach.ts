@@ -173,7 +173,12 @@ Don't want these emails? <a href="${esc(unsub)}" style="color:#0072BC">Unsubscri
 }
 
 // Ali's email signature. A table layout, because Outlook ignores most modern CSS.
-function signatureHtml() {
+// Only real https links become the "Book a free 15-min call" link.
+const safeUrl = (u?: string) => {
+  try { const url = new URL(String(u ?? "")); return url.protocol === "https:" ? url.toString() : ""; } catch { return ""; }
+};
+
+function signatureHtml(booking = "") {
   const a = "color:#0072BC;text-decoration:none";
   return `<table cellpadding="0" cellspacing="0" border="0" style="margin-top:14px;font-family:Segoe UI,Arial,sans-serif;font-size:13px;line-height:1.45;color:#333333">
 <tr><td style="padding-right:16px;border-right:2px solid #0072BC;vertical-align:top;text-align:center">
@@ -187,12 +192,23 @@ function signatureHtml() {
 <div style="margin-top:6px">Direct: <a href="tel:+16477863361" style="${a}">+1 (647) 786-3361</a> | Office: <a href="tel:+19057872038" style="${a}">+1 (905) 787-2038</a></div>
 <div><a href="mailto:ali@midastech.ca" style="${a}">ali@midastech.ca</a> | <a href="https://www.midastech.ca" style="${a}">www.midastech.ca</a></div>
 <div>30 Via Renzo Dr, Suite 200, Richmond Hill, ON L4S 0B8</div>
+${booking ? `<div style="margin-top:6px"><a href="${esc(booking)}" style="color:#0072BC;font-weight:700;text-decoration:none">Book a free 15-min call &rsaquo;</a></div>` : ""}
 </td></tr></table>`;
 }
 
-function bodyHtml(text: string, unsub: string) {
-  const paragraphs = text.trim().split(/\n{2,}/).map((p) => `<p style="margin:0 0 12px">${esc(p).replace(/\n/g, "<br>")}</p>`).join("");
-  return `<div style="font-family:Segoe UI,Arial,sans-serif;font-size:14px;color:#333;line-height:1.55">${paragraphs}</div>${SIGNATURE_ON ? signatureHtml() : ""}${footerHtml(unsub)}`;
+// Plain text to HTML: paragraphs, line breaks, and web addresses turned into links
+// (the booking link shows as "Book a 15-minute call" rather than the long address).
+function linkify(escaped: string, booking: string) {
+  return escaped.replace(/https:\/\/[^\s<]+/g, (m) => {
+    const href = m.replace(/&amp;/g, "&");
+    const label = booking && href === booking ? "Book a 15-minute call" : m;
+    return `<a href="${m}" style="color:#0072BC">${label}</a>`;
+  });
+}
+
+function bodyHtml(text: string, unsub: string, booking = "") {
+  const paragraphs = text.trim().split(/\n{2,}/).map((p) => `<p style="margin:0 0 12px">${linkify(esc(p), booking).replace(/\n/g, "<br>")}</p>`).join("");
+  return `<div style="font-family:Segoe UI,Arial,sans-serif;font-size:14px;color:#333;line-height:1.55">${paragraphs}</div>${SIGNATURE_ON ? signatureHtml(booking) : ""}${footerHtml(unsub)}`;
 }
 
 export interface OutgoingEmail {
@@ -204,7 +220,8 @@ export interface OutgoingEmail {
   replyToId?: string; // Graph id of the first email; follow-ups go out as replies in the same thread
 }
 
-export async function sendOutreach(messages: OutgoingEmail[], baseUrl: string) {
+export async function sendOutreach(messages: OutgoingEmail[], baseUrl: string, bookingUrl = "") {
+  const booking = safeUrl(bookingUrl);
   if (!outreachConfigured()) throw new OutreachError("Email sending isn't set up yet. Add the Microsoft 365 settings in Railway (see the setup checklist).", 503);
   const batch = messages.slice(0, MAX_BATCH);
   let sent = await sentToday();
@@ -217,7 +234,7 @@ export async function sendOutreach(messages: OutgoingEmail[], baseUrl: string) {
     if (!EMAIL_RE.test(to)) { results.push({ ...base, ok: false, error: "Not a valid email address" }); continue; }
     if (!text || (!subject && !m.replyToId)) { results.push({ ...base, ok: false, error: "The email needs a subject and a message" }); continue; }
     if (sent >= DAILY_MAX) { results.push({ ...base, ok: false, error: `Today's limit of ${DAILY_MAX} emails is reached. The rest can go tomorrow.`, capped: true }); continue; }
-    const html = bodyHtml(text, await unsubscribeLink(baseUrl, to));
+    const html = bodyHtml(text, await unsubscribeLink(baseUrl, to), booking);
     const recipient = { emailAddress: { address: to, ...(m.toName ? { name: String(m.toName).slice(0, 120) } : {}) } };
     try {
       if (m.replyToId) {

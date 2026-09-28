@@ -113,7 +113,7 @@
       "More and more: 24/7 SOC / MDR included, and no long-term contracts"
     ],
     edge: [
-      ["Owner-led and local", "Clients deal with Ali, 15 minutes away in Richmond Hill, not a ticket queue. Bigger MSPs can't offer that."],
+      ["Owner-led and local", "Clients deal with Ali directly, based in Richmond Hill and on-site across the GTA, not a ticket queue. Bigger MSPs can't offer that."],
       ["Priced below the big names", "$89–189 against $180–250 at the larger Ontario MSPs, for the same core security."],
       ["Three niches, spoken fluently", "Healthcare (PHIPA), accounting (CRA EFILE, tax season) and warehouses (uptime, scanners, Wi-Fi). Lead with the industry, not \"IT services\"."],
       ["Easy yes", "Free 15-minute assessment, month-to-month option, and onboarding fee waived on a 12-month agreement."],
@@ -301,7 +301,7 @@ ${COMPANY.phone} · ${COMPANY.web}`;
       notes: "\"I'll ask a few questions first. If it makes sense, I'll show how we'd help. Sound good?\" Then go to the Meeting guide and ask discovery questions." });
     list.push({ html: `<h2>About Midas Tech</h2><div class="sk-grid3">
       <div><b>Since ${COMPANY.founded}</b><span>16 years looking after Ontario small businesses</span></div>
-      <div><b>Local</b><span>Richmond Hill office, on-site across the GTA</span></div>
+      <div><b>Local</b><span>based in Richmond Hill: meet in person, or we come on-site across the GTA</span></div>
       <div><b>You deal with Ali</b><span>owner-led: a person who knows your business, not a ticket queue</span></div>
       <div><b>Cybersecurity first</b><span>Microsoft 365, backups, 24/7 monitoring</span></div>
       <div><b>Your industry</b><span>clinics, accounting firms and warehouses</span></div>

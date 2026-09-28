@@ -6799,8 +6799,62 @@ ${facts.map(f => `- ${f}`).join("\n")}`;
       linkedin:  { name: "LinkedIn",  color: "#0A66C2", limit: 3000, articleLimit: 110000 },
       instagram: { name: "Instagram", color: "#C13584", limit: 2200, tags: 30 },
       facebook:  { name: "Facebook",  color: "#1877F2", limit: 63206 },
-      google:    { name: "Google",    color: "#34A853", limit: 1500 },
+      google:    { name: "Google Business", color: "#34A853", limit: 1500 },
     };
+    // ── Google Business Profile post pack ──
+    // Ready-made weekly posts for the Google Business Profile. "Add Google Business posts" saves the ones
+    // that aren't in social_posts yet, one a week from tomorrow. Images are served from this site (gbp-images/).
+    const GBP_CAMPAIGN = "Google Business Profile";
+    const GBP_IMG = f => `https://midastechinc.github.io/Leads/gbp-images/${f}`;
+    const GBP_POSTS = [
+      { kind: "offer", headline: "Free 15-Minute IT & Cybersecurity Assessment", image: "3-post-free-assessment.png",
+        caption: "Not sure if your business is protected? In 15 minutes we'll check your email and Microsoft 365 security, whether your backups actually work, and what your cyber insurer will ask for. You'll leave with a few quick wins, with no cost and no obligation. Serving Richmond Hill and the GTA since 2010.",
+        notes: "Post as an Offer. Title: Free 15-Minute IT & Cybersecurity Assessment. Dates: today to 3 months from now. Link to redeem offer: your booking link. Terms: For businesses in Ontario. One assessment per business." },
+      { kind: "update", headline: "Still on Windows 10?", image: "4-post-windows-10.png",
+        caption: "Windows 10 stopped getting free security updates on October 14, 2025. Keeping it patched now costs US$61 per PC in year one, and the price doubles every year. We'll check which of your PCs can upgrade, move you to Windows 11 with your files and apps intact, and make sure everything is protected. Book a free 15-minute check.",
+        notes: "Button: Book, with your booking link." },
+      { kind: "update", headline: "What your cyber insurer will ask you", image: "5-post-cyber-insurance.png",
+        caption: "Renewing your cyber insurance? Canadian insurers now expect multi-factor sign-in on email, managed antivirus watched 24/7, backups tested in the last 90 days, a written incident plan and staff security training, even for small businesses. A wrong answer on the form can mean a refused claim. We'll get you ready before the renewal arrives.",
+        notes: "Button: Book, with your booking link." },
+      { kind: "update", headline: "IT that speaks your industry", image: "6-post-industries.png",
+        caption: "We look after healthcare clinics, accounting firms and warehouses across the GTA. Clinics get PHIPA-minded security and backups that get you seeing patients again fast. Accounting firms get CRA EFILE multi-factor sign-in and protection from tax-season phishing. Warehouses get reliable networks, scanners and dock Wi-Fi. Book a free 15-minute assessment.",
+        notes: "Button: Book, with your booking link." },
+      { kind: "update", headline: "Your IT, handled by people who know you", image: "7-post-why-midas-tech.png",
+        caption: "Midas Tech has looked after Ontario businesses since 2010, with a 5.0 rating on Google. We're owner-led, so when you need help you deal with Ali, not a call centre. One flat monthly fee, no surprise bills, and a month-to-month option. Book a free 15-minute call to see if we're a fit.",
+        notes: "Button: Book, with your booking link." }
+    ];
+    const spGbpMissing = () => GBP_POSTS.filter(g => !socialPostsData.some(p => String(p.platform).toLowerCase() === "google" && p.headline === g.headline));
+    const spIsGbpOffer = p => String(p.platform).toLowerCase() === "google" && /^google offer$/i.test(p.category || "");
+    async function spAddGbpPosts() {
+      const missing = spGbpMissing();
+      if (!missing.length) return showToast("The Google Business posts are already in your calendar", "success");
+      const db2 = getLiClient();
+      const start = new Date(); start.setDate(start.getDate() + 1); start.setHours(10, 0, 0, 0);
+      const rows = missing.map((g, i) => {
+        const when = new Date(start); when.setDate(start.getDate() + i * 7);
+        return {
+          platform: "google", headline: g.headline, caption: g.caption, hashtags: "", notes: g.notes,
+          category: g.kind === "offer" ? "Google offer" : "Google update", cta: "Book",
+          status: "draft", image_url: GBP_IMG(g.image), scheduled_for: when.toISOString(),
+          campaign: GBP_CAMPAIGN, source_topic: GBP_CAMPAIGN, auto_generated: false
+        };
+      });
+      // Drop any column this database doesn't have yet and retry, so the posts still get saved.
+      let error = null, data = null;
+      for (let tries = 0; tries < 6; tries++) {
+        ({ data, error } = await db2.from("social_posts").insert(rows).select("*"));
+        const col = error && /column/i.test(error.message || "") && (String(error.message).match(/'([a-z_]+)' column|column "?([a-z_]+)"?/i) || []).slice(1).find(Boolean);
+        if (!col) break;
+        rows.forEach(r => delete r[col]);
+      }
+      if (error) return showToast(`Couldn't add the posts: ${error.message}`, "error");
+      socialPostsData = [...(data || []), ...socialPostsData];
+      spState.platform = "google"; spState.tab = "calendar";
+      try { localStorage.setItem("sp.platform", "google"); localStorage.setItem("sp.tab", "calendar"); } catch (e) {}
+      renderSocialPosts();
+      showToast(`${rows.length} Google Business post${rows.length === 1 ? "" : "s"} added, one a week`, "success");
+    }
+
     const spState = { tab: "calendar", platform: "all", hidePosted: false, open: new Set(), confirm: new Set(), scheduling: new Set(), howtoOpen: new Set(), howtoClosed: new Set(), nextId: null };
     try {
       spState.tab = localStorage.getItem("sp.tab") || "calendar";
@@ -6914,10 +6968,11 @@ ${facts.map(f => `- ${f}`).join("\n")}`;
         ["topics", "Topics", spTopics ? spTopics.filter(t => !["posted", "skipped"].includes(spTopicStatus(t))).length : 0],
       ];
       const present = new Set(socialPostsData.map(p => String(p.platform || "").toLowerCase()));
-      const plats = [["all", "All platforms"], ...Object.entries(SP_PLATFORMS).filter(([k]) => present.has(k)).map(([k, v]) => [k, v.name])];
+      const plats = [["all", "All platforms"], ...Object.entries(SP_PLATFORMS).filter(([k]) => present.has(k) || k === "google").map(([k, v]) => [k, v.name])];
       document.getElementById("spControls").innerHTML =
         `<div class="sp-tabs" role="tablist">${tabs.map(([k, n, c]) => `<button class="sp-tab" role="tab" type="button" data-sp="tab" data-v="${k}" aria-selected="${spState.tab === k}">${n}<span class="n">${c}</span></button>`).join("")}</div>
         ${spState.tab === "topics" ? `<button class="btn btn-primary btn-sm" type="button" data-sp="topic-new" style="margin-left:auto">+ Add a topic</button>` : plats.map(([k, n]) => `<button class="sp-chip" type="button" data-sp="platform" data-v="${k}" aria-pressed="${spState.platform === k}">${k !== "all" ? `<span class="sp-dot" style="--pc:${SP_PLATFORMS[k].color}"></span>` : ""}${esc(n)}</button>`).join("")}
+        ${spState.tab !== "topics" && ["all", "google"].includes(spState.platform) && spGbpMissing().length ? `<button class="btn btn-primary btn-sm" type="button" data-sp="gbp-add">+ Add Google Business posts (${spGbpMissing().length})</button>` : ""}
         ${spState.tab === "calendar" ? `<label class="sp-toggle"><input type="checkbox" id="spHidePosted" ${spState.hidePosted ? "checked" : ""}> Hide posted</label>
           <button class="btn btn-secondary btn-sm" type="button" data-sp="ics-all">📅 Add all to my calendar</button>` : ""}`;
     }
@@ -6973,9 +7028,19 @@ ${facts.map(f => `- ${f}`).join("\n")}`;
         `Open <b>facebook.com/MidasTech.ca</b> and make sure you're posting <b>as the page</b>, not your personal profile.`,
         `Paste the post. ${spBtn("Copy post", "copy", id)}`,
         ...imgStep, `Click <b>Post</b>.`, ...fcStep, ...done];
+      if (platform === "google" && spIsGbpOffer(p)) return [
+        `Search <b>Midas Tech Inc</b> on Google (signed in), click <b>Posts → Add offer</b>.`,
+        `Title: <b>${esc(p.headline)}</b>. ${spBtn("Copy title", "copy-title", id)} Set the dates from today to 3 months from now.`,
+        ...imgStep,
+        `Paste the details. ${spBtn("Copy post", "copy", id)}`,
+        `Under <b>Link to redeem offer</b>, paste your booking link. ${spBtn("Copy booking link", "copy-booking", id)} Terms: <i>For businesses in Ontario. One assessment per business.</i>`,
+        `Click <b>Publish</b>. Google reviews posts first; it usually takes minutes to a day.`, ...done];
       if (platform === "google") return [
-        `Open your <b>Google Business Profile</b> and choose <b>Add update</b>.`,
-        `Paste the post. ${spBtn("Copy post", "copy", id)}`, ...imgStep, `Click <b>Publish</b>.`, ...done];
+        `Search <b>Midas Tech Inc</b> on Google (signed in), click <b>Posts → Add update</b>.`,
+        ...imgStep,
+        `Paste the post. ${spBtn("Copy post", "copy", id)} Don't add a phone number: Google often rejects posts with one.`,
+        `Add a button: <b>Book</b>, and paste your booking link. ${spBtn("Copy booking link", "copy-booking", id)}`,
+        `Click <b>Publish</b>.`, ...done];
       return [`Paste the post. ${spBtn("Copy post", "copy", id)}`, ...imgStep, ...done];
     }
     function spHowToBlock(p, s) {
@@ -7313,6 +7378,8 @@ ${facts.map(f => `- ${f}`).join("\n")}`;
         }
         if (act === "ics-campaign") { spDownloadIcs(spReminderPosts().filter(p => p.campaign === b.dataset.v), `midas-tech-posts-${spSlug(b.dataset.v)}.ics`); return; }
         if (act === "ics-all") { spDownloadIcs(spReminderPosts(), "midas-tech-posting-calendar.ics"); return; }
+        if (act === "gbp-add") { b.disabled = true; await spAddGbpPosts(); return; }
+        if (act === "copy-booking") { const ok = await spCopy(bookingUrl()); showToast(ok ? "Booking link copied" : "Copy was blocked", ok ? "success" : "error"); return; }
         if (!p) return;
         if (act === "expand") { spState.open.has(id) ? spState.open.delete(id) : spState.open.add(id); renderSocialPosts(); return; }
         if (act === "zoom") { lightbox.querySelector("img").src = b.src; lightbox.classList.add("active"); return; }

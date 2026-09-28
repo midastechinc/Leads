@@ -11,14 +11,15 @@ Cost: about CA$20–25 a month. That covers one extra mailbox (~$8), a second do
 
 ## 1. Domain and mailbox
 
-1. **Buy a second domain.** For example `midastech-it.ca`. Don't send cold email from midastech.ca: if something goes wrong, it's the second domain that gets a bad reputation, not your main one.
+1. **Buy a second domain.** You bought `midastechinc.ca` (for sending) and `midastechinc.com` (kept for later). Don't send cold email from midastech.ca: if something goes wrong, it's the second domain that gets a bad reputation, not your main one.
 2. **Add the domain to Microsoft 365.** Go to Microsoft 365 admin center → **Settings → Domains → Add domain**, and add the DNS records it asks for.
-3. **Create the mailbox.** Add a user such as `ali@midastech-it.ca` with an **Exchange Online (Plan 1)** or **Business Basic** licence.
+3. **Create the mailbox.** Add a user such as `ali@midastechinc.ca` with an **Exchange Online (Plan 1)** or **Business Basic** licence.
 4. **Set up email authentication.** At your domain registrar, add:
    - SPF (TXT on `@`): `v=spf1 include:spf.protection.outlook.com -all`
    - DKIM: in the Microsoft Defender portal, go to **Email & collaboration → Policies → Email authentication settings → DKIM**. Select the domain, add the two CNAME records it shows, then turn it on.
-   - DMARC (TXT on `_dmarc`): `v=DMARC1; p=none; rua=mailto:info@midastech.ca`
-5. **Warm up for about 2 weeks.** Send normal emails from the mailbox to people who will reply. After that, the app keeps the pace low on its own: 5 emails a day in week 1, 10 in week 2, 20 in week 3, then 30. The server also refuses to send more than `OUTREACH_DAILY_MAX` a day.
+   - DMARC (TXT on `_dmarc`): `v=DMARC1; p=none; rua=mailto:ali@midastechinc.ca`
+5. **Lock the domain you're not using yet.** Until `midastechinc.com` sends email, add two TXT records to it so nobody can send email pretending to be it: `v=spf1 -all` on `@`, and `v=DMARC1; p=reject` on `_dmarc`. Point its website at midastech.ca.
+6. **Warm up for about 2 weeks.** Send normal emails from the mailbox to people who will reply. After that, the app keeps the pace low on its own: 5 emails a day in week 1, 10 in week 2, 20 in week 3, then 30. The server also refuses to send more than `OUTREACH_DAILY_MAX` a day.
 
 ## 2. Let the Railway service use that one mailbox
 
@@ -31,11 +32,11 @@ Cost: about CA$20–25 a month. That covers one extra mailbox (~$8), a second do
    Connect-ExchangeOnline
    # The app's Enterprise application object ID: Entra → Enterprise applications → Lead tracker outreach → Object ID
    New-ServicePrincipal -AppId <client-id> -ObjectId <enterprise-app-object-id> -DisplayName "Lead tracker outreach"
-   New-ManagementScope -Name "Outreach mailbox" -RecipientRestrictionFilter "PrimarySmtpAddress -eq 'ali@midastech-it.ca'"
+   New-ManagementScope -Name "Outreach mailbox" -RecipientRestrictionFilter "PrimarySmtpAddress -eq 'ali@midastechinc.ca'"
    New-ManagementRoleAssignment -App <client-id> -Role "Application Mail.Send" -CustomResourceScope "Outreach mailbox"
    New-ManagementRoleAssignment -App <client-id> -Role "Application Mail.ReadWrite" -CustomResourceScope "Outreach mailbox"
    ```
-   To check it, run `Test-ServicePrincipalAuthorization -Identity <client-id> -Resource ali@midastech-it.ca`. It should show the two roles as in scope.
+   To check it, run `Test-ServicePrincipalAuthorization -Identity <client-id> -Resource ali@midastechinc.ca`. It should show the two roles as in scope.
 
    Mail.ReadWrite is needed to create each email as a draft before sending it, which gives follow-ups a thread to reply in. It's also how the service reads replies.
 3. **Add the settings in Railway.** Open the service **Leads**, go to **Variables**, and add:
@@ -43,7 +44,7 @@ Cost: about CA$20–25 a month. That covers one extra mailbox (~$8), a second do
    MS_TENANT_ID=<directory (tenant) id>
    MS_CLIENT_ID=<application (client) id>
    MS_CLIENT_SECRET=<client secret value>
-   OUTREACH_MAILBOX=ali@midastech-it.ca
+   OUTREACH_MAILBOX=ali@midastechinc.ca
    ```
    These are optional:
    - `OUTREACH_DAILY_MAX`: a hard limit on emails per day. The default is 30.

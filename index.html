@@ -5406,10 +5406,10 @@ ${facts.map(f => `- ${f}`).join("\n")}`;
     // ── setup checklist (Ali's manual steps) ──
     const SETUP_CHECKLIST = [
       { group: "1. Sending domain and mailbox (week 1)", items: [
-        ["domain", "Buy a second domain for outreach", "For example <code>midastech-it.ca</code> or <code>getmidastech.ca</code> (about $20/year). Never cold-email from midastech.ca, so your main email keeps landing in inboxes.", "15 min"],
+        ["domain", "Buy the outreach domains", "Done: <code>midastechinc.ca</code> for sending, <code>midastechinc.com</code> kept for later (about $20/year each). Never cold-email from midastech.ca, so your main email keeps landing in inboxes.", "15 min"],
         ["m365domain", "Add the domain to your Microsoft 365", "Microsoft 365 admin center → Settings → Domains → Add domain. Follow the DNS records it shows.", "20 min"],
-        ["mailbox", "Create the outreach mailbox", "One Exchange Online (Plan 1) or Business Basic user, e.g. <code>ali@midastech-it.ca</code> (about $8/month). Set its display name to Ali Jaffar and add your normal signature photo if you like.", "15 min"],
-        ["dns", "Turn on SPF, DKIM and DMARC for the new domain", "SPF: <code>v=spf1 include:spf.protection.outlook.com -all</code>. DKIM: Defender portal → Email authentication → DKIM → enable. DMARC TXT at <code>_dmarc</code>: <code>v=DMARC1; p=none; rua=mailto:info@midastech.ca</code>.", "30 min"],
+        ["mailbox", "Create the outreach mailbox", "One Exchange Online (Plan 1) or Business Basic user, e.g. <code>ali@midastechinc.ca</code> (about $8/month). Set its display name to Ali Jaffar and add your normal signature photo if you like.", "15 min"],
+        ["dns", "Turn on SPF, DKIM and DMARC for the new domain", "SPF: <code>v=spf1 include:spf.protection.outlook.com -all</code>. DKIM: Defender portal → Email authentication → DKIM → enable. DMARC TXT at <code>_dmarc</code>: <code>v=DMARC1; p=none; rua=mailto:ali@midastechinc.ca</code>.", "30 min"],
         ["redirect", "Point the new domain's website at midastech.ca", "A redirect, so anyone who types the domain lands on your real site.", "10 min"],
         ["warmup", "Warm up the mailbox for 2 weeks", "Send a few normal emails a day to clients, friends and colleagues and ask them to reply. Set the Warm-up date in Settings below the day you start cold emails.", "5 min/day"]
       ]},

@@ -1,5 +1,5 @@
 // Sales Kit for the Midas Tech lead tracker: a meeting deck you can present full screen, a meeting
-// guide (agenda, discovery questions, a 12-point assessment you fill in live, objection handling),
+// guide (agenda, discovery questions, a quick assessment you fill in live, objection handling),
 // packages with a quote builder, and Ontario MSP market research.
 //
 // index.html calls SalesKit.render(root, host). The host gives access to the tracker:
@@ -120,16 +120,33 @@
       ["Since 2010", "16 years of Ontario small-business IT."]
     ],
     industries: {
-      healthcare: { title: "Healthcare clinics (medical, dental, physio)", points: ["PHIPA: role-based access, encryption at rest and in transit, access logging, a written breach response plan, prompt breach notification", "Practice software and imaging support (EMR, Dentrix, ABELDent and similar)", "Tested backups with a clear time to be seeing patients again", "Phones that work with scheduling"], url: "https://act360.ca/blog/phipa-compliance-healthcare-it-ontario/" },
+      healthcare: { title: "Healthcare clinics (medical, dental, physio)", points: ["PHIPA: role-based access, encryption at rest and in transit, access logging, a written breach response plan, prompt breach notification", "Since 2024 Ontario's privacy commissioner can fine up to $500,000 per organization under PHIPA; the first fines were issued in 2025", "Dentists: RCDSO's electronic records guidelines expect safeguards against theft, loss and unauthorized access, and staff training", "Practice software and imaging support (EMR, Dentrix, ABELDent and similar)", "Tested backups with a clear time to be seeing patients again"], url: "https://www.ipc.on.ca/en/media-centre/news-releases/administrative-monetary-penalties-under-personal-health-information-protection-act" },
       accounting: { title: "Accounting and bookkeeping firms", points: ["CRA requires MFA for EFILE and Represent a Client, and safeguards on taxpayer data; unauthorized access must be reported to the CRA", "Records kept 6 years; PIPEDA breach reporting", "CPA Ontario practice inspection expects documented technology controls", "Tax-season phishing and business email compromise are the big risks"], url: "https://fusioncomputing.ca/cra-efile-it-controls/" },
+      law: { title: "Law firms", points: ["LSO Rule 3.1-2: reasonable precautions to protect confidential client information; the LSO publishes a cybersecurity checklist and model policies", "Business email compromise targets trust accounts: fake wire instructions from \"clients\" or opposing counsel", "MFA, anti-spoofing email settings and a phone call before any wire are the must-haves", "By-Law 9 trust-accounting records must stay intact and recoverable"], url: "https://lso.ca/lawyers/technology-resource-centre/practice-resources-and-supports/cybersecurity-and-fraud" },
       warehouse: { title: "Warehouses and logistics", points: ["Uptime: WMS/TMS, scanners, label printers and dock Wi-Fi", "Network segmentation so a hacked camera or guest Wi-Fi can't reach the office", "Supplier payment fraud: confirm banking changes by phone", "Multi-site networking and 24/7 support around shifts"], url: "https://fusioncomputing.ca/transport-logistics/" }
     },
     stats: [
       ["CA$7.11M", "Average cost of a data breach for Canadian organizations in 2026, up from $6.98M in 2025 (IBM)", "https://www.bnnbloomberg.ca/business/technology/2026/07/29/average-canadian-data-breach-costs-and-detection-times-are-rising-ibm-report/"],
       ["205 days", "Average time to find and contain a breach in Canada (IBM 2026)", "https://www.bnnbloomberg.ca/business/technology/2026/07/29/average-canadian-data-breach-costs-and-detection-times-are-rising-ibm-report/"],
       ["$1.2B", "What Canadian businesses spent recovering from cyber incidents in 2023, double 2021 (Statistics Canada)", "https://madeinca.ca/cyber-crime-canada-statistics/"],
+      ["43%", "Canadian organizations hit by an attempted or successful cyber attack in the past year; 24% by ransomware, and 74% of those paid (CIRA 2025)", "https://www.cira.ca/en/resources/documents/cybersecurity/2025-cybersecurity-survey/"],
       ["#1", "Phishing and business email compromise: the most common way in and the costliest incident for small businesses", "https://www.cloudforces.ca/blog/ibm-cost-data-breach-2026-canadian-smbs"]
     ],
+    // Reasons a business will act now rather than "someday".
+    triggers: [
+      ["Cyber insurance renewal", "Canadian insurers now ask 40–80 security questions and require MFA, managed EDR, tested backups, an incident plan and training, with no small-business exception. Missing MFA is the most common reason for a decline, and a wrong answer can void a claim.", "https://www.nfd.ca/company-blog/cyber-insurance-renewal-2026-canadian-checklist"],
+      ["Windows 10 is out of support", "Security updates ended October 14, 2025. Extended updates cost US$61 per PC in year one and double each year. Any Windows 10 PC is an easy sale for a Windows 11 upgrade project.", "https://learn.microsoft.com/en-us/windows/whats-new/extended-security-updates"],
+      ["Microsoft 365 prices went up", "From July 1, 2026 Business Basic rose about 17% and Business Standard about 12% at renewal. A licence review often pays for part of the plan.", "https://www.beadaptive.ca/latest/m365-price-increase-jul-2026/"],
+      ["Privacy fines are real now", "PHIPA fines up to $500,000 per organization (first ones issued August 2025). PIPEDA: breaches must be reported and logged for 24 months, with fines up to $100,000 per violation.", "https://www.priv.gc.ca/en/privacy-topics/privacy-for-businesses/privacy-breaches-at-your-business/gd_pb_201810/"],
+      ["Their MSP was bought or went quiet", "About 30% of businesses switch IT providers within 3–5 years, mostly over slow response and being reactive. Private-equity roll-ups often change the team and prices within 1–2 years.", "https://www.inky.com/en/blog/12-reasons-companies-switch-managed-service-providers-msps"],
+      ["\"Made in Canada\" matters", "82% of Canadian security buyers say country of origin now matters more; 56% have reconsidered U.S. vendors. A local Richmond Hill company with Canadian data storage is a selling point.", "https://www.cira.ca/en/resources/news/cybersecurity/why-canadian-organizations-are-prioritizing-made-in-canada-cyber-solutions/"],
+      ["Tax season (accounting firms)", "January–April is when phishing peaks and downtime hurts most. Pitch accounting firms in the fall.", "https://fusioncomputing.ca/cra-efile-it-controls/"]
+    ],
+    insurance: ["MFA on email, remote access, admin accounts and cloud apps, enforced, not optional", "Managed EDR (e.g. Microsoft Defender for Business, SentinelOne) watched 24/7", "Backups that can't be changed or deleted, stored in Canada, with a restore tested in the last 90 days", "A written incident response plan", "Security awareness training for all staff", "Patching and supported operating systems (no Windows 10)"],
+    switching: ["Slow response and problems that keep coming back", "Only reactive: they fix things but never ask why they broke", "Surprise invoices on top of the monthly fee", "No security or industry expertise", "No plan or regular review", "Their provider was acquired and the service changed"],
+    cybersecure: "The federal CyberSecure Canada program certifies small businesses against 13 baseline controls from the Canadian Centre for Cyber Security: incident response plan, automatic patching, secure configuration, strong authentication and MFA, staff training, backups, secure mobile, perimeter defences, malware protection, secure cloud and outsourced IT, secure websites, access control, and portable media. Secure+ covers these, so it's a natural path to certification for clients who need to prove their security to customers.",
+    pricing: ["Show three plans and let them choose. Most buyers pick the middle one, so Business is the plan you want to sell; Secure+ makes it look reasonable.", "Quote a fixed monthly price after the assessment. Surprise invoices are one of the top reasons clients leave.", "Keep M365 licences at cost and separate, so your price compares fairly with competitors who list them separately.", "Waive onboarding for a 12-month agreement instead of discounting the monthly price."],
+
     sources: [
       ["Managed IT Services Pricing in Canada: 2026 Cost Guide (F12.net)", "https://f12.net/blog/managed-it-services-pricing-canada/"],
       ["What Managed IT Costs in Canada (Fusion Computing)", "https://fusioncomputing.ca/managed-it-services-cost-canada/"],
@@ -143,7 +160,19 @@
       ["CRA EFILE IT Controls Checklist (Fusion Computing)", "https://fusioncomputing.ca/cra-efile-it-controls/"],
       ["IT Services for Transport & Logistics (Fusion Computing)", "https://fusioncomputing.ca/transport-logistics/"],
       ["Canadian data breach costs rising: IBM report (BNN Bloomberg, July 2026)", "https://www.bnnbloomberg.ca/business/technology/2026/07/29/average-canadian-data-breach-costs-and-detection-times-are-rising-ibm-report/"],
-      ["Microsoft 365 Business Premium pricing (Microsoft Canada)", "https://www.microsoft.com/en-ca/microsoft-365/business/microsoft-365-business-premium"]
+      ["Microsoft 365 Business Premium pricing (Microsoft Canada)", "https://www.microsoft.com/en-ca/microsoft-365/business/microsoft-365-business-premium"],
+      ["2025 CIRA Cybersecurity Survey", "https://www.cira.ca/en/resources/documents/cybersecurity/2025-cybersecurity-survey/"],
+      ["Cyber insurance renewal 2026: what Canadian underwriters require (NFD)", "https://www.nfd.ca/company-blog/cyber-insurance-renewal-2026-canadian-checklist"],
+      ["Baseline cyber security controls for small and medium organizations (Canadian Centre for Cyber Security)", "https://www.cyber.gc.ca/en/guidance/baseline-cyber-security-controls-small-and-medium-organizations"],
+      ["National Cyber Threat Assessment 2025–2026 (Canadian Centre for Cyber Security)", "https://www.cyber.gc.ca/en/guidance/national-cyber-threat-assessment-2025-2026"],
+      ["PHIPA administrative monetary penalties (IPC Ontario)", "https://www.ipc.on.ca/en/media-centre/news-releases/administrative-monetary-penalties-under-personal-health-information-protection-act"],
+      ["Mandatory breach reporting under PIPEDA (Office of the Privacy Commissioner)", "https://www.priv.gc.ca/en/privacy-topics/privacy-for-businesses/privacy-breaches-at-your-business/gd_pb_201810/"],
+      ["Cybersecurity and fraud for lawyers (Law Society of Ontario)", "https://lso.ca/lawyers/technology-resource-centre/practice-resources-and-supports/cybersecurity-and-fraud"],
+      ["Electronic records management guidelines (RCDSO)", "https://cdn.agilitycms.com/rcdso/pdf/guidelines/RCDSO_Guidelines_Electronic_Records_Management.pdf"],
+      ["Windows 10 Extended Security Updates (Microsoft)", "https://learn.microsoft.com/en-us/windows/whats-new/extended-security-updates"],
+      ["Microsoft 365 prices going up July 1, 2026 (Adaptive)", "https://www.beadaptive.ca/latest/m365-price-increase-jul-2026/"],
+      ["12 reasons companies switch MSPs (INKY)", "https://www.inky.com/en/blog/12-reasons-companies-switch-managed-service-providers-msps"],
+      ["MSP pricing guide: security-inclusive tiers (N-able)", "https://www.n-able.com/blog/msp-pricing-guide"]
     ]
   };
 
@@ -160,6 +189,7 @@
     ["firewall", "Is there a business firewall, and is guest Wi-Fi separate from the office network?", "Keeps visitors and smart devices away from your files.", 2],
     ["payments", "Are changes to payment or banking details always confirmed by phone?", "Business email compromise is the costliest small-business incident.", 2],
     ["plan", "Is there a written plan for what to do if you're hacked or systems go down?", "Minutes matter; a plan avoids panic and missed legal notices.", 1],
+    ["windows", "Are all computers on Windows 11 (no Windows 10 left)?", "Windows 10 stopped getting free security updates in October 2025.", 2],
     ["support", "When something breaks, do you know exactly who to call and how fast they'll respond?", "Downtime costs more than support.", 1]
   ];
   const ANSWER_SCORE = { yes: 1, unsure: 0.3, no: 0 };
@@ -167,15 +197,15 @@
   const DISCOVERY = [
     ["Your business", ["Tell me about the business: how many people, how many locations?", "What does a normal day look like for your team? What software can't you work without?", "Are you growing, hiring, or opening anything new this year?"]],
     ["Current IT", ["Who looks after your IT today? An in-house person, a provider, or whoever is handy?", "What do you like about how it works now? What drives you crazy?", "When something breaks, how long does it usually take to fix?", "Are you on Microsoft 365 or Google Workspace? Any servers in the office?"]],
-    ["Security", ["Have you or anyone you know had a scare: a hacked email, a fake invoice, ransomware?", "If a staff email account was taken over tonight, how would you know?", "Does your cyber insurance ask you about MFA, backups or training?"]],
+    ["Security", ["Have you or anyone you know had a scare: a hacked email, a fake invoice, ransomware?", "If a staff email account was taken over tonight, how would you know?", "Do you have cyber insurance? When does it renew, and did the last application ask about MFA, EDR or backups?"]],
     ["Backup and downtime", ["If your main system went down tomorrow morning, what would it cost you per hour?", "When did someone last restore something from backup?"]],
     ["Compliance", ["Do you answer to a regulator or professional body: PHIPA, CRA EFILE, CPA Ontario, the Law Society?", "Has a client, insurer or auditor asked for proof of your security?"]],
-    ["Priorities and decision", ["If you could fix one IT thing this month, what would it be?", "Who else is involved in a decision like this?", "When does your current contract or arrangement renew?", "What would make this a clear yes for you?"]]
+    ["Priorities and decision", ["If you could fix one IT thing this month, what would it be?", "Who else is involved in a decision like this?", "When does your current contract or arrangement renew?", "Are any computers still on Windows 10?", "What would make this a clear yes for you?"]]
   ];
   const AGENDA = [
     ["Before the meeting (15 min)", ["Open the lead in the tracker: read research, website scan and past activity", "Pick the lead in this Sales Kit so the deck shows their name and industry", "Look up their Google reviews and LinkedIn for small talk", "Have your Bookings link and a notepad ready"]],
     ["Open (2 min)", ["Thank them, confirm the time: \"I've got 20 minutes blocked, does that still work?\"", "Set the agenda: \"I'll ask a few questions, share what we see in your industry, and if it makes sense, talk next steps. Sound good?\""]],
-    ["Discover (10 min)", ["Ask, don't pitch. Aim for them talking 70% of the time", "Use the discovery questions below; when they name a problem, ask \"why is that a problem?\"", "Run the 12-point quick assessment together; it makes the risks concrete"]],
+    ["Discover (10 min)", ["Ask, don't pitch. Aim for them talking 70% of the time", "Use the discovery questions below; when they name a problem, ask \"why is that a problem?\"", "Run the quick assessment together; it makes the risks concrete"]],
     ["Show (5 min)", ["Present only the slides that match what you heard", "Show their assessment score, then the package that fixes their top 2–3 gaps"]],
     ["Agree next steps (3 min)", ["Offer the free full assessment (a site visit or remote review)", "Promise a written proposal within 48 hours", "Book the follow-up before you hang up"]],
     ["After (same day)", ["Log the meeting in the tracker and set the status to Qualified or Proposal", "Send the thank-you email below with a summary and the proposal date", "Build the quote in Packages and send it within 48 hours"]]
@@ -186,6 +216,8 @@
     ["\"We're too small to be a target.\"", "Most attacks aren't aimed at anyone. They're automated emails and password guesses sent to thousands of small businesses at once, because small businesses have less protection. That's exactly who they catch."],
     ["\"We need to think about it / talk to my partner.\"", "Of course. What would you want to be sure of before deciding? Would it help if I sent a one-page summary and joined a 15-minute call with your partner this week?"],
     ["\"We had a bad experience with an MSP.\"", "I'm sorry to hear that. What went wrong? (Listen.) That's why you'd deal with me directly, we put response times in writing, and you can leave with 30 days' notice if we don't deliver."],
+    ["\"We have cyber insurance, so we're covered.\"", "Good, that's smart. Insurers now require MFA, managed EDR, tested backups and an incident plan, and if the application doesn't match reality, they can refuse the claim. Let's check your answers against what you actually have, so the policy pays when you need it."],
+    ["\"Microsoft keeps our email safe / it's all in the cloud.\"", "Microsoft keeps its servers running, but securing your accounts is your job: MFA, who has access, and backups. Deleted or encrypted email is only recoverable for a short time without a separate backup."],
     ["\"We're in a contract right now.\"", "When does it renew? Let's do the free assessment now, so you have a clear comparison well before the renewal date. I'll put a reminder in 60 days before."]
   ];
   const FOLLOWUP_EMAIL = (who, company) => `Subject: Thanks for today, ${company || "and next steps"}
@@ -240,7 +272,7 @@ ${COMPANY.phone} · ${COMPANY.web}`;
     const answered = ASSESSMENT.filter(([id]) => answers[id]).length;
     const score = max ? Math.round(got / max * 100) : 0;
     gaps.sort((a, b) => b.w - a.w || (a.a === "no" ? -1 : 1));
-    return { score, answered, gaps, level: score >= 80 ? "Good" : score >= 55 ? "Some gaps" : "At risk" };
+    return { score, answered, gaps, level: !answered ? "Not started" : score >= 80 ? "Good" : score >= 55 ? "Some gaps" : "At risk" };
   }
   function recommendedPackage() {
     // Regulated industries need the compliance extras; everyone else is best served by Business.
@@ -276,9 +308,16 @@ ${COMPANY.phone} · ${COMPANY.web}`;
       <div><b>Flat monthly fee</b><span>no surprise bills, month-to-month option</span></div></div>`,
       notes: "Keep it short: 60 seconds. The point is: local, owner-led, security-first." });
     list.push({ html: `<h2>The risk for Canadian businesses</h2><div class="sk-stats">
-      ${MARKET.stats.map(([n, t]) => `<div><b>${esc(n)}</b><span>${esc(t)}</span></div>`).join("")}</div>
-      <p class="sk-foot">Sources: IBM Cost of a Data Breach 2026 (Canada), Statistics Canada.</p>`,
+      ${MARKET.stats.filter(([n]) => n !== "$1.2B").map(([n, t]) => `<div><b>${esc(n)}</b><span>${esc(t)}</span></div>`).join("")}</div>
+      <p class="sk-foot">Sources: IBM Cost of a Data Breach 2026 (Canada), CIRA Cybersecurity Survey 2025.</p>`,
       notes: "Don't scare. Say: most attacks are automated and aimed at whoever is least protected. Small businesses have the least." });
+    const why = MARKET.triggers.filter(([t]) => t !== "Tax season (accounting firms)" || ind === "accounting")
+      .filter(([t]) => !["\"Made in Canada\" matters", "Their MSP was bought or went quiet"].includes(t)).slice(0, 5);
+    list.push({ html: `<h2>Why businesses are acting now</h2><div class="sk-grid3 sk-why">${why.map(([t, d]) => `<div><b>${esc(t)}</b><span>${esc(d.split(". ")[0])}.</span></div>`).join("")}</div>`,
+      notes: "Ask which of these applies to them. Insurance renewal and Windows 10 are the easiest openings: \"When does your cyber insurance renew?\"" });
+    list.push({ html: `<h2>What your cyber insurer will ask</h2><ul class="sk-list">${MARKET.insurance.map(x => `<li>${esc(x)}</li>`).join("")}</ul>
+      <p class="sk-foot">Canadian insurers now require these for small businesses too. A wrong answer on the application can mean a refused claim.</p>`,
+      notes: "Offer to review their last insurance application against what they really have. It's a strong reason to do the full assessment." });
     if (ic) list.push({ html: `<h2>What we see in ${esc(ic.title.toLowerCase())}</h2><ul class="sk-list">${ic.points.map(p => `<li>${esc(p)}</li>`).join("")}</ul>`,
       notes: "Ask: \"Which of these have come up for you?\" Let them pick one and talk." });
     else list.push({ html: `<h2>What we see in small businesses</h2><ul class="sk-list">
@@ -288,7 +327,7 @@ ${COMPANY.phone} · ${COMPANY.web}`;
     list.push({ html: `<h2>Your quick assessment</h2>${res.answered ? `<div class="sk-score"><div class="sk-ring" style="--p:${res.score}"><b>${res.score}</b><span>/ 100</span></div>
       <div><p class="sk-level l-${res.level.replace(/\s/g, "")}">${esc(res.level)}</p><p>${res.answered} of ${ASSESSMENT.length} questions answered</p></div></div>
       ${res.gaps.length ? `<h3>Top gaps</h3><ul class="sk-list">${res.gaps.slice(0, 4).map(g => `<li><b>${esc(g.q.replace(/\?$/, ""))}</b> — ${esc(g.why)}</li>`).join("")}</ul>` : `<p>No gaps found. Nice work.</p>`}`
-      : `<p class="sk-sub">Fill in the 12-point assessment in the Meeting guide tab and the score appears here.</p>`}`,
+      : `<p class="sk-sub">Fill in the quick assessment in the Meeting guide tab and the score appears here.</p>`}`,
       notes: "Walk through the top 2–3 gaps only. Ask: \"If we fixed these, would you sleep better?\"" });
     list.push({ html: `<h2>How we work</h2><div class="sk-steps">
       <div><b>1. Assess</b><span>document everything, find the gaps</span></div>
@@ -367,7 +406,7 @@ ${COMPANY.phone} · ${COMPANY.web}`;
     return `<div class="sk-deck-actions"><button class="btn btn-primary" type="button" data-sk="present">▶ Present full screen</button>
       <span class="or-muted">${s.length} slides · arrow keys to move · N shows your notes · Esc to exit</span></div>
       <div class="sk-thumbs">${s.map((sl, i) => `<button type="button" class="sk-thumb" data-sk="present" data-v="${i}" aria-label="Present from slide ${i + 1}">
-        <div class="sk-slide-wrap"><div class="sk-slide ${sl.cls || ""}">${sl.html}</div></div><span>${i + 1}. ${esc((sl.html.match(/<h[12][^>]*>([^<]*)/) || [, ""])[1])}</span></button>`).join("")}</div>`;
+        <div class="sk-slide-wrap"><div class="sk-slide ${sl.cls || ""}">${sl.html}</div></div><span>${i + 1}. ${(sl.html.match(/<h[12][^>]*>([^<]*)/) || [, ""])[1] /* already escaped */}</span></button>`).join("")}</div>`;
   }
 
   function guideHtml() {
@@ -377,7 +416,7 @@ ${COMPANY.phone} · ${COMPANY.web}`;
       <section class="or-card"><h3>How to run the meeting</h3>${AGENDA.map(([h, items]) => `<div class="sk-agenda"><b>${esc(h)}</b><ul>${items.map(i => `<li>${esc(i)}</li>`).join("")}</ul></div>`).join("")}</section>
       <section class="or-card"><h3>Discovery questions</h3><p class="or-muted">Pick 6–8. Listen more than you talk.</p>${DISCOVERY.map(([h, qs]) => `<div class="sk-agenda"><b>${esc(h)}</b><ul>${qs.map(q => `<li>${esc(q)}</li>`).join("")}</ul></div>`).join("")}</section>
     </div>
-    <section class="or-card"><div class="or-card-head"><div><h3>12-point quick assessment</h3><p class="or-muted">Ask these together in the meeting. The score and top gaps appear on the deck.</p></div>
+    <section class="or-card"><div class="or-card-head"><div><h3>${ASSESSMENT.length}-point quick assessment</h3><p class="or-muted">Ask these together in the meeting. The score and top gaps appear on the deck.</p></div>
       <div class="sk-score-mini"><b>${res.score}</b>/100 · ${esc(res.level)} · ${res.answered}/${ASSESSMENT.length} answered</div></div>
       ${ASSESSMENT.map(([id, q, why]) => `<div class="sk-q"><div><b>${esc(q)}</b><span class="or-muted">${esc(why)}</span></div>
         <div class="sk-ans">${["yes", "no", "unsure"].map(a => `<button type="button" data-sk="answer" data-id="${id}" data-v="${a}" aria-pressed="${state.answers[id] === a}" class="a-${a}">${a === "unsure" ? "Not sure" : a[0].toUpperCase() + a.slice(1)}</button>`).join("")}</div></div>`).join("")}
@@ -447,7 +486,19 @@ ${COMPANY.phone} · ${COMPANY.web}`;
   }
 
   function marketHtml() {
-    return `<section class="or-card"><h3>What Ontario MSPs charge (2026)</h3>
+    return `<section class="or-card"><h3>Why now: reasons a business acts this year</h3><p class="or-muted">Open with whichever applies. These turn "someday" into "this quarter".</p>
+      <div class="sk-comp">${MARKET.triggers.map(([t, d, u]) => `<div><b>${esc(t)}</b><p>${esc(d)}</p><a href="${esc(u)}" target="_blank" rel="noopener">Source ↗</a></div>`).join("")}</div></section>
+      <div class="sk-cols">
+        <section class="or-card"><h3>What cyber insurers require (2026)</h3><ul class="sk-list-sm">${MARKET.insurance.map(x => `<li>${esc(x)}</li>`).join("")}</ul>
+          <p class="or-muted">Business and Secure+ cover all of these. Offer to check their insurance application.</p></section>
+        <section class="or-card"><h3>Why businesses leave their IT provider</h3><ul class="sk-list-sm">${MARKET.switching.map(x => `<li>${esc(x)}</li>`).join("")}</ul>
+          <p class="or-muted">Ask about these in discovery; each one is a promise you can make.</p></section>
+      </div>
+      <div class="sk-cols">
+        <section class="or-card"><h3>CyberSecure Canada</h3><p>${esc(MARKET.cybersecure)}</p><a href="https://www.cyber.gc.ca/en/guidance/baseline-cyber-security-controls-small-and-medium-organizations" target="_blank" rel="noopener">Baseline controls ↗</a></section>
+        <section class="or-card"><h3>Pricing strategy</h3><ul class="sk-list-sm">${MARKET.pricing.map(x => `<li>${esc(x)}</li>`).join("")}</ul></section>
+      </div>
+      <section class="or-card"><h3>What Ontario MSPs charge (2026)</h3>
       <table class="sk-table"><thead><tr><th>Level</th><th>Price</th><th>What it usually means</th></tr></thead><tbody>
       ${MARKET.ranges.map(r => `<tr>${r.map(c => `<td>${esc(c)}</td>`).join("")}</tr>`).join("")}</tbody></table>
       <p class="or-muted">Midas suggested: Essentials ${money(packages()[0].price)} · Business ${money(packages()[1].price)} · Secure+ ${money(packages()[2].price)} per user per month.</p></section>
@@ -458,7 +509,7 @@ ${COMPANY.phone} · ${COMPANY.web}`;
         <section class="or-card"><h3>What's standard in every package now</h3><ul class="sk-list-sm">${MARKET.standard.map(x => `<li>${esc(x)}</li>`).join("")}</ul></section>
         <section class="or-card"><h3>How Midas wins</h3>${MARKET.edge.map(([h, t]) => `<div class="sk-agenda"><b>${esc(h)}</b><p>${esc(t)}</p></div>`).join("")}</section>
       </div>
-      <section class="or-card"><h3>What your three industries need</h3><div class="sk-comp">${Object.values(MARKET.industries).map(i => `<div><b>${esc(i.title)}</b><ul class="sk-list-sm">${i.points.map(p => `<li>${esc(p)}</li>`).join("")}</ul><a href="${esc(i.url)}" target="_blank" rel="noopener">Source ↗</a></div>`).join("")}</div></section>
+      <section class="or-card"><h3>What your industries need</h3><div class="sk-comp">${Object.values(MARKET.industries).map(i => `<div><b>${esc(i.title)}</b><ul class="sk-list-sm">${i.points.map(p => `<li>${esc(p)}</li>`).join("")}</ul><a href="${esc(i.url)}" target="_blank" rel="noopener">Source ↗</a></div>`).join("")}</div></section>
       <section class="or-card"><h3>Sources</h3><ul class="sk-list-sm">${MARKET.sources.map(([t, u]) => `<li><a href="${esc(u)}" target="_blank" rel="noopener">${esc(t)}</a></li>`).join("")}</ul></section>`;
   }
 

@@ -11,12 +11,16 @@
 // On Railway it also relays Social Studio's 1min.ai requests (POST /1min/chat-with-ai
 // and /1min/features), so the 1min.ai key (ONEMIN_API_KEY) stays on the server too,
 // researches leads on the web (POST /research, see research.ts), runs Apify scrapers
-// (POST /apify/places and /apify/website, see apify.ts), and relays chat requests to the
-// Midas LLM gateway (POST /llm/chat) with LLM_GATEWAY_KEY.
+// (POST /apify/places and /apify/website, see apify.ts), relays chat requests to the
+// Midas LLM gateway (POST /llm/chat) with LLM_GATEWAY_KEY, and sends outreach email from a
+// Microsoft 365 mailbox (POST /outreach/*, plus the public unsubscribe page /u, see outreach.ts).
 import Anthropic from "npm:@anthropic-ai/sdk";
 import { createRemoteJWKSet, jwtVerify } from "npm:jose@5";
 import { type CompanyInput, type LeadInput, ResearchError, researchCompany, researchLead } from "./research.ts";
 import { ApifyError, findPlaces, scanWebsite } from "./apify.ts";
+import {
+  checkReplies, confirmUnsubscribe, OutreachError, outreachStatus, sendOutreach, unsubscribe, verifyEmails,
+} from "./outreach.ts";
 
 const FIREBASE_PROJECT_ID = Deno.env.get("FIREBASE_PROJECT_ID") ?? "midas-leads-a8b13";
 const FIREBASE_JWKS = createRemoteJWKSet(new URL(
@@ -226,6 +230,45 @@ async function handleApify(req: Request, kind: "places" | "website"): Promise<Re
   }
 }
 
+// The address this service is reached at, for the unsubscribe link (Railway terminates HTTPS in front).
+function publicBase(req: Request): string {
+  const url = new URL(req.url);
+  const proto = req.headers.get("x-forwarded-proto") ?? url.protocol.replace(":", "");
+  const host = req.headers.get("x-forwarded-host") ?? req.headers.get("host") ?? url.host;
+  return `${proto}://${host}`;
+}
+
+// POST /outreach/status | verify { emails } | send { messages } | replies { since, addresses }
+async function handleOutreach(req: Request, action: string): Promise<Response> {
+  let body: { emails?: unknown[]; messages?: unknown[]; since?: string; addresses?: unknown[] } = {};
+  try {
+    const raw = await req.text();
+    if (raw.length > 400_000) return json(req, 413, { error: "That request is too large." });
+    if (raw) body = JSON.parse(raw);
+  } catch {
+    return json(req, 400, { error: "The request wasn't valid JSON." });
+  }
+  try {
+    if (action === "status") return json(req, 200, await outreachStatus());
+    if (action === "verify") return json(req, 200, { results: await verifyEmails(Array.isArray(body.emails) ? body.emails : []) });
+    if (action === "send") {
+      const messages = Array.isArray(body.messages) ? body.messages : [];
+      if (!messages.length) return json(req, 400, { error: "Nothing to send." });
+      const result = await sendOutreach(messages as Parameters<typeof sendOutreach>[0], publicBase(req));
+      console.log("outreach send:", JSON.stringify({ tried: messages.length, sent: result.results.filter((r) => r.ok).length, sentToday: result.sentToday }));
+      return json(req, 200, result);
+    }
+    if (action === "replies") {
+      return json(req, 200, await checkReplies(String(body.since ?? ""), Array.isArray(body.addresses) ? body.addresses : []));
+    }
+    return json(req, 404, { error: "Unknown outreach action." });
+  } catch (err) {
+    if (err instanceof OutreachError) return json(req, err.status, { error: err.message, notConfigured: err.status === 503 });
+    console.error("outreach failed:", err);
+    return json(req, 500, { error: "Something went wrong with email outreach." });
+  }
+}
+
 async function signedInUser(req: Request): Promise<string | null> {
   const token = req.headers.get("x-firebase-token");
   if (!token) return null;
@@ -245,6 +288,12 @@ const PORT = Deno.env.get("PORT");
 
 Deno.serve(PORT ? { port: Number(PORT) } : {}, async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors(req) });
+  const url = new URL(req.url);
+  // The unsubscribe page is public: people click it from the email footer.
+  if (/^\/u\/?$/.test(url.pathname)) {
+    if (req.method === "GET") return unsubscribe(url);
+    if (req.method === "POST") return confirmUnsubscribe(url);
+  }
   if (req.method === "GET") return json(req, 200, { ok: true, service: "extract-contacts" });
   if (req.method !== "POST") return json(req, 405, { error: "Use POST." });
 
@@ -252,11 +301,13 @@ Deno.serve(PORT ? { port: Number(PORT) } : {}, async (req) => {
     return json(req, 401, { error: "Sign in to the lead tracker again, then retry." });
   }
 
-  const path = new URL(req.url).pathname;
+  const path = url.pathname;
   const oneMin = path.match(/^\/1min\/([a-z-]+)\/?$/);
   if (oneMin) return relayOneMin(req, oneMin[1]);
   if (/^\/llm\/chat\/?$/.test(path)) return relayGateway(req);
   if (/^\/research\/?$/.test(path)) return handleResearch(req);
+  const outreach = path.match(/^\/outreach\/([a-z]+)\/?$/);
+  if (outreach) return handleOutreach(req, outreach[1]);
   if (/^\/apify\/(places|website)\/?$/.test(path)) return handleApify(req, path.includes("places") ? "places" : "website");
 
   let body: { image?: string; mediaType?: string; company?: string; website?: string };

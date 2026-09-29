@@ -451,27 +451,7 @@
     ["Your reviews are a real weapon", "5.0 from 35 on Google. Only XBASE (73, 4.6) and Manawa (51, 4.9) have more among those we could see."]
   ];
 
-  const PLAYS = [
-    ["Publish your prices", "Put \"Plans from $89/user/month\" and the three plans on midastech.ca. Fusion, TUCU, CG, ITBizTek and Nucleus publish, and buyers shortlist the firms that do."],
-    ["Add a guarantee", "\"90-day happiness guarantee: if you're not happy in the first 90 days, leave with no fee and we hand everything over.\" This takes away Manawa's and G4NS's advantage."],
-    ["Publish a response time", "Your reviews say you answer within minutes. Write it down (e.g. \"15-minute response, business hours; 1 hour after hours\"), as G4NS, Manawa, Haycor and ITBizTek do."],
-    ["Own warehouses in Vaughan and Concord", "A \"Warehouse and logistics IT\" page: scanners, dock Wi-Fi, WMS uptime, label printers, supplier-payment fraud. Nobody local markets this."],
-    ["Clinics beyond dental", "Medical, physio, chiropractic and optometry have no GTA specialist. Add a clinic page with PHIPA and a \"software we support\" list (e.g. Accuro, OSCAR, Jane, plus the dental systems)."],
-    ["Accounting: beat Haycor in tax season", "A CRA EFILE MFA readiness check and a \"tax-season priority line\" from January to April."],
-    ["Town pages", "One page each for Richmond Hill, Markham, Vaughan, Aurora and Newmarket, each with a local client story. It's how competitors rank."],
-    ["A pricing guide", "\"What managed IT costs in York Region (2026)\". Every top competitor has one, and it brings buyers who are ready to decide."],
-    ["Case studies", "Two or three real stories (anonymous is fine) on the website and in the Sales Kit deck. Competitors show scale; you show results with people like them."]
-  ];
 
-  const SOCIAL_ACTIONS = [
-    ["Post from Ali's personal LinkedIn, not only the company page", "Personal profiles get 5–10× the reach of company pages for the same post. 3 posts a week, in your own voice, about clinics, accounting, warehouses and local business. Consistency beats volume.", "https://c4solutionsllc.com/linkedin-content-strategy-msp/"],
-    ["Comment before you post", "10 thoughtful comments a day on posts by local business owners, clinic managers and accountants. It's the fastest way to grow reach on LinkedIn in 2026.", "https://www.lilachbullock.com/linkedin-growth-b2b-founder/"],
-    ["Short talking-head videos", "30–60 seconds, one tip each (\"Is your clinic's backup really working?\"). LinkedIn video views are up 36% year on year. Re-use them on Instagram Reels, Facebook and YouTube Shorts.", "https://www.kometmedia.com/blogs/linkedin-video-distribution-playbook-for-founders"],
-    ["Get to 60+ Google reviews", "Manawa has 51 and XBASE 73. Ask every happy client, send the link the same day you fix something, and reply to every review."],
-    ["Weekly Google Business post", "Use the Google Business post pack in Social Posts. Competitors barely post there, so it's an easy win for local search."],
-    ["Podcast or YouTube later", "Manawa has a podcast and G4NS a YouTube channel. Low priority. Start with LinkedIn video and put those clips on YouTube."],
-    ["More Clutch reviews", "You have 7. Aim for 15. Clutch lists are what many \"top MSP\" articles are built from."]
-  ];
 
   const CONTRACT_NORMS = [
     "Most MSP contracts run 1, 3 or 5 years; MSP lawyers recommend 3 years",
@@ -485,31 +465,7 @@
   // Each item is cross-referenced to the competitor gap it closes. impact/effort drive the order.
   // area: "Online presence" | "Social" | "Reviews & proof" | "Offers & pricing" | "Niche"
   // effort: "S" | "M" | "L"   impact: "high" | "medium" | "low"
-  const IMPROVEMENTS = [
-    { id: "publish-prices", area: "Offers & pricing", impact: "high", effort: "S", title: "Publish your prices on the website", detail: "Put “Plans from $89/user/month” and the three plans on midastech.ca.", why: "Fusion, TUCU, CG, ITBizTek and Nucleus publish prices; buyers shortlist the firms that do.", steps: ["Add a Pricing (or Plans) page to midastech.ca with the three plans: Essentials $89, Business $139, Secure+ $189 per user/month.", "For each plan list 4–6 things included, and mark Business “Most popular”.", "Add one line: “Plus HST. Microsoft 365 licences at cost. Month to month, or 12 months with onboarding waived.”", "Link to it from the home page and the main menu.", "Use the exact plan wording from the Sales Kit → Packages so it matches your quotes."] },
-    { id: "guarantee", area: "Offers & pricing", impact: "high", effort: "S", title: "Add a 90-day happiness guarantee", detail: "“Not happy in your first 90 days? Leave with no fee and we hand everything over.” Put it on the site and in the deck.", why: "Manawa (90-day exit + money back) and G4NS (60-day money back) both advertise guarantees; you don’t.", steps: ["Decide the promise: “90-day happiness guarantee — not happy in your first 90 days, leave with no fee and we hand everything over.”", "Add it as a badge on the home page and the pricing page.", "Add one line to the meeting deck’s ‘Switching is easier than you think’ slide.", "Add it to your proposal template so every quote shows it.", "Keep a simple internal note of the promise so the team answers consistently."] },
-    { id: "response-time", area: "Offers & pricing", impact: "high", effort: "S", title: "Publish a written response time", detail: "Your reviews say you answer within minutes — write it down, e.g. “15-minute response in business hours, 1 hour after hours.”", why: "G4NS and Manawa advertise 15-minute response; Haycor 30-minute. You have the speed but don’t claim it.", steps: ["Pick honest numbers you can always hit, e.g. “15-minute response in business hours, 1 hour after hours.”", "Put it on the home page and pricing page.", "Add it to proposals and to the meeting deck.", "Tell the team the target so it’s real, and glance at your ticket timestamps monthly to confirm you’re meeting it."] },
-    { id: "reviews-60", area: "Reviews & proof", impact: "high", effort: "M", title: "Get to 60+ Google reviews", detail: "Ask every happy client, send the review link the same day you fix something, and reply to every review.", why: "XBASE has 73 and Manawa 51. You have 35 at 5.0 — more reviews at that rating would lead the pack.", steps: ["Get your Google review short link from your Google Business Profile (Ask for reviews → copy link).", "The same day you fix something or finish a visit, text or email the client the link with one line: “Would you mind leaving a quick Google review?”", "Reply to every review, good or bad, within a day.", "Track the count; aim for 2–3 new reviews a month to pass 60.", "Add the review link to your email signature and invoices."] },
-    { id: "warehouse-page", area: "Niche", impact: "high", effort: "M", title: "Own “Warehouse & logistics IT” in Vaughan and Concord", detail: "A dedicated page: scanners, dock Wi-Fi, WMS/TMS uptime, label printers, supplier-payment fraud.", why: "Only Fusion, JIG and Echoflare have a logistics page, and none are in Vaughan or Concord where the warehouses are.", steps: ["Create a ‘Warehouse & logistics IT’ page on midastech.ca.", "Cover the things warehouses feel: scanner and label-printer uptime, dock and floor Wi-Fi, WMS/TMS reliability, and fake supplier-banking-change emails.", "Add one short local example or a line about Vaughan/Concord.", "End with the free assessment and your booking link.", "Target the words ‘warehouse IT Vaughan’ and ‘logistics IT Concord’ in the page title and headings."] },
-    { id: "clinic-page", area: "Niche", impact: "high", effort: "M", title: "Add a clinic page beyond dental", detail: "Medical, physio, chiropractic and optometry, with PHIPA and a “software we support” list (Accuro, OSCAR, Jane, plus dental systems).", why: "Four firms fight over dentists; no GTA specialist covers other clinics.", steps: ["Create a ‘Healthcare & clinic IT’ page covering medical, dental, physio, chiro and optometry.", "Explain PHIPA plainly: access controls, encryption, backups, a breach plan.", "Add a ‘software we support’ list: Accuro, OSCAR, Jane, plus dental systems (Dentrix, ABELDent, ClearDent, Open Dental).", "Mention EMR support and tested backups.", "End with the free assessment and booking link; target ‘clinic IT Richmond Hill’ etc."] },
-    { id: "linkedin-founder", area: "Social", impact: "high", effort: "M", title: "Post from Ali’s personal LinkedIn 3× a week", detail: "Your own voice, about clinics, accounting, warehouses and local business. Consistency beats volume.", why: "Personal profiles get 5–10× the reach of company pages, and competitors’ pages only sit at ~900–1,000 followers — easy to stand out.", src: "https://c4solutionsllc.com/linkedin-content-strategy-msp/", steps: ["Use Ali’s personal LinkedIn profile, not just the company page.", "Pick 3 themes: clinic/accounting/warehouse security, a tip of the week, and a short local story.", "Post 3 times a week. Keep each post short, in your own voice, ending with one question.", "Batch-write a week of posts in one sitting so it’s sustainable.", "Reply to every comment within a few hours."] },
-    { id: "case-studies", area: "Reviews & proof", impact: "high", effort: "M", title: "Publish 2–3 client case studies", detail: "Before / what we did / result. Anonymous is fine. Put them on the site and in the Sales Kit deck.", why: "Competitors show scale; you can show real results with businesses like the prospect.", steps: ["Pick 2–3 clients with a clear before/after (a fixed backup, passed insurance, less downtime).", "Ask permission; anonymous is fine (“a 12-person dental clinic in Markham”).", "Write each as: the problem → what we did → the result, in a few sentences.", "Put them on the website and add them in Sales Kit → Meeting deck → Your proof so they show on the deck.", "Add a client quote if you can get one."] },
-    { id: "town-pages", area: "Online presence", impact: "medium", effort: "L", title: "Add town pages", detail: "One page each for Richmond Hill, Markham, Vaughan, Aurora and Newmarket, each with a local client story.", why: "Fusion, CG, G4NS, Wingman and BALANCED+ rank locally with a page for every town.", steps: ["Make one page each for Richmond Hill, Markham, Vaughan, Aurora and Newmarket.", "On each, mention the area by name, your on-site coverage, and a local client story.", "Keep the core the same but change the town and the example, so they don’t read as duplicates.", "Link them from a footer ‘Areas we serve’ menu.", "Put the town in each page title, e.g. ‘Managed IT services in Markham’."] },
-    { id: "pricing-guide", area: "Online presence", impact: "medium", effort: "M", title: "Write a York Region pricing guide", detail: "“What managed IT costs in York Region (2026).” Ranks in search and brings ready-to-buy visitors.", why: "Every top competitor (Fusion, CG, TUCU, BALANCED+, Meteor) has one.", steps: ["Write one article: ‘What managed IT costs in York Region (2026)’.", "Give honest ranges (e.g. $100–250/user) and explain what changes the price.", "Be transparent that your plans start at $89 and what’s included.", "End with the free assessment and booking link.", "Link it from your pricing page and share it on LinkedIn."] },
-    { id: "linkedin-comment", area: "Social", impact: "medium", effort: "S", title: "Comment before you post on LinkedIn", detail: "10 thoughtful comments a day on posts by local owners, clinic managers and accountants.", why: "It’s the fastest way to grow reach on LinkedIn in 2026, and no local MSP is doing it.", src: "https://www.lilachbullock.com/linkedin-growth-b2b-founder/", steps: ["Each morning, spend 10 minutes on LinkedIn.", "Leave thoughtful comments on posts by local business owners, clinic managers and accountants — helpful, not salesy.", "Follow the people and businesses you want as clients.", "Do this before you post your own content; it lifts your reach.", "Keep it to 10 comments a day, consistently."] },
-    { id: "video", area: "Social", impact: "medium", effort: "M", title: "Post short talking-head videos", detail: "30–60 seconds, one tip each. Re-use on Instagram Reels, Facebook and YouTube Shorts.", why: "LinkedIn video views are up 36% year on year, and it feels personal — your owner-led edge.", src: "https://www.kometmedia.com/blogs/linkedin-video-distribution-playbook-for-founders", steps: ["Film 30–60 second phone videos, one tip each (‘Is your clinic’s backup really working?’).", "Talk to the camera; add captions (most people watch on mute).", "Post to LinkedIn first, then reuse on Instagram Reels, Facebook and YouTube Shorts.", "Aim for one a week to start.", "Use the Social Posts tool to plan the topics."] },
-    { id: "gbp-weekly", area: "Online presence", impact: "medium", effort: "S", title: "Post to Google Business weekly", detail: "Use the Google Business post pack already in Social Posts.", why: "Competitors barely post there — an easy win for local search.", steps: ["Open Social Posts → the Google Business post pack.", "Post once a week to your Google Business Profile (an offer, a tip, or a quick update).", "Add a photo where you can.", "Include your booking link.", "Reply to any questions or reviews while you’re there."] },
-    { id: "tax-season", area: "Niche", impact: "medium", effort: "S", title: "Beat Haycor with accounting firms in tax season", detail: "A CRA EFILE MFA readiness check and a “tax-season priority line” from January to April.", why: "Haycor is the York Region accounting specialist and promises tax-season priority; match and out-specialise it.", steps: ["Build a one-page ‘CRA EFILE security check’ offer for accounting firms (MFA on EFILE and Represent a Client, backups, staff training).", "From November to January, email and call accounting-firm leads with it.", "Offer a ‘tax-season priority line’: faster response January–April.", "Add an accounting page to the site that says this.", "Use the accounting email template in Outreach with a trigger."] },
-    { id: "exit-terms", area: "Offers & pricing", impact: "medium", effort: "S", title: "Write client-friendly exit terms", detail: "On leaving, you hand over documentation and the client keeps admin access, their Microsoft tenant and licences.", why: "Fusion advertises exactly this; it removes the fear of being locked in.", steps: ["Add a short ‘How leaving works’ section to your proposal and website.", "State: we hand over full documentation, and you keep admin access, your Microsoft tenant and your licences.", "Confirm no lock-in: month to month with 30 days’ notice.", "Say it out loud in meetings — it removes the fear of switching.", "Keep an offboarding checklist so it’s true in practice."] },
-    { id: "clutch", area: "Reviews & proof", impact: "low", effort: "S", title: "Grow Clutch reviews to 15+", detail: "Ask clients to leave a Clutch review; you have 7.", why: "Many “top MSP” lists are built from Clutch, so more reviews there feed future rankings.", steps: ["Ask 8–10 happy clients to leave a Clutch review (Clutch usually interviews them briefly).", "Send the Clutch review link the same way as Google.", "Fill out your Clutch profile fully: services, industries, locations.", "Aim for 15+ reviews over a few months.", "These feed the ‘top MSP’ lists that send you leads."] },
-    { id: "software-list", area: "Niche", impact: "low", effort: "S", title: "Add a “software we support” list", detail: "List the dental, medical and accounting programs you support, by name.", why: "Starcomm lists every dental program by name and it reassures clinic buyers.", steps: ["Make a ‘Software we support’ list for your website and clinic/accounting pages.", "Group it: dental (Dentrix, ABELDent, ClearDent, Open Dental), medical (Accuro, OSCAR, Jane), accounting (QuickBooks, Caseware, TaxCycle).", "Only list what you can genuinely support.", "It reassures clinic and firm buyers you know their tools.", "Update it as you take on new client software."] },
-    { id: "certs", area: "Reviews & proof", impact: "low", effort: "M", title: "Show your security tools and policies", detail: "List your stack (EDR, MFA, backup) and written policies; link the insurance checklist.", why: "XBASE leads with SOC 2 Type II and Cyber Verify — you can show substance without the audit cost.", steps: ["List your security stack plainly: managed EDR, MFA everywhere, backups tested, patching, training.", "Publish your written policies (even short ones): incident response, backups, access control.", "Link the insurance checklist page from your security page.", "Note any partner status (Microsoft Partner) and the CyberSecure Canada baseline you follow.", "This shows substance without paying for a SOC 2 audit."] }
-  ];
 
-  // Most recent monthly research pass. The 30-day job updates RESEARCHED, CHANGELOG and the data above.
-  const CHANGELOG = [
-    { date: "September 2026", notes: ["First competitor research pass: 26 GTA providers profiled.", "Baseline: your 5.0 Google rating (35 reviews) trails only XBASE (73) and Manawa (51) on volume.", "Open niches found: warehouses in Vaughan/Concord, and non-dental clinics."] }
-  ];
 
   // ── helpers ──
   const esc = s => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
@@ -517,7 +473,7 @@
   const THREAT = { high: ["High", "cp-high"], medium: ["Medium", "cp-med"], low: ["Low", "cp-low"] };
 
   let host = null, root = null;
-  const state = { tab: "overview", q: "", type: "", ind: "", threat: "", growArea: "", open: {}, settings: { notes: {}, midas: {}, improvements: {} }, loaded: false };
+  const state = { tab: "overview", q: "", type: "", ind: "", threat: "", open: {}, settings: { notes: {}, midas: {} }, loaded: false };
   try { Object.assign(state, JSON.parse(localStorage.getItem("midas-competitors-ui") || "{}")); } catch {}
   const remember = () => { try { localStorage.setItem("midas-competitors-ui", JSON.stringify({ tab: state.tab, type: state.type, ind: state.ind, threat: state.threat })); } catch {} };
 
@@ -525,7 +481,7 @@
     root = el; host = h;
     if (!state.loaded) {
       state.loaded = true;
-      host.loadSettings().then(s => { if (s) state.settings = { notes: s.notes || {}, midas: s.midas || {}, improvements: s.improvements || {} }; draw(); }).catch(() => {});
+      host.loadSettings().then(s => { if (s) state.settings = { notes: s.notes || {}, midas: s.midas || {} }; draw(); }).catch(() => {});
     }
     draw();
   }
@@ -541,10 +497,7 @@
     ).sort((a, b) => order[a.threat] - order[b.threat]);
   }
 
-  const TABS = [["overview", "🧭 Overview"], ["grow", "📈 Grow / to-do"], ["list", "🏢 Competitors"], ["compare", "📊 Side by side"], ["social", "📱 Social & reviews"], ["contracts", "📄 Contracts & pricing"]];
-  const IMP_STATUS = { todo: ["To do", "cp-st-todo"], doing: ["In progress", "cp-st-doing"], done: ["Done", "cp-st-done"] };
-  const IMP_AREAS = ["Online presence", "Social", "Reviews & proof", "Offers & pricing", "Niche"];
-  const impScore = i => ({ high: 3, medium: 2, low: 1 }[i.impact]) / ({ S: 1, M: 2, L: 3 }[i.effort]);
+  const TABS = [["overview", "🧭 Overview"], ["list", "🏢 Competitors"], ["compare", "📊 Side by side"], ["social", "📱 Social & reviews"], ["contracts", "📄 Contracts & pricing"]];
 
   function draw() {
     if (!root) return;
@@ -553,51 +506,14 @@
       <div class="workspace-header"><div><div class="workspace-title">Competitors</div>
         <div class="workspace-sub">${COMPETITORS.length} GTA managed IT providers: what they sell, who they sell to, prices, contracts, reviews and social media, and how Midas Tech wins. ${high} compete head-to-head with you.</div></div></div>
       <div class="sk-tabs" role="tablist">${TABS.map(([k, n]) => `<button type="button" role="tab" data-cp="tab" data-v="${k}" aria-selected="${state.tab === k}">${n}</button>`).join("")}</div>
-      <div class="sk-panel">${state.tab === "overview" ? overviewHtml() : state.tab === "grow" ? growHtml() : state.tab === "list" ? listHtml() : state.tab === "compare" ? compareHtml() : state.tab === "social" ? socialHtml() : contractsHtml()}</div>
+      <div class="sk-panel">${state.tab === "overview" ? overviewHtml() : state.tab === "list" ? listHtml() : state.tab === "compare" ? compareHtml() : state.tab === "social" ? socialHtml() : contractsHtml()}</div>
       <p class="or-muted cp-foot">Researched ${RESEARCHED} from competitors' websites, directories (Clutch, CloudSecureTech, The Manifest) and search results. Blank means we couldn't find it published. Check a competitor's site before quoting them to a client.</p>`;
-  }
-
-  function growHtml() {
-    const done = IMPROVEMENTS.filter(i => (state.settings.improvements[i.id]?.status) === "done").length;
-    const pct = Math.round(done / IMPROVEMENTS.length * 100);
-    const list = IMPROVEMENTS
-      .filter(i => !state.growArea || i.area === state.growArea)
-      .slice().sort((a, b) => {
-        const sa = state.settings.improvements[a.id]?.status === "done" ? 1 : 0;
-        const sb = state.settings.improvements[b.id]?.status === "done" ? 1 : 0;
-        return sa - sb || impScore(b) - impScore(a);
-      });
-    const last = CHANGELOG[0];
-    return `<section class="or-card cp-grow-head">
-        <div class="or-card-head"><div><h3>Grow: our action plan</h3>
-          <p class="or-muted">Everything we can do to improve our online presence and win more clients, cross-referenced to what competitors do that we don't. Ordered by impact for the effort. Tick items off — saved for the team.</p></div>
-          <div class="cp-progress"><b>${done}/${IMPROVEMENTS.length}</b><span>done</span></div></div>
-        <div class="cp-bar"><span style="width:${pct}%"></span></div>
-        <div class="cp-grow-filters"><button type="button" data-cp="grow-area" data-v="" class="${!state.growArea ? "on" : ""}">All</button>${IMP_AREAS.map(a => `<button type="button" data-cp="grow-area" data-v="${esc(a)}" class="${state.growArea === a ? "on" : ""}">${esc(a)}</button>`).join("")}</div>
-      </section>
-      ${list.map(i => {
-        const st = state.settings.improvements[i.id] || {};
-        const status = st.status || "todo";
-        return `<article class="or-card cp-imp cp-imp-${status}">
-          <div class="cp-imp-top"><div><span class="cp-tag">${esc(i.area)}</span> <span class="cp-imp-meta">Impact: ${esc(i.impact)} · Effort: ${i.effort === "S" ? "small" : i.effort === "M" ? "medium" : "large"}</span>
-            <h4>${esc(i.title)}</h4></div>
-            <div class="cp-imp-status">${Object.entries(IMP_STATUS).map(([k, [lbl, cls]]) => `<button type="button" data-cp="imp-status" data-id="${i.id}" data-v="${k}" class="${status === k ? "on " + cls : ""}">${lbl}</button>`).join("")}</div></div>
-          <p class="cp-imp-detail">${esc(i.detail)}</p>
-          <p class="cp-imp-why"><b>Why:</b> ${esc(i.why)}${i.src ? ` <a href="${esc(i.src)}" target="_blank" rel="noopener">source ↗</a>` : ""}</p>
-          ${i.steps && i.steps.length ? `<details class="cp-steps"><summary>How to do it</summary><ol>${i.steps.map(st => `<li>${esc(st)}</li>`).join("")}</ol></details>` : ""}
-          <label class="cp-note">Notes<textarea data-cp="imp-note" data-id="${i.id}" rows="1" placeholder="Owner, date, link…">${esc(st.note || "")}</textarea></label>
-        </article>`;
-      }).join("")}
-      <section class="or-card"><h3>What changed each month</h3><p class="or-muted">Updated automatically every 30 days when competitors are re-researched.</p>
-        ${CHANGELOG.map(c => `<div class="cp-log"><b>${esc(c.date)}</b><ul class="sk-list-sm">${c.notes.map(n => `<li>${esc(n)}</li>`).join("")}</ul></div>`).join("")}
-        <p class="or-muted">Next scheduled refresh runs ~30 days after the last. It opens a PR for review; nothing changes here until it's merged.</p></section>`;
   }
 
   function overviewHtml() {
     const heads = COMPETITORS.filter(c => c.threat === "high");
     return `<section class="or-card"><h3>What the market looks like</h3><div class="sk-comp">${INSIGHTS.map(([t, d]) => `<div><b>${esc(t)}</b><p>${esc(d)}</p></div>`).join("")}</div></section>
-      <section class="or-card"><h3>How Midas Tech wins: 9 moves</h3><p class="or-muted">Ranked by impact. Most are website and marketing changes, not new services.</p>
-        <ol class="cp-plays">${PLAYS.map(([t, d]) => `<li><b>${esc(t)}</b><span>${esc(d)}</span></li>`).join("")}</ol></section>
+      <section class="or-card"><h3>How Midas Tech wins</h3><p class="or-muted">The full, trackable action plan — with step-by-step how-to for each move — now lives in the <b>📈 Growth → Action plan</b> tab, so every improvement is in one place.</p></section>
       <section class="or-card"><h3>Your head-to-head competitors</h3><p class="or-muted">Same area, same kind of clients. Know these ${heads.length} well.</p>
         <div class="sk-comp">${heads.map(c => `<div><b>${esc(c.name)}</b><span class="or-muted">${esc(c.where)}</span><p><b>Their edge:</b> ${esc(c.strengths[0])}</p><p><b>How to win:</b> ${esc(c.win)}</p>
           <button class="btn btn-secondary btn-sm" type="button" data-cp="goto" data-id="${c.id}">Full profile</button></div>`).join("")}</div></section>`;
@@ -670,7 +586,7 @@
           ${known.map(c => `<tr><td><b>${esc(c.name)}</b></td><td>${esc((c.reviews.match(/Google [^;,)]*\)?/) || [""])[0].replace("Google ", ""))}</td><td>${esc(c.social.linkedin)}</td><td>${esc(c.social.facebook)}</td><td>${esc(c.social.instagram)}</td><td>${esc(c.social.youtube || (/podcast/i.test(c.social.content) ? "Podcast" : ""))}</td><td>${esc(c.social.content)}</td></tr>`).join("")}
         </tbody></table></div>
         <p class="or-muted">What we could find publicly. Most GTA MSPs have small social audiences (LinkedIn around 900–1,000 followers for the leaders). They win on Google search and reviews, not social media, so a consistent founder on LinkedIn stands out quickly.</p></section>
-      <section class="or-card"><h3>What to improve</h3><ol class="cp-plays">${SOCIAL_ACTIONS.map(([t, d, u]) => `<li><b>${esc(t)}</b><span>${esc(d)}${u ? ` <a href="${esc(u)}" target="_blank" rel="noopener">Source ↗</a>` : ""}</span></li>`).join("")}</ol></section>`;
+      <section class="or-card"><h3>What to improve</h3><p class="or-muted">The social-media playbook and action steps are in the <b>📈 Growth → Social networks</b> tab.</p></section>`;
   }
 
   function contractsHtml() {
@@ -699,11 +615,6 @@
     clearTimeout(noteTimer);
     noteTimer = setTimeout(() => host.saveSettings({ notes: state.settings.notes }).then(() => host.toast("Note saved", "success")).catch(() => {}), 900);
   }
-  let impTimer = null;
-  function saveImprovements() {
-    clearTimeout(impTimer);
-    impTimer = setTimeout(() => host.saveSettings({ improvements: state.settings.improvements }).then(() => host.toast("Saved", "success")).catch(() => {}), 900);
-  }
 
   document.addEventListener("click", e => {
     const t = e.target.closest("[data-cp]");
@@ -712,13 +623,6 @@
     if (a === "tab") { state.tab = t.dataset.v; remember(); draw(); }
     else if (a === "goto") { state.tab = "list"; state.q = ""; state.type = ""; state.ind = ""; state.threat = ""; draw(); document.getElementById(`cp-${t.dataset.id}`)?.scrollIntoView({ behavior: "smooth", block: "start" }); }
     else if (a === "save-midas") host.saveSettings({ midas: state.settings.midas }).then(() => { host.toast("Saved", "success"); draw(); }).catch(() => {});
-    else if (a === "grow-area") { state.growArea = t.dataset.v; draw(); }
-    else if (a === "imp-status") {
-      const id = t.dataset.id, cur = state.settings.improvements[id] || {};
-      state.settings.improvements[id] = { ...cur, status: cur.status === t.dataset.v ? "todo" : t.dataset.v };
-      host.saveSettings({ improvements: state.settings.improvements }).then(() => host.toast("Saved", "success")).catch(() => {});
-      draw();
-    }
   });
   document.addEventListener("change", e => {
     const t = e.target.closest("[data-cp]");
@@ -736,7 +640,6 @@
       draw();
       const box = root.querySelector('[data-cp="q"]'); box.focus(); try { box.setSelectionRange(pos, pos); } catch {}
     } else if (a === "note") { state.settings.notes[t.dataset.id] = t.value.slice(0, 1000); saveNotes(); }
-    else if (a === "imp-note") { const id = t.dataset.id; state.settings.improvements[id] = { ...(state.settings.improvements[id] || {}), note: t.value.slice(0, 500) }; saveImprovements(); }
     else if (a === "midas") { state.settings.midas[t.dataset.id] = t.value.slice(0, 40); }
   });
 

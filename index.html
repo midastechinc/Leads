@@ -544,6 +544,37 @@
     .sk-story-edit legend { font-weight: 700; padding: 0 6px; }
     .sk-story-edit input, .sk-story-edit select { border: 1px solid var(--gray-200); border-radius: 8px; padding: 7px 9px; font: inherit; font-weight: 400; }
     .sk-deck-actions .or-check-row { margin-left: auto; }
+    .cp-foot { margin: 12px 4px 0; font-size: 12px; }
+    .cp-plays { margin: 6px 0 0; padding-left: 22px; display: grid; gap: 10px; }
+    .cp-plays b { display: block; color: var(--gray-900); }
+    .cp-plays span { color: var(--gray-700); font-size: 14px; }
+    .cp-card { margin-bottom: 12px; }
+    .cp-card-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+    .cp-card-head h3 { margin: 0 0 2px; }
+    .cp-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+    .cp-tag, .cp-threat { font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 999px; background: var(--blue-light); color: var(--blue); white-space: nowrap; }
+    .cp-threat.cp-high { background: #fde8e7; color: #b42318; }
+    .cp-threat.cp-med { background: #fef3dc; color: #9a6300; }
+    .cp-threat.cp-low { background: #e7f6ee; color: #0f7a4f; }
+    .cp-facts { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px 16px; margin: 12px 0; }
+    .cp-facts div { display: grid; gap: 2px; align-content: start; }
+    .cp-facts dt { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--gray-500, #808080); }
+    .cp-facts dd { margin: 0; font-size: 14px; color: var(--gray-800, #333); }
+    .cp-services { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+    .cp-services span { font-size: 12px; padding: 4px 10px; border-radius: 8px; background: #f2f9fd; border: 1px solid #d6e9f5; color: #0b4f7d; }
+    .cp-sw { gap: 12px; margin: 0; }
+    .cp-sw > div { background: #fff; border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; }
+    .cp-win { background: #eaf7fd; border-left: 4px solid #00AEEF; border-radius: 8px; padding: 10px 12px; margin: 10px 0; font-size: 14px; }
+    .cp-note { display: grid; gap: 4px; font-size: 12px; font-weight: 700; color: var(--gray-600); }
+    .cp-note textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--gray-200); border-radius: 10px; padding: 8px 10px; font: inherit; font-weight: 400; resize: vertical; }
+    .cp-src { margin: 8px 0 0; display: flex; gap: 12px; flex-wrap: wrap; font-size: 13px; }
+    .cp-src a { color: var(--blue); font-weight: 700; }
+    .cp-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .cp-table { min-width: 1100px; table-layout: auto; }
+    .cp-table th:nth-child(n+7):nth-child(-n+9), .cp-table td:nth-child(n+7):nth-child(-n+9) { width: 70px; text-align: center; }
+    .cp-scroll .sk-table td { white-space: normal; overflow: visible; font-size: 13px; }
+    .cp-us td { background: #eaf7fd !important; }
+    .cp-filters label { min-width: 0; }
     .sk-present { position: fixed; inset: 0; z-index: 1000; background: #0b1620; display: flex; flex-direction: column; align-items: center; justify-content: center; outline: none; }
     .sk-present .sk-stage { width: min(100vw, 177.78vh); padding: 0; }
     .sk-present .sk-slide-wrap { border-radius: 0; }
@@ -1613,7 +1644,8 @@
     .vt-ico { margin-right: 6px; }
     .view-tab { white-space: nowrap; }
     @media (max-width: 1440px) { .h1-brand { display: none; } .view-tab { padding: 8px 12px; } }
-    @media (min-width: 901px) and (max-width: 1100px) { .view-tab .vt-ico { display: none; } }
+    @media (min-width: 901px) and (max-width: 1240px) { .view-tab .vt-ico { display: none; } .view-tab { padding: 8px 9px; font-size: 12.5px; } }
+    @media (min-width: 901px) and (max-width: 1000px) { .view-tab { padding: 7px 6px; font-size: 12px; } header h1 { font-size: 14px; } }
     @media (max-width: 900px) {
       body { padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px)); }
       /* backdrop-filter would make the header the containing block for the fixed tab bar */
@@ -1634,6 +1666,7 @@
       }
       .view-tab { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 7px 2px; border-radius: 12px; font-size: 10.5px; line-height: 1.1; min-height: 52px; text-align: center; white-space: normal; letter-spacing: 0; }
       .vt-ico { margin: 0; font-size: 18px; line-height: 1; }
+      .view-tab[data-v="competitors"] .vt-label { font-size: 9.5px; letter-spacing: -0.02em; }
       .toast { bottom: calc(80px + env(safe-area-inset-bottom, 0px)); left: 16px; right: 16px; max-width: none; }
 
       /* Stop iPhones zooming in when a field is tapped */
@@ -1783,6 +1816,7 @@
         <button class="view-tab" data-v="social" onclick="switchView('social')"><span class="vt-ico" aria-hidden="true">📣</span><span class="vt-label">Social Posts</span></button>
         <button class="view-tab" data-v="outreach" onclick="switchView('outreach')"><span class="vt-ico" aria-hidden="true">✉️</span><span class="vt-label">Outreach</span><span class="vt-count" id="outreachTabCount" hidden></span></button>
         <button class="view-tab" data-v="saleskit" onclick="switchView('saleskit')"><span class="vt-ico" aria-hidden="true">💼</span><span class="vt-label">Sales Kit</span></button>
+        <button class="view-tab" data-v="competitors" onclick="switchView('competitors')"><span class="vt-ico" aria-hidden="true">🥊</span><span class="vt-label">Competitors</span></button>
       </div>
       <div class="user-badge">
         <strong id="userDisplay">—</strong>
@@ -2113,6 +2147,15 @@
   <div class="view" id="view-saleskit">
     <div class="workspace" id="salesKitRoot">
       <div class="empty-workspace"><div class="big">💼</div><strong>Loading the sales kit…</strong></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════
+       COMPETITORS VIEW (GTA competitor research and how we win; content in competitors.js)
+  ══════════════════════════════ -->
+  <div class="view" id="view-competitors">
+    <div class="workspace" id="competitorsRoot">
+      <div class="empty-workspace"><div class="big">🥊</div><strong>Loading competitors…</strong></div>
     </div>
   </div>
 
@@ -3283,6 +3326,7 @@
       if (v === "social") loadSocialPosts();
       if (v === "outreach") openOutreachView();
       if (v === "saleskit") window.SalesKit?.render(document.getElementById("salesKitRoot"), salesKitHost);
+      if (v === "competitors") window.Competitors?.render(document.getElementById("competitorsRoot"), competitorsHost);
     };
 
     function refreshLeadViews() {
@@ -5055,6 +5099,11 @@ ${shape}`;
       },
       loadSettings: () => loadAppSettings("salesKit"),
       saveSettings: patch => saveAppSettings("salesKit", patch),
+      toast: (m, t) => showToast(m, t)
+    };
+    const competitorsHost = {
+      loadSettings: () => loadAppSettings("competitors"),
+      saveSettings: patch => saveAppSettings("competitors", patch),
       toast: (m, t) => showToast(m, t)
     };
 
@@ -8014,5 +8063,6 @@ ${facts.map(f => `- ${f}`).join("\n")}`;
 
   </script>
   <script src="sales-kit.js" defer></script>
+  <script src="competitors.js" defer></script>
 </body>
 </html>

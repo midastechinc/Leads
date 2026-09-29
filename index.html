@@ -608,6 +608,10 @@
     .ck-routine b { display: block; margin-bottom: 4px; color: var(--gray-900); }
     .ck-routine ul { margin: 0; padding-left: 18px; color: var(--gray-600); font-size: 13px; }
     .ld-outreach { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 8px; }
+    .ld-angle select, .ld-angle input { padding: 6px 8px; border: 1px solid var(--gray-200); border-radius: 8px; font: inherit; font-size: 13px; max-width: 100%; }
+    .ld-angle input { flex: 1 1 220px; }
+    .ld-angle-f { display: inline-flex; gap: 6px; align-items: center; white-space: nowrap; }
+    .ld-angle + .email-draft-btns { margin-top: 10px; }
     @media (max-width: 640px) {
       .or-card { padding: 12px; }
       .or-actions { width: 100%; }
@@ -3908,7 +3912,7 @@
     //   2. One useful thing to check, framed for the reader's role (owner / operations / finance), and the booking link.
     //   3. Offers the one-page cyber insurance checklist by reply.
     //   4. Asks who the right person is, and closes the loop.
-    // The outreach server adds the HTML signature; mailto drafts get a short text signature.
+    // The outreach server adds the plain-text signature; mailto drafts get a short text signature.
     const EMAIL_INDUSTRY = {
       accounting: {
         people: "accounting firms",
@@ -3962,6 +3966,53 @@
       if (/\b(coo|operations?|office manager|practice manager|clinic manager|general manager|administrator|admin)\b/.test(t)) return "ops";
       return "owner";
     }
+    // Why now: something you noticed about the company (lead.outreachTrigger + lead.outreachTriggerNote).
+    // When set, it leads email 1 and any domain finding moves to email 2.
+    const EMAIL_TRIGGERS = {
+      hiring: {
+        label: "Hiring", hint: "Who, e.g. an office manager",
+        line: (firm, note) => `Noticed ${firm} is hiring${note ? ` ${note}` : " right now"}.`,
+        bridge: "New people usually mean new laptops, accounts and permissions, and that's where most security gaps start when nobody has time to set them up properly.",
+        subject: firm => `${firm} new hires`
+      },
+      it_hire: {
+        label: "Hiring for IT", hint: "The role, e.g. an IT coordinator",
+        line: (firm, note) => `Saw ${firm} is hiring ${note || "for IT"}.`,
+        bridge: "While that seat is open, IT and security tend to pile up. We often cover the day-to-day in between hires, or work alongside the new person once they start.",
+        subject: firm => `${firm} IT hire`
+      },
+      new_office: {
+        label: "New location", hint: "What, e.g. a second clinic in Vaughan",
+        line: (firm, note) => `Saw ${firm} is opening ${note || "a new location"}.`,
+        bridge: "A move is the easiest time to get the network, Wi-Fi and backups set up right, and the most expensive time to find out they weren't.",
+        subject: firm => `${firm} new location`
+      },
+      growth: {
+        label: "Growing", hint: "Detail, e.g. doubled the team this year",
+        line: (firm, note) => `Noticed ${firm} has been growing${note ? `: ${note.replace(/\.$/, "")}` : ""}.`,
+        bridge: "Growth is usually when IT gets stretched: new accounts, new devices, and permissions nobody has had time to tidy up.",
+        subject: firm => `${firm} growth`
+      },
+      other: {
+        label: "Other (write it)", hint: "Your opening sentence, e.g. Congrats on 25 years in Markham.",
+        line: (firm, note) => note ? (/[.!?]$/.test(note) ? note : `${note}.`) : "",
+        bridge: "",
+        subject: null
+      }
+    };
+    function emailTrigger(lead) {
+      const t = EMAIL_TRIGGERS[lead?.outreachTrigger];
+      const note = String(lead?.outreachTriggerNote || "").trim();
+      if (!t || (lead.outreachTrigger === "other" && !note)) return null;
+      return { ...t, note };
+    }
+    // Who looks after their IT today (lead.currentIt). Email 2 says we work alongside, not replace.
+    const CURRENT_IT = {
+      "":       ["Don't know", "If you already have someone for IT, we can work alongside them. It's a second pair of eyes, not a switch."],
+      in_house: ["In-house IT", "We often work alongside in-house IT, taking security monitoring and after-hours issues off their plate."],
+      provider: ["IT provider", "This isn't about switching IT providers. A second opinion is often all it takes."],
+      none:     ["No one", ""]
+    };
     const DOMAIN_FINDINGS = new Set(["no_dmarc", "dmarc_none", "no_spf", "weak_spf"]);
     // The lead's email-security finding, when there is one worth mentioning for their current email domain.
     function emailFinding(lead) {
@@ -3986,12 +4037,21 @@
       const dc = emailFinding(lead);
       const provider = lead?.domainCheck?.provider;
       const fill = s => s.replace(/\{\{firm\}\}/g, firm).replace(/\{\{first\}\}/g, first);
-      const subject1 = dc ? `${firm} email security` : fill(ind.subject);
+      const trig = emailTrigger(lead);
+      const findingSubject = `${firm} email security`;
+      const subject1 = trig ? (trig.subject ? trig.subject(firm) : fill(ind.subject)) : dc ? findingSubject : fill(ind.subject);
+      // A finding that email 1 didn't lead with (a trigger did, or it was found later) goes in email 2.
+      const sentSubject1 = lead?.outreach?.subject1 || subject1;
+      const findingInTip = !!dc && sentSubject1 !== findingSubject;
       const hi = `Hi ${first},`;
       let subject, parts;
       if (step === 1) {
         subject = subject1;
-        parts = dc
+        parts = trig
+          ? [hi, [trig.line(firm, trig.note), trig.bridge].filter(Boolean).join(" "),
+             `I run Midas Tech, a Richmond Hill IT and cybersecurity firm. Since 2010 we've looked after IT and security for ${ind.people} around the GTA.`,
+             `Worth a quick look for ${firm}?`]
+          : dc
           ? [hi, `${findingLine(dc, firm)} ${ind.why}`,
              "I run Midas Tech, a Richmond Hill IT and cybersecurity firm; we've looked after local businesses since 2010. It's usually a 15-minute fix.",
              "Worth me sending you what I found?"]
@@ -4000,10 +4060,17 @@
              `Worth a quick look for ${firm}?`];
       } else if (step === 2) {
         subject = `Re: ${subject1}`;
-        const providerLine = /Microsoft 365|Google Workspace/.test(provider || "")
-          ? ` Since ${firm} is on ${provider}, most of the fixes are settings you already pay for.` : "";
-        parts = [hi, ind.check, EMAIL_ROLE_LINES[emailRole(lead)] + providerLine,
-          `If it helps, I can check ${firm} on a 15-minute call. Pick a time here: {{booking}}`];
+        const role = emailRole(lead);
+        const onSuite = /Microsoft 365|Google Workspace/.test(provider || "");
+        // Finance people also hear about licences still being paid for people who've left.
+        const providerLine = role === "finance"
+          ? (onSuite ? ` Since ${firm} is on ${provider}, most fixes are settings you already pay for, and we usually find a few licences still being paid for people who've left.`
+                     : " We also usually find a few software licences still being paid for people who've left.")
+          : onSuite ? ` Since ${firm} is on ${provider}, most of the fixes are settings you already pay for.` : "";
+        const itLine = (CURRENT_IT[lead?.currentIt || ""] || CURRENT_IT[""])[1];
+        const tip = findingInTip ? `One more thing: ${findingLine(dc, firm)} It's usually a 15-minute fix.` : ind.check;
+        parts = [hi, tip, EMAIL_ROLE_LINES[role] + providerLine, itLine,
+          `If it helps, I can check ${firm} on a 15-minute call. Pick a time here: {{booking}}`].filter(Boolean);
       } else if (step === 3) {
         subject = "Cyber insurance checklist";
         parts = [hi,
@@ -4094,6 +4161,7 @@
           ? `${domainBadgeHtml(lead)}<span class="or-muted">${esc(lead.domainCheck.summary)}${lead.domainCheck.provider ? ` · ${esc(lead.domainCheck.provider)}` : ""}</span>`
           : `<span class="or-muted">Email domain not checked yet.</span>`}
           <button class="btn btn-secondary btn-sm" type="button" onclick="checkLeadDomain('${esc(lead.id)}')">🔍 ${lead.domainCheck ? "Check again" : "Check email domain"}</button></div>
+        ${emailAngleHtml(lead)}
         <div class="email-draft-btns">
           ${[1,2,3,4].map(step => {
             const sent = emailDraftHistory[step];
@@ -4104,6 +4172,36 @@
           }).join("")}
         </div>`;
     }
+    // Trigger ("why now") and who does their IT today; both change the wording of the emails.
+    function emailAngleHtml(lead) {
+      const id = esc(lead.id);
+      const t = EMAIL_TRIGGERS[lead.outreachTrigger];
+      return `<div class="ld-outreach ld-angle">
+          <span class="ld-angle-f"><label class="or-muted" for="angleTrigger">⚡ Trigger</label>
+          <select id="angleTrigger" onchange="setEmailAngle('${id}', 'outreachTrigger', this.value)">
+            <option value="">None</option>
+            ${Object.entries(EMAIL_TRIGGERS).map(([k, v]) => `<option value="${k}" ${lead.outreachTrigger === k ? "selected" : ""}>${esc(v.label)}</option>`).join("")}
+          </select></span>
+          ${t ? `<input type="text" maxlength="140" placeholder="${esc(t.hint)}" value="${esc(lead.outreachTriggerNote || "")}" onchange="setEmailAngle('${id}', 'outreachTriggerNote', this.value)">` : ""}
+          <span class="ld-angle-f"><label class="or-muted" for="angleIt">Current IT</label>
+          <select id="angleIt" onchange="setEmailAngle('${id}', 'currentIt', this.value)">
+            ${Object.entries(CURRENT_IT).map(([k, v]) => `<option value="${k}" ${(lead.currentIt || "") === k ? "selected" : ""}>${esc(v[0])}</option>`).join("")}
+          </select></span>
+        </div>`;
+    }
+    const EMAIL_ANGLE_FIELDS = new Set(["outreachTrigger", "outreachTriggerNote", "currentIt"]);
+    window.setEmailAngle = async function (id, field, value) {
+      const l = allLeads[id];
+      if (!l || !EMAIL_ANGLE_FIELDS.has(field)) return;
+      value = String(value || "").trim().slice(0, 140);
+      try {
+        await updateDoc(doc(db, "leads", id), { [field]: value });
+        l[field] = value;
+        delete outreachDrafts[id];
+        if (currentLeadId === id) renderEmailDraftSection(allLeads[id] || l);
+        showToast(field === "currentIt" ? "Saved. Email 2 will reflect it." : "Saved. Email 1 will open with it.", "success");
+      } catch (e) { showToast(e.message, "error"); }
+    };
     window.sendEmailDraft = async function (id, step) {
       const lead = allLeads[id];
       if (!lead) return;
@@ -5462,6 +5560,7 @@ ${facts.map(f => `- ${f}`).join("\n")}`;
             <span class="or-step ${d.step === 1 ? "s1" : ""}">${d.step}. ${OUTREACH_STEP_NAMES[d.step]}</span>
             <span class="or-badge ${esc(chk.status)}" title="${esc(chk.reason || "")}">${chk.status === "valid" ? "✓ email ok" : chk.status === "risky" ? "⚠ " + (/shared/i.test(chk.reason) ? "shared inbox" : "check email") : chk.status === "invalid" ? "✗ bad email" : "email not checked"}</span>
             ${domainBadgeHtml(l)}
+            ${emailTrigger(l) ? `<span class="or-badge valid" title="${esc(emailTrigger(l).line(l.company || "", emailTrigger(l).note))}">⚡ ${esc(emailTrigger(l).label.replace(/ \(write it\)$/, ""))}</span>` : ""}
             ${d.personalized ? `<span class="or-badge valid">✨ personal</span>` : ""}
           </div>
           ${blocker ? `<p class="or-muted" style="padding:0 12px 10px">Can't send: ${esc(blocker)}</p>` : ""}
@@ -5469,7 +5568,7 @@ ${facts.map(f => `- ${f}`).join("\n")}`;
             <div class="or-edit">
               ${d.step === 1 ? `<input value="${esc(d.subject)}" oninput="editOutreachDraft('${l.id}','subject',this.value)" aria-label="Subject">` : `<p class="or-muted">Sent as a reply in the same thread as the first email.</p>`}
               <textarea oninput="editOutreachDraft('${l.id}','body',this.value)" aria-label="Email text">${esc(d.body)}</textarea>
-              <p class="or-muted">Your signature (logo, title, phone numbers, address) and an unsubscribe link are added below the email automatically.</p>
+              <p class="or-muted">A short plain-text signature (name, title, phone, website, address) and an unsubscribe line are added below the email automatically. No images, so it lands in the inbox more often.</p>
               <div class="or-edit-actions">
                 ${d.step === 1 ? `<button class="btn btn-secondary btn-sm" type="button" onclick="personalizeOneOutreach('${l.id}')">✨ Personal first line</button>` : ""}
                 <button class="btn btn-secondary btn-sm" type="button" onclick="resetOutreachDraft('${l.id}')">Reset</button>
@@ -6747,7 +6846,7 @@ ${facts.map(f => `- ${f}`).join("\n")}`;
     }
     // App-managed fields (research results, disable flags) are shown elsewhere and must not be
     // edited as plain text, or saving the edit form would overwrite them.
-    const APP_FIELDS = new Set(["prospectid", "research", "companyresearch", "disabled", "disabledreason", "disabledby", "disabledat"]);
+    const APP_FIELDS = new Set(["prospectid", "research", "companyresearch", "disabled", "disabledreason", "disabledby", "disabledat", "outreachtrigger", "outreachtriggernote", "currentit"]);
     function shouldHideDetailField(key) {
       const normalized = String(key || "").toLowerCase().replace(/[\s_\-]+/g, "");
       return APP_FIELDS.has(normalized);

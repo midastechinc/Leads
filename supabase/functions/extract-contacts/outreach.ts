@@ -272,6 +272,7 @@ export interface SecurityScan {
   grade: string;              // A–F
   checked: { email: boolean; dns: boolean; website: boolean };
   findings: SecurityFinding[];
+  seo: SiteSeo | null;
   note: string;
 }
 const scanCache = new Map<string, { at: number; result: SecurityScan }>();
@@ -304,18 +305,84 @@ async function hasDkim(domain: string, provider: string): Promise<boolean | null
 
 // One ordinary HTTPS GET to the site's front page, following redirects, to read the headers a browser
 // would receive. Returns null if the site can't be reached that way.
-async function fetchSite(domain: string): Promise<{ url: string; https: boolean; status: number; headers: Headers } | null> {
+async function fetchSite(domain: string): Promise<{ url: string; https: boolean; status: number; headers: Headers; html: string } | null> {
   for (const scheme of ["https", "http"]) {
     try {
       const res = await fetch(`${scheme}://${domain}`, {
-        method: "GET", redirect: "follow", signal: AbortSignal.timeout(8000),
-        headers: { "user-agent": "MidasTech-SecuritySnapshot/1.0 (+https://www.midastech.ca)" },
+        method: "GET", redirect: "follow", signal: AbortSignal.timeout(9000),
+        headers: { "user-agent": "MidasTech-SiteCheck/1.0 (+https://www.midastech.ca)" },
       });
-      await res.body?.cancel();
-      return { url: res.url, https: res.url.startsWith("https://"), status: res.status, headers: res.headers };
+      // Read at most ~200 KB of HTML so we can look at the page's own tags; then stop.
+      let html = "";
+      if (res.body && (res.headers.get("content-type") || "").includes("html")) {
+        const reader = res.body.getReader();
+        const dec = new TextDecoder();
+        try {
+          while (html.length < 200_000) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            html += dec.decode(value, { stream: true });
+          }
+        } finally { try { await reader.cancel(); } catch { /* already closed */ } }
+      } else {
+        await res.body?.cancel();
+      }
+      return { url: res.url, https: res.url.startsWith("https://"), status: res.status, headers: res.headers, html };
     } catch { /* try next scheme */ }
   }
   return null;
+}
+
+// On-page SEO signals read from the page's own HTML. Public, non-intrusive: it's what a browser loads.
+export interface SiteSeo {
+  title: string;
+  titleLen: number;
+  metaDescription: string;
+  metaDescriptionLen: number;
+  h1: string[];
+  headings: number;
+  images: number;
+  imagesWithAlt: number;
+  hasViewport: boolean;
+  hasCanonical: boolean;
+  hasSchema: boolean;
+  hasOgTags: boolean;
+  wordCount: number;
+  generator: string;      // e.g. "WordPress" when advertised
+  socialLinks: string[];  // linkedin/instagram/facebook/youtube/x links found on the page
+}
+function decodeEntities(s: string): string {
+  return s.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#0?39;|&apos;/g, "'").replace(/&nbsp;/g, " ").trim();
+}
+function parseSeo(html: string): SiteSeo {
+  const head = html.slice(0, 60_000);
+  const meta = (name: string, attr = "name") => {
+    const re = new RegExp(`<meta[^>]*${attr}=["']${name}["'][^>]*content=["']([^"']*)["']`, "i");
+    const re2 = new RegExp(`<meta[^>]*content=["']([^"']*)["'][^>]*${attr}=["']${name}["']`, "i");
+    return decodeEntities((head.match(re)?.[1] ?? head.match(re2)?.[1] ?? ""));
+  };
+  const title = decodeEntities((html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? "").replace(/\s+/g, " "));
+  const metaDescription = meta("description");
+  const h1 = [...html.matchAll(/<h1[^>]*>([\s\S]*?)<\/h1>/gi)].map((m) => decodeEntities(m[1].replace(/<[^>]+>/g, "").replace(/\s+/g, " "))).filter(Boolean).slice(0, 5);
+  const headings = (html.match(/<h[1-3][\s>]/gi) || []).length;
+  const imgTags = html.match(/<img\b[^>]*>/gi) || [];
+  const imagesWithAlt = imgTags.filter((t) => /\balt=["'][^"']*[^"'\s][^"']*["']/i.test(t)).length;
+  const text = html.replace(/<script[\s\S]*?<\/script>/gi, " ").replace(/<style[\s\S]*?<\/style>/gi, " ").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+  const socialRe = /https?:\/\/(?:www\.)?(?:linkedin\.com|instagram\.com|facebook\.com|youtube\.com|twitter\.com|x\.com)\/[^\s"'<>]+/gi;
+  const socialLinks = [...new Set((html.match(socialRe) || []).map((u) => u.replace(/["'<>]+$/, "")))].slice(0, 12);
+  return {
+    title, titleLen: title.length,
+    metaDescription, metaDescriptionLen: metaDescription.length,
+    h1, headings,
+    images: imgTags.length, imagesWithAlt,
+    hasViewport: /<meta[^>]*name=["']viewport["']/i.test(head),
+    hasCanonical: /<link[^>]*rel=["']canonical["']/i.test(head),
+    hasSchema: /application\/ld\+json/i.test(html) || /itemtype=["']https?:\/\/schema\.org/i.test(html),
+    hasOgTags: /<meta[^>]*property=["']og:/i.test(head),
+    wordCount: text ? text.split(" ").length : 0,
+    generator: /wp-content|wp-includes/i.test(html) ? "WordPress" : (meta("generator") || ""),
+    socialLinks,
+  };
 }
 
 const SEC_HEADERS: [string, string, string, SecurityFinding["severity"]][] = [
@@ -392,6 +459,7 @@ export async function securityScan(raw: string): Promise<SecurityScan | null> {
     domain, scannedAt: new Date().toISOString(), provider, score, grade,
     checked: { email: emailOk, dns: dnssec !== null, website: websiteOk },
     findings,
+    seo: site && pageLoaded && site.html ? parseSeo(site.html) : null,
     note: "Based only on public DNS records and the website's own responses. No internal systems were accessed and no scanning was performed. Some items (for example whether multi-factor authentication is enforced) can only be confirmed from inside.",
   };
   // Only cache a scan that actually read something, so transient failures retry.

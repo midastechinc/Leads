@@ -599,6 +599,27 @@
     .cp-steps summary { cursor: pointer; font-weight: 700; color: var(--blue); font-size: 13px; }
     .cp-steps ol { margin: 8px 0 0; padding-left: 20px; display: grid; gap: 5px; color: var(--gray-700); font-size: 14px; }
     .cp-log { margin-bottom: 10px; } .cp-log b { color: var(--blue); }
+    /* Growth: website report + social playbook */
+    .gr-report .or-card-head h3 { margin: 0; }
+    .gr-check { display: flex; gap: 10px; align-items: flex-start; padding: 9px 0; border-top: 1px solid var(--border); }
+    .gr-check:first-of-type { border-top: none; }
+    .gr-check b { display: block; color: var(--gray-900); font-size: 14px; }
+    .gr-check span { color: var(--gray-700); font-size: 13px; }
+    .gr-ic { flex: none; width: 22px; height: 22px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 13px; color: #fff; }
+    .gr-good .gr-ic { background: #0f7a4f; } .gr-warn .gr-ic { background: #b7791f; } .gr-bad .gr-ic { background: #b42318; }
+    .gr-rec { display: flex; gap: 12px; justify-content: space-between; align-items: center; padding: 10px 0; border-top: 1px solid var(--border); }
+    .gr-rec:first-of-type { border-top: none; }
+    .gr-rec b { display: block; color: var(--gray-900); } .gr-rec span { color: var(--gray-700); font-size: 13px; }
+    .gr-rec button { flex: none; }
+    .gr-nums { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; margin-top: 10px; }
+    .gr-nums div { background: #f2f9fd; border: 1px solid #d6e9f5; border-radius: 10px; padding: 8px 12px; }
+    .gr-nums span { display: block; font-size: 12px; color: var(--gray-600); } .gr-nums b { font-size: 18px; color: #0072BC; }
+    .gr-net { margin-bottom: 10px; }
+    .gr-net-head { display: flex; gap: 10px; align-items: center; }
+    .gr-net-head h4 { margin: 0; font-size: 16px; color: var(--gray-900); }
+    .gr-net-ic { flex: none; width: 30px; height: 30px; border-radius: 8px; background: #0072BC; color: #fff; font-weight: 800; font-size: 12px; display: flex; align-items: center; justify-content: center; }
+    .gr-net .sk-cols { margin-top: 8px; }
+    .gr-net-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
     /* Security snapshot — tab and report (app-level px) */
     .sk-scan-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
     .sk-scan-bar input { flex: 1 1 240px; min-width: 0; border: 1px solid var(--gray-200); border-radius: 10px; padding: 10px 12px; font: inherit; }
@@ -1863,6 +1884,7 @@
         <button class="view-tab" data-v="outreach" onclick="switchView('outreach')"><span class="vt-ico" aria-hidden="true">✉️</span><span class="vt-label">Outreach</span><span class="vt-count" id="outreachTabCount" hidden></span></button>
         <button class="view-tab" data-v="saleskit" onclick="switchView('saleskit')"><span class="vt-ico" aria-hidden="true">💼</span><span class="vt-label">Sales Kit</span></button>
         <button class="view-tab" data-v="competitors" onclick="switchView('competitors')"><span class="vt-ico" aria-hidden="true">🥊</span><span class="vt-label">Competitors</span></button>
+        <button class="view-tab" data-v="growth" onclick="switchView('growth')"><span class="vt-ico" aria-hidden="true">📈</span><span class="vt-label">Growth</span></button>
       </div>
       <div class="user-badge">
         <strong id="userDisplay">—</strong>
@@ -2202,6 +2224,15 @@
   <div class="view" id="view-competitors">
     <div class="workspace" id="competitorsRoot">
       <div class="empty-workspace"><div class="big">🥊</div><strong>Loading competitors…</strong></div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════
+       GROWTH VIEW (action plan, website check, social playbook; content in growth.js)
+  ══════════════════════════════ -->
+  <div class="view" id="view-growth">
+    <div class="workspace" id="growthRoot">
+      <div class="empty-workspace"><div class="big">📈</div><strong>Loading growth…</strong></div>
     </div>
   </div>
 
@@ -3373,6 +3404,7 @@
       if (v === "outreach") openOutreachView();
       if (v === "saleskit") window.SalesKit?.render(document.getElementById("salesKitRoot"), salesKitHost);
       if (v === "competitors") window.Competitors?.render(document.getElementById("competitorsRoot"), competitorsHost);
+      if (v === "growth") window.Growth?.render(document.getElementById("growthRoot"), growthHost);
     };
 
     function refreshLeadViews() {
@@ -5152,6 +5184,13 @@ ${shape}`;
     const competitorsHost = {
       loadSettings: () => loadAppSettings("competitors"),
       saveSettings: patch => saveAppSettings("competitors", patch),
+      toast: (m, t) => showToast(m, t)
+    };
+    const growthHost = {
+      // improvements live in appSettings/growth; the social numbers are shared with Competitors → Social.
+      loadSettings: async () => { const [g, c] = await Promise.all([loadAppSettings("growth"), loadAppSettings("competitors")]); return { improvements: g?.improvements || {}, midas: c?.midas || {} }; },
+      saveSettings: patch => saveAppSettings("growth", patch),
+      securityScan: async domain => (await outreachCall("securityscan", { domain })).scan,
       toast: (m, t) => showToast(m, t)
     };
 
@@ -8112,5 +8151,6 @@ ${facts.map(f => `- ${f}`).join("\n")}`;
   </script>
   <script src="sales-kit.js" defer></script>
   <script src="competitors.js" defer></script>
+  <script src="growth.js" defer></script>
 </body>
 </html>

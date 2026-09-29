@@ -3922,42 +3922,42 @@
             : "With tax season coming, this is when accounting firms start getting the most fake CRA and invoice emails.";
         },
         subject: "{{firm}} before tax season",
-        why: "For an accounting firm, that's how a fake CRA or invoice email can reach your clients in your name.",
+        why: "For an accounting firm, that means a fake CRA or invoice email could reach your clients in your name.",
         check: "One thing worth checking before January: the CRA now requires multi-factor sign-in for EFILE and Represent a Client, and cyber insurers ask about it at renewal."
       },
       healthcare: {
         people: "clinics",
         timing: () => "Since Ontario's privacy commissioner started issuing PHIPA fines, clinics are being asked harder questions about how patient data is protected.",
         subject: "{{firm}} and patient data",
-        why: "For a clinic, that's how a fake email can reach your patients in your name.",
-        check: "One thing worth checking: whether your EMR and email accounts all have multi-factor sign-in, and whether anyone has restored a backup lately. Those are the first questions after a privacy breach."
+        why: "For a clinic, that means a fake email could reach your patients in your name.",
+        check: "One thing worth checking is whether your EMR and email accounts all have multi-factor sign-in, and whether anyone has restored a backup lately. Those are the first questions after a privacy breach."
       },
       warehouse: {
         people: "warehouses and distributors",
         timing: () => "Fake \"our banking details have changed\" emails are one of the costliest scams hitting businesses that pay suppliers.",
         subject: "{{firm}} supplier payments",
-        why: "For a warehouse, that's how a fake payment or banking-change email can reach your suppliers and customers in your name.",
-        check: "One thing worth checking: if your server or internet went down in the middle of a busy shift, how long before you could ship again? Most teams have backups, but have never timed a restore."
+        why: "For a warehouse, that means a fake payment or banking-change email could reach your suppliers and customers in your name.",
+        check: "One thing worth checking: if your server or internet went down in the middle of a busy shift, how long would it take to start shipping again? Most teams have backups but have never timed a restore."
       },
       law: {
         people: "law firms",
         timing: () => "Fake wire instructions sent in a law firm's name are one of the biggest trust-account risks the Law Society warns about.",
         subject: "{{firm}} wire fraud",
-        why: "For a law firm, that's how fake wire instructions can reach your clients in your name.",
-        check: "One thing worth checking: whether every mailbox, including shared and former staff accounts, has multi-factor sign-in, and whether wire changes are always confirmed by phone."
+        why: "For a law firm, that means fake wire instructions could reach your clients in your name.",
+        check: "One thing worth checking is whether every mailbox, including shared and former staff accounts, has multi-factor sign-in, and whether wire changes are always confirmed by phone."
       },
       generic: {
         people: "local businesses",
         timing: () => "Cyber insurers now ask small businesses about multi-factor sign-in, backups and incident plans at renewal, and a wrong answer can mean a refused claim.",
         subject: "{{firm}} IT question",
-        why: "That's how a fake invoice or payment request can reach your customers in your name.",
-        check: "One thing worth checking: whether every email account, including shared ones and people who have left, has multi-factor sign-in. It's the gap we find most often."
+        why: "That means a fake invoice or payment request could reach your customers in your name.",
+        check: "One thing worth checking is whether every email account, including shared ones and people who have left, has multi-factor sign-in. It's the gap we find most often."
       }
     };
     const EMAIL_ROLE_LINES = {
       owner:   "The businesses we look after usually have two or three small gaps like this, and closing them is exactly what insurers want to see.",
       ops:     "It's usually the kind of thing that eats your team's time later: old accounts, slow fixes, and nobody sure who to call.",
-      finance: "It's also the setting that stops fake payment and banking-change emails before they reach your team."
+      finance: "For a finance team, it's also one of the best defences against fake payment and banking-change emails."
     };
     // Who we're writing to: owners and executives, operations, or finance.
     function emailRole(lead) {
@@ -3971,25 +3971,25 @@
     const EMAIL_TRIGGERS = {
       hiring: {
         label: "Hiring", hint: "Who, e.g. an office manager",
-        line: (firm, note) => `Noticed ${firm} is hiring${note ? ` ${note}` : " right now"}.`,
+        line: (firm, note) => `I noticed ${firm} is hiring${note ? ` ${note}` : " right now"}.`,
         bridge: "New people usually mean new laptops, accounts and permissions, and that's where most security gaps start when nobody has time to set them up properly.",
         subject: firm => `${firm} new hires`
       },
       it_hire: {
         label: "Hiring for IT", hint: "The role, e.g. an IT coordinator",
-        line: (firm, note) => `Saw ${firm} is hiring ${note || "for IT"}.`,
+        line: (firm, note) => `I saw ${firm} is hiring ${note || "for IT"}.`,
         bridge: "While that seat is open, IT and security tend to pile up. We often cover the day-to-day in between hires, or work alongside the new person once they start.",
         subject: firm => `${firm} IT hire`
       },
       new_office: {
         label: "New location", hint: "What, e.g. a second clinic in Vaughan",
-        line: (firm, note) => `Saw ${firm} is opening ${note || "a new location"}.`,
+        line: (firm, note) => `I saw ${firm} is opening ${note || "a new location"}.`,
         bridge: "A move is the easiest time to get the network, Wi-Fi and backups set up right, and the most expensive time to find out they weren't.",
         subject: firm => `${firm} new location`
       },
       growth: {
         label: "Growing", hint: "Detail, e.g. doubled the team this year",
-        line: (firm, note) => `Noticed ${firm} has been growing${note ? `: ${note.replace(/\.$/, "")}` : ""}.`,
+        line: (firm, note) => `I noticed ${firm} has been growing${note ? `: ${note.replace(/\.$/, "")}` : ""}.`,
         bridge: "Growth is usually when IT gets stretched: new accounts, new devices, and permissions nobody has had time to tidy up.",
         subject: firm => `${firm} growth`
       },
@@ -4023,17 +4023,24 @@
     function findingLine(dc, firm) {
       const d = dc.domain;
       return {
-        no_dmarc: `I noticed ${d} doesn't have DMARC protection set up, so anyone can send email that looks like it came from ${firm}.`,
-        dmarc_none: `I noticed ${d}'s email protection (DMARC) is set to monitor only, so emails pretending to be ${firm} still get delivered.`,
+        no_dmarc: `I noticed ${d} doesn't have DMARC protection set up, so anyone can send emails that look like they came from ${firm}.`,
+        dmarc_none: `I noticed the email protection (DMARC) on ${d} is set to monitor only, so emails pretending to be from ${firm} still get delivered.`,
         no_spf: `I noticed ${d} has no SPF record, which makes it easier for fake emails to look like they came from ${firm}.`,
-        weak_spf: `I noticed ${d}'s SPF record lets any server send email as ${firm}.`
+        weak_spf: `I noticed the SPF record on ${d} lets any server send emails as ${firm}.`
       }[dc.finding];
+    }
+    // How people say the company name: "Midas Tech Inc." -> "Midas Tech" (keeps designations like CPA).
+    function firmName(company) {
+      return String(company || "").trim()
+        .replace(/[,\s]+(inc|incorporated|ltd|limited|corp|corporation|llp|llc|lp|plc|professional corporation|pc|p\.c)\.?$/i, "")
+        .replace(/[,\s]+(inc|ltd|corp)\.?$/i, "")
+        .trim();
     }
     // Returns { subject, body } for step 1-4, filled in for this lead. {{booking}} becomes the Bookings link.
     function buildEmail(lead, step) {
       const ind = EMAIL_INDUSTRY[detectFirmType(lead)] || EMAIL_INDUSTRY.generic;
       const first = greetingName(lead);
-      const firm = String(lead?.company || "").trim() || "your business";
+      const firm = firmName(lead?.company) || "your business";
       const dc = emailFinding(lead);
       const provider = lead?.domainCheck?.provider;
       const fill = s => s.replace(/\{\{firm\}\}/g, firm).replace(/\{\{first\}\}/g, first);
@@ -4049,15 +4056,15 @@
         subject = subject1;
         parts = trig
           ? [hi, [trig.line(firm, trig.note), trig.bridge].filter(Boolean).join(" "),
-             `I run Midas Tech, a Richmond Hill IT and cybersecurity firm. Since 2010 we've looked after IT and security for ${ind.people} around the GTA.`,
-             `Worth a quick look for ${firm}?`]
+             `I run Midas Tech, an IT and cybersecurity firm in Richmond Hill. Since 2010, we've looked after IT and security for ${ind.people} across the GTA.`,
+             `Would it be worth a quick look at ${/s$/i.test(firm) ? `${firm}'` : `${firm}'s`} setup?`]
           : dc
           ? [hi, `${findingLine(dc, firm)} ${ind.why}`,
-             "I run Midas Tech, a Richmond Hill IT and cybersecurity firm; we've looked after local businesses since 2010. It's usually a 15-minute fix.",
-             "Worth me sending you what I found?"]
+             "I run Midas Tech, an IT and cybersecurity firm in Richmond Hill, and we've looked after local businesses since 2010. The good news is that it's usually a 15-minute fix.",
+             "Would you like me to send over what I found?"]
           : [hi, ind.timing(),
-             `I run Midas Tech, a Richmond Hill IT and cybersecurity firm. Since 2010 we've helped ${ind.people} put simple protections in place for exactly this.`,
-             `Worth a quick look for ${firm}?`];
+             `I run Midas Tech, an IT and cybersecurity firm in Richmond Hill. Since 2010, we've helped ${ind.people} put simple protections in place for exactly this.`,
+             `Would it be worth a quick look at ${/s$/i.test(firm) ? `${firm}'` : `${firm}'s`} setup?`];
       } else if (step === 2) {
         subject = `Re: ${subject1}`;
         const role = emailRole(lead);
@@ -4070,7 +4077,7 @@
         const itLine = (CURRENT_IT[lead?.currentIt || ""] || CURRENT_IT[""])[1];
         const tip = findingInTip ? `One more thing: ${findingLine(dc, firm)} It's usually a 15-minute fix.` : ind.check;
         parts = [hi, tip, EMAIL_ROLE_LINES[role] + providerLine, itLine,
-          `If it helps, I can check ${firm} on a 15-minute call. Pick a time here: {{booking}}`].filter(Boolean);
+          `If it helps, I'm happy to go through it with you on a 15-minute call. You can pick a time here: {{booking}}`].filter(Boolean);
       } else if (step === 3) {
         subject = "Cyber insurance checklist";
         parts = [hi,
@@ -4079,7 +4086,7 @@
       } else {
         subject = `Right person at ${firm}?`;
         parts = [hi,
-          `I'll leave it here. If IT isn't on your plate, who's the best person at ${firm} for me to talk to?`,
+          `I'll leave it here for now. If IT isn't on your plate, who's the best person at ${firm} for me to talk to?`,
           dc ? `If it's just bad timing, the email spoofing setting on ${dc.domain} is still worth fixing. I'm happy to point your current IT person to it.`
              : "If it's just bad timing, no problem. You can always reach me at 905-787-2038.",
           `Enjoy the rest of the ${getCurrentSeason()}.`];

@@ -19,7 +19,7 @@ The rules come from the 2026 cold email research (Gong, Lavender, Instantly, Bel
 
 | Input | Where it comes from |
 |---|---|
-| `first`, `firm` | The lead's first name (or "there") and company |
+| `first`, `firm` | The lead's first name (or "there") and company, without Inc., Ltd., Corp. or LLP ("Midas Tech Inc." becomes "Midas Tech") |
 | Industry | Detected from industry, title and company: accounting, healthcare, warehouse, law or general |
 | Role | Detected from the title: **finance** (CFO, controller, finance, bookkeeper), **operations** (COO, operations, office/practice/clinic/general manager, administrator), otherwise **owner** |
 | Domain finding | `lead.domainCheck`, from the free **email-domain check** (below) |
@@ -36,10 +36,10 @@ When leads are added to outreach, or when you press **🔍 Check email domain** 
 
 | Finding | Badge | What email 1 says |
 |---|---|---|
-| No DMARC | 🔓 no DMARC | "I noticed {domain} doesn't have DMARC protection set up, so anyone can send email that looks like it came from {firm}." |
-| DMARC p=none | 🔓 DMARC monitor-only | "…is set to monitor only, so emails pretending to be {firm} still get delivered." |
+| No DMARC | 🔓 no DMARC | "I noticed {domain} doesn't have DMARC protection set up, so anyone can send emails that look like they came from {firm}." |
+| DMARC p=none | 🔓 DMARC monitor-only | "I noticed the email protection (DMARC) on {domain} is set to monitor only, so emails pretending to be from {firm} still get delivered." |
 | No SPF | 🔓 no SPF | "…has no SPF record, which makes it easier for fake emails to look like they came from {firm}." |
-| SPF `+all` / `?all` | 🔓 weak SPF | "…lets any server send email as {firm}." |
+| SPF `+all` / `?all` | 🔓 weak SPF | "I noticed the SPF record on {domain} lets any server send emails as {firm}." |
 | Protected | 🔒 domain protected | No finding; email 1 uses the industry opener instead |
 
 Personal addresses (gmail, rogers, and so on) are skipped. If a DNS lookup times out or can't be read, the result is **"couldn't check"**. It is never reported as "no SPF/DMARC", so an email never claims something that isn't true. That result isn't saved, so the next check tries again.
@@ -56,11 +56,11 @@ Email 1 picks its opening in this order: **a trigger** if you set one, then **a 
 ```
 Hi {first},
 
-{trigger line, e.g. "Saw Maple Family Health is opening a second clinic in Aurora."} {why it matters, e.g. "A move is the easiest time to get the network, Wi-Fi and backups set up right, and the most expensive time to find out they weren't."}
+{trigger line, e.g. "I saw Maple Family Health is opening a second clinic in Aurora."} {why it matters, e.g. "A move is the easiest time to get the network, Wi-Fi and backups set up right, and the most expensive time to find out they weren't."}
 
-I run Midas Tech, a Richmond Hill IT and cybersecurity firm. Since 2010 we've looked after IT and security for {clinics / accounting firms / …} around the GTA.
+I run Midas Tech, an IT and cybersecurity firm in Richmond Hill. Since 2010, we've looked after IT and security for {clinics / accounting firms / …} across the GTA.
 
-Worth a quick look for {firm}?
+Would it be worth a quick look at {firm}'s setup?
 
 Ali
 ```
@@ -71,9 +71,9 @@ Hi {first},
 
 {finding line} {industry "why it matters" line}
 
-I run Midas Tech, a Richmond Hill IT and cybersecurity firm; we've looked after local businesses since 2010. It's usually a 15-minute fix.
+I run Midas Tech, an IT and cybersecurity firm in Richmond Hill, and we've looked after local businesses since 2010. The good news is that it's usually a 15-minute fix.
 
-Worth me sending you what I found?
+Would you like me to send over what I found?
 
 Ali
 ```
@@ -90,9 +90,9 @@ Hi {first},
 
 {industry "why now" line}
 
-I run Midas Tech, a Richmond Hill IT and cybersecurity firm. Since 2010 we've helped {accounting firms / clinics / …} put simple protections in place for exactly this.
+I run Midas Tech, an IT and cybersecurity firm in Richmond Hill. Since 2010, we've helped {accounting firms / clinics / …} put simple protections in place for exactly this.
 
-Worth a quick look for {firm}?
+Would it be worth a quick look at {firm}'s setup?
 
 Ali
 ```
@@ -115,7 +115,7 @@ Hi {first},
 
 {current IT line}
 
-If it helps, I can check {firm} on a 15-minute call. Pick a time here: {booking link}
+If it helps, I'm happy to go through it with you on a 15-minute call. You can pick a time here: {booking link}
 
 Ali
 ```
@@ -123,7 +123,7 @@ Ali
 The role line:
 - **Owner:** "…two or three small gaps like this, and closing them is exactly what insurers want to see."
 - **Operations:** "…eats your team's time later: old accounts, slow fixes, and nobody sure who to call."
-- **Finance:** "…stops fake payment and banking-change emails before they reach your team." Finance people also get: "…and we usually find a few licences still being paid for people who've left."
+- **Finance:** "For a finance team, it's also one of the best defences against fake payment and banking-change emails." Finance people also get: "…and we usually find a few licences still being paid for people who've left."
 
 The current IT line says we work alongside, not replace:
 - **Don't know:** "If you already have someone for IT, we can work alongside them. It's a second pair of eyes, not a switch."
@@ -148,7 +148,7 @@ When someone says yes, reply with the checklist link. Press **📋 Copy checklis
 ```
 Hi {first},
 
-I'll leave it here. If IT isn't on your plate, who's the best person at {firm} for me to talk to?
+I'll leave it here for now. If IT isn't on your plate, who's the best person at {firm} for me to talk to?
 
 {With a finding: If it's just bad timing, the email spoofing setting on {domain} is still worth fixing. I'm happy to point your current IT person to it.}
 {Without: If it's just bad timing, no problem. You can always reach me at 905-787-2038.}

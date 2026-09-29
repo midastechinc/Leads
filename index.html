@@ -434,7 +434,7 @@
     .sk-sub { font-size: 1.35em; opacity: 0.92; }
     .sk-meta { font-size: 1em; opacity: 0.85; margin-top: 1.2em; }
     .sk-foot { font-size: 0.75em; color: #808080; margin-top: 1em; }
-    .sk-contact { margin-top: 1.4em; font-size: 0.95em; opacity: 0.95; }
+    .sk-contact { margin-top: 2em; font-size: 0.95em; opacity: 0.95; }
     .sk-big { margin: 0; padding-left: 1.2em; display: grid; gap: 0.6em; font-size: 1.3em; }
     .sk-big b { display: block; }
     .sk-big span { font-size: 0.8em; color: #4D4D4D; }
@@ -513,6 +513,37 @@
     .sk-comp strong { color: #0072BC; }
     .sk-comp p { margin: 0; color: var(--gray-700); font-size: 13px; }
     .sk-comp a, .or-card a { color: var(--blue); font-weight: 700; font-size: 13px; }
+    .sk-kicker { text-transform: uppercase; letter-spacing: 0.14em; font-weight: 800; font-size: 0.9em; opacity: 0.85; margin: 0 0 0.3em; }
+    .sk-hint { color: #9aa9b3; font-style: italic; }
+    .sk-heard ul { margin: 0.3em 0 0; padding-left: 1.1em; display: grid; gap: 0.25em; }
+    .sk-heard li { color: #333; }
+    .sk-stats.sk-c3 { grid-template-columns: repeat(3, 1fr); }
+    .sk-stats.sk-c3 b { font-size: 1.9em; }
+    .sk-grid2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.9em; }
+    .sk-grid2 div { background: #f2f9fd; border-left: 0.3em solid #00AEEF; border-radius: 0.5em; padding: 0.9em 1em; }
+    .sk-grid2 b { display: block; color: #0072BC; font-size: 1.3em; margin-bottom: 0.2em; }
+    .sk-grid2 span { color: #4D4D4D; font-size: 1.05em; }
+    table.sk-tbl { width: 100%; border-collapse: collapse; font-size: 1.1em; background: transparent; border: none; border-radius: 0; box-shadow: none; overflow: visible; }
+    .sk-slide .sk-tbl td { padding: 0.45em 0.6em; }
+    .sk-slide .sk-tbl td:first-child { width: 85%; }
+    .sk-tbl td { padding: 0.45em 0.6em; border-bottom: 0.08em solid #dfe8ee; white-space: normal; overflow: visible; text-overflow: clip; max-width: none; background: transparent; font-size: 1em; }
+    .sk-tbl tr:hover td { background: transparent; }
+    .sk-tbl td:last-child { text-align: right; white-space: nowrap; color: #0072BC; font-weight: 700; }
+    .sk-story b { color: #0072BC; }
+    .sk-quote-s { margin: 1em 0 0; padding: 0.6em 1em; border-left: 0.3em solid #0072BC; font-size: 1.15em; font-style: italic; color: #333; }
+    .sk-quote-s cite { display: block; font-size: 0.8em; font-style: normal; color: #808080; margin-top: 0.3em; }
+    .sk-promise { margin-top: 0.9em; }
+    .sk-promise div { border-left-color: #0072BC; }
+    .sk-for { font-size: 0.8em; color: #4D4D4D; margin: 0 0 0.4em; }
+    .sk-heard-form { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 10px; }
+    .sk-heard-form label, .sk-story-edit label { display: grid; gap: 4px; font-size: 12px; font-weight: 700; color: var(--gray-600); }
+    .sk-heard-form textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--gray-200); border-radius: 10px; padding: 8px 10px; font: inherit; font-weight: 400; resize: vertical; }
+    .sk-proof-edit { margin-bottom: 14px; }
+    .sk-proof-edit summary { cursor: pointer; }
+    .sk-story-edit { border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; margin: 10px 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+    .sk-story-edit legend { font-weight: 700; padding: 0 6px; }
+    .sk-story-edit input, .sk-story-edit select { border: 1px solid var(--gray-200); border-radius: 8px; padding: 7px 9px; font: inherit; font-weight: 400; }
+    .sk-deck-actions .or-check-row { margin-left: auto; }
     .sk-present { position: fixed; inset: 0; z-index: 1000; background: #0b1620; display: flex; flex-direction: column; align-items: center; justify-content: center; outline: none; }
     .sk-present .sk-stage { width: min(100vw, 177.78vh); padding: 0; }
     .sk-present .sk-slide-wrap { border-radius: 0; }
@@ -527,6 +558,8 @@
       .sk-addons > div .or-muted { grid-column: 1 / -1; order: 3; }
       .sk-bar select, .sk-bar input { min-width: 0; width: 100%; }
       .sk-bar label { flex: 1 1 100%; }
+      .sk-heard-form { grid-template-columns: 1fr; }
+      .sk-deck-actions .or-check-row { margin-left: 0; }
     }
     .view-tab { position: relative; }
     @media (max-width: 900px) { .vt-count { position: absolute; top: 3px; right: 6px; margin: 0; } }
@@ -5014,7 +5047,7 @@ ${shape}`;
       catch (e) { console.warn(`${name} settings saved in this browser only:`, e); }
     }
     const salesKitHost = {
-      leads: () => getVisibleLeads().filter(l => !l.disabled).map(l => ({ id: l.id, name: l.name, company: l.company, title: l.title, industry: l.industry, assessment: l.assessment || null })),
+      leads: () => getVisibleLeads().filter(l => !l.disabled).map(l => ({ id: l.id, name: l.name, company: l.company, title: l.title, industry: l.industry, assessment: l.assessment || null, domainCheck: l.domainCheck && l.domainCheck.domain === leadDomain(l) ? l.domainCheck : null })),
       industryOf: l => detectFirmType(allLeads[l.id] || l),
       saveAssessment: async (id, data) => {
         await updateDoc(doc(db, "leads", id), { assessment: data, updatedAt: serverTimestamp() });

@@ -206,7 +206,7 @@
     ["Before the meeting (15 min)", ["Open the lead in the tracker: read research, website scan and past activity", "Pick the lead in this Sales Kit so the deck shows their name and industry", "Look up their Google reviews and LinkedIn for small talk", "Have your Bookings link and a notepad ready"]],
     ["Open (2 min)", ["Thank them, confirm the time: \"I've got 20 minutes blocked, does that still work?\"", "Set the agenda: \"I'll ask a few questions, share what we see in your industry, and if it makes sense, talk next steps. Sound good?\""]],
     ["Discover (10 min)", ["Ask, don't pitch. Aim for them talking 70% of the time", "Use the discovery questions below; when they name a problem, ask \"why is that a problem?\"", "Run the quick assessment together; it makes the risks concrete"]],
-    ["Show (5 min)", ["Present only the slides that match what you heard", "Show their assessment score, then the package that fixes their top 2–3 gaps"]],
+    ["Show (5–8 min)", ["Fill in \"What we heard\" and the downtime numbers as they talk, so the deck uses their words and their maths", "Present: what we heard → what it could cost → where you stand → how we'd fix it → options → next step", "Skip any slide that doesn't fit. Stop and ask a question after every two or three slides"]],
     ["Agree next steps (3 min)", ["Offer the free full assessment (a site visit or remote review)", "Promise a written proposal within 48 hours", "Book the follow-up before you hang up"]],
     ["After (same day)", ["Log the meeting in the tracker and set the status to Qualified or Proposal", "Send the thank-you email below with a summary and the proposal date", "Build the quote in Packages and send it within 48 hours"]]
   ];
@@ -250,9 +250,9 @@ ${COMPANY.phone} · ${COMPANY.web}`;
   let host = null;
   let root = null;
   const state = { tab: "deck", leadId: "", company: "", industry: "generic", packages: null, addons: null, settingsLoaded: false,
-    answers: {}, notes: "", quote: { pkg: "business", users: 10, addons: {}, waive: true }, slide: 0 };
+    answers: {}, notes: "", heard: {}, cost: {}, proof: null, extras: false, quote: { pkg: "business", users: 10, addons: {}, waive: true }, slide: 0 };
   try { Object.assign(state, JSON.parse(localStorage.getItem("midas-saleskit-ui") || "{}"), { slide: 0 }); } catch {}
-  const remember = () => { try { localStorage.setItem("midas-saleskit-ui", JSON.stringify({ tab: state.tab, leadId: state.leadId, company: state.company, industry: state.industry, quote: state.quote })); } catch {} };
+  const remember = () => { try { localStorage.setItem("midas-saleskit-ui", JSON.stringify({ tab: state.tab, leadId: state.leadId, company: state.company, industry: state.industry, quote: state.quote, extras: state.extras })); } catch {} };
 
   const packages = () => state.packages || DEFAULT_PACKAGES;
   const addons = () => state.addons || DEFAULT_ADDONS;
@@ -260,6 +260,13 @@ ${COMPANY.phone} · ${COMPANY.web}`;
   const prospect = () => { const l = lead(); return l?.company || state.company || ""; };
   function industry() { const l = lead(); return l ? host.industryOf(l) : state.industry; }
 
+  function loadFromLead(l) {
+    const a = l?.assessment || {};
+    state.answers = a.answers ? { ...a.answers } : {};
+    state.notes = a.notes || "";
+    state.heard = a.heard ? { ...a.heard } : {};
+    state.cost = a.cost ? { ...a.cost } : {};
+  }
   function assessmentScore(answers) {
     let got = 0, max = 0;
     const gaps = [];
@@ -280,87 +287,148 @@ ${COMPANY.phone} · ${COMPANY.web}`;
   }
 
   // ── slides ──
+  // Built the way the MSP sales research says works: the prospect is the hero, not Midas. It opens by
+  // mirroring what they said, puts a number on the cost of the problem (their numbers), shows where they
+  // stand and what good looks like, maps each gap to a fix, then proof, options, and one clear next step.
+  const GAP_FIX = {
+    mfa: ["Multi-factor sign-in on every account, shared mailboxes included", "Week 1"],
+    edr: ["Managed antivirus (EDR) on every computer, watched 24/7", "Week 1"],
+    leavers: ["A same-day checklist for switching off leavers' accounts", "Week 1"],
+    payments: ["A phone-confirmation rule for payment changes, and spoofing protection on your email", "Week 1"],
+    support: ["One number to call, with response times in writing", "Day 1"],
+    backup: ["Automatic off-site backups, with a test restore every quarter", "Week 2"],
+    m365backup: ["A separate Microsoft 365 backup, stored in Canada", "Week 2"],
+    patch: ["Automatic Windows and app updates, checked every week", "Week 2"],
+    admin: ["Everyday accounts without admin rights", "Week 3"],
+    training: ["Short security training and practice phishing emails", "Month 2"],
+    firewall: ["A business firewall, with guest Wi-Fi kept separate", "Month 2"],
+    plan: ["A one-page incident response plan, tested once a year", "Month 2"],
+    windows: ["Replace or upgrade the Windows 10 computers", "Month 2"]
+  };
+  const DOMAIN_RISKS = ["no_dmarc", "dmarc_none", "no_spf", "weak_spf"];
+  const RISK_TILE = {
+    healthcare: ["Up to $500,000", "What Ontario's privacy commissioner can now fine a clinic under PHIPA. The first fines were issued in 2025."],
+    law: ["Your trust account", "Fake wire instructions are aimed at trust funds. The Law Society expects reasonable precautions."],
+    generic: ["A refused claim", "If your cyber insurance application doesn't match what you really have, the insurer can refuse to pay."]
+  };
+  const lines = t => String(t || "").split(/\n+/).map(x => x.replace(/^[-•*]\s*/, "").trim()).filter(Boolean);
+  const possessive = n => /s$/i.test(n) ? `${n}'` : `${n}'s`;
+
   function slides() {
     const co = prospect();
+    const coName = co || "your business";
     const ind = industry();
     const ic = MARKET.industries[ind];
-    const answers = state.answers;
-    const res = assessmentScore(answers);
+    const l = lead();
+    const res = assessmentScore(state.answers);
+    const dc = l?.domainCheck && DOMAIN_RISKS.includes(l.domainCheck.finding) ? l.domainCheck : null;
     const date = new Date().toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" });
+    const who = l?.name && l.name !== l.company ? l.name : "";
     const list = [];
+
     list.push({ cls: "sk-s-title", html: `<img src="midas-logo.png" alt="Midas Tech" class="sk-logo" onerror="this.remove()">
-      <h1>Keeping ${esc(co || "your business")} secure, productive and running</h1>
-      <p class="sk-sub">${esc(COMPANY.name)} · ${esc(COMPANY.tagline)}</p>
-      <p class="sk-meta">${esc(COMPANY.owner)} · ${esc(date)}</p>`,
-      notes: "Thank them for their time. Confirm you have 20 minutes. Keep this slide up while you chat." });
-    list.push({ html: `<h2>Today's agenda</h2><ol class="sk-big">
-      <li><b>Get to know you</b><span>your team, your IT today, what's working and what isn't</span></li>
-      <li><b>What we see in ${esc(INDUSTRY_LABEL[ind].toLowerCase())}</b><span>the risks that matter for businesses like yours</span></li>
-      <li><b>How we help</b><span>only if it makes sense</span></li>
-      <li><b>Next steps</b><span>no pressure, no long contracts</span></li></ol>`,
-      notes: "\"I'll ask a few questions first. If it makes sense, I'll show how we'd help. Sound good?\" Then go to the Meeting guide and ask discovery questions." });
-    list.push({ html: `<h2>About Midas Tech</h2><div class="sk-grid3">
-      <div><b>Since ${COMPANY.founded}</b><span>16 years looking after Ontario small businesses</span></div>
-      <div><b>Local</b><span>based in Richmond Hill: meet in person, or we come on-site across the GTA</span></div>
-      <div><b>You deal with Ali</b><span>owner-led: a person who knows your business, not a ticket queue</span></div>
-      <div><b>Cybersecurity first</b><span>Microsoft 365, backups, 24/7 monitoring</span></div>
-      <div><b>Your industry</b><span>clinics, accounting firms and warehouses</span></div>
-      <div><b>Flat monthly fee</b><span>no surprise bills, month-to-month option</span></div></div>`,
-      notes: "Keep it short: 60 seconds. The point is: local, owner-led, security-first." });
-    list.push({ html: `<h2>The risk for Canadian businesses</h2><div class="sk-stats">
-      ${MARKET.stats.filter(([n]) => n !== "$1.2B").map(([n, t]) => `<div><b>${esc(n)}</b><span>${esc(t)}</span></div>`).join("")}</div>
-      <p class="sk-foot">Sources: IBM Cost of a Data Breach 2026 (Canada), CIRA Cybersecurity Survey 2025.</p>`,
-      notes: "Don't scare. Say: most attacks are automated and aimed at whoever is least protected. Small businesses have the least." });
-    const why = MARKET.triggers.filter(([t]) => t !== "Tax season (accounting firms)" || ind === "accounting")
-      .filter(([t]) => !["\"Made in Canada\" matters", "Their MSP was bought or went quiet"].includes(t)).slice(0, 5);
-    list.push({ html: `<h2>Why businesses are acting now</h2><div class="sk-grid3 sk-why">${why.map(([t, d]) => `<div><b>${esc(t)}</b><span>${esc(d.split(". ")[0])}.</span></div>`).join("")}</div>`,
-      notes: "Ask which of these applies to them. Insurance renewal and Windows 10 are the easiest openings: \"When does your cyber insurance renew?\"" });
-    list.push({ html: `<h2>What your cyber insurer will ask</h2><ul class="sk-list">${MARKET.insurance.map(x => `<li>${esc(x)}</li>`).join("")}</ul>
-      <p class="sk-foot">Canadian insurers now require these for small businesses too. A wrong answer on the application can mean a refused claim.</p>`,
-      notes: "Offer to review their last insurance application against what they really have. It's a strong reason to do the full assessment." });
-    if (ic) list.push({ html: `<h2>What we see in ${esc(ic.title.toLowerCase())}</h2><ul class="sk-list">${ic.points.map(p => `<li>${esc(p)}</li>`).join("")}</ul>`,
-      notes: "Ask: \"Which of these have come up for you?\" Let them pick one and talk." });
-    else list.push({ html: `<h2>What we see in small businesses</h2><ul class="sk-list">
-      <li>Fake invoices and banking-change emails (business email compromise)</li><li>Email accounts without multi-factor authentication</li>
-      <li>Backups that exist but have never been tested</li><li>Old accounts of people who left, still switched on</li><li>No one watching for attacks after hours</li></ul>`,
-      notes: "Ask: \"Which of these have come up for you?\"" });
-    list.push({ html: `<h2>Your quick assessment</h2>${res.answered ? `<div class="sk-score"><div class="sk-ring" style="--p:${res.score}"><b>${res.score}</b><span>/ 100</span></div>
-      <div><p class="sk-level l-${res.level.replace(/\s/g, "")}">${esc(res.level)}</p><p>${res.answered} of ${ASSESSMENT.length} questions answered</p></div></div>
-      ${res.gaps.length ? `<h3>Top gaps</h3><ul class="sk-list">${res.gaps.slice(0, 4).map(g => `<li><b>${esc(g.q.replace(/\?$/, ""))}</b> — ${esc(g.why)}</li>`).join("")}</ul>` : `<p>No gaps found. Nice work.</p>`}`
-      : `<p class="sk-sub">Fill in the quick assessment in the Meeting guide tab and the score appears here.</p>`}`,
-      notes: "Walk through the top 2–3 gaps only. Ask: \"If we fixed these, would you sleep better?\"" });
-    list.push({ html: `<h2>How we work</h2><div class="sk-steps">
-      <div><b>1. Assess</b><span>document everything, find the gaps</span></div>
-      <div><b>2. Secure</b><span>MFA, EDR, backups, patching</span></div>
-      <div><b>3. Support</b><span>help desk and on-site when you need it</span></div>
-      <div><b>4. Improve</b><span>quarterly review and a yearly plan</span></div></div>`,
-      notes: "This is the whole relationship in one slide." });
+      <p class="sk-kicker">IT and security review</p>
+      <h1>${esc(coName)}</h1>
+      <p class="sk-sub">${who ? `Prepared for ${esc(who)} · ` : ""}${esc(date)}</p>
+      <p class="sk-meta">${esc(COMPANY.owner)} · ${esc(COMPANY.name)}</p>`,
+      notes: "Keep this up while you chat. Confirm the time you have, then: \"I'd like to start by making sure I understood what you told me.\"" });
+
+    const heard = state.heard || {};
+    const col = (title, text, hint) => {
+      const items = lines(text);
+      return `<div><b>${title}</b>${items.length ? `<ul>${items.slice(0, 4).map(x => `<li>${esc(x)}</li>`).join("")}</ul>` : `<span class="sk-hint">${hint}</span>`}</div>`;
+    };
+    list.push({ html: `<h2>What we heard</h2><div class="sk-grid3 sk-heard">
+      ${col("What you want", heard.goals, "Their goals, in their words")}
+      ${col("What's getting in the way", heard.pains, "What frustrates them about IT today")}
+      ${col("What's coming up", heard.coming, "Renewals, hiring, moves, audits")}</div>`,
+      notes: "Read it back and ask: \"Did I get that right? Anything I missed?\" This slide earns the right to show the rest. Fill it in on the Meeting guide tab as they talk." });
+
+    const staff = Math.max(1, Number(state.cost?.staff) || Number(state.quote?.users) || 10);
+    const rate = Math.max(1, Number(state.cost?.rate) || 40);
+    const dayCost = staff * rate * 8;
+    const risk = RISK_TILE[ind] || RISK_TILE.generic;
+    list.push({ html: `<h2>What it could cost ${esc(coName)}</h2><div class="sk-stats sk-c3">
+      <div><b>${money(dayCost)}</b><span>in staff time for one day of downtime (${staff} people × ${money(rate)}/hour × 8 hours), before any lost sales</span></div>
+      <div><b>The full amount</b><span>of a fake invoice or banking-change email that gets paid. Once the money has left, it's rarely recovered.</span></div>
+      <div><b>${esc(risk[0])}</b><span>${esc(risk[1])}</span></div></div>
+      <p class="sk-foot">Downtime estimate uses your numbers. Change them in the Meeting guide.</p>`,
+      notes: "Ask for their numbers first: \"Roughly how many people would stop working, and what's an average hourly cost?\" It's their maths, not a scary statistic. Then: \"What would a day like that do to your clients?\"" });
+
+    const standRows = [];
+    if (dc) standRows.push(`<li><b>Your email domain:</b> we checked ${esc(dc.domain)}. ${esc(dc.summary)}.</li>`);
+    res.gaps.slice(0, dc ? 3 : 4).forEach(g => standRows.push(`<li><b>${esc(g.q.replace(/\?$/, ""))}:</b> ${g.a === "no" ? "no" : "not sure"}. ${esc(g.why)}</li>`));
+    list.push({ html: `<h2>Where you stand today</h2>${res.answered ? `<div class="sk-score"><div class="sk-ring" style="--p:${res.score}"><b>${res.score}</b><span>/ 100</span></div>
+      <div><p class="sk-level l-${res.level.replace(/\s/g, "")}">${esc(res.level)}</p><p>From the ${res.answered} questions we went through together</p></div></div>` : ""}
+      ${standRows.length ? `<ul class="sk-list">${standRows.join("")}</ul>` : res.answered ? `<p class="sk-sub">No gaps found. Nice work.</p>` : `<p class="sk-sub">Go through the quick assessment on the Meeting guide tab together, and the score and gaps appear here.</p>`}`,
+      notes: "Talk about the top 2 or 3 only. Ask: \"Which of these worries you most?\" Let them rank it. If the email domain finding is there, it's an objective fact from public records, not an opinion." });
+
+    list.push({ html: `<h2>What good looks like</h2><div class="sk-grid2">
+      <div><b>🔒 Protected</b><span>A stolen password or a fake email doesn't turn into a breach.</span></div>
+      <div><b>♻️ Recoverable</b><span>If something goes wrong, you're working again in hours, not days, and you've tested it.</span></div>
+      <div><b>📞 Supported</b><span>Your team knows who to call and gets a real person fast.</span></div>
+      <div><b>🗓️ Planned</b><span>A yearly plan and budget, with answers ready for your ${ind === "healthcare" ? "privacy obligations and insurer" : ind === "accounting" ? "insurer and the CRA" : ind === "law" ? "insurer and the Law Society" : "insurer"}.</span></div></div>`,
+      notes: "Ask: \"If this were true for you a few months from now, what would be different?\" Let them describe it." });
+
+    const fixes = [];
+    if (dc) fixes.push(["Spoofing protection (DMARC and SPF) so no one can send email as you", "Week 1"]);
+    res.gaps.forEach(g => { if (GAP_FIX[g.id]) fixes.push(GAP_FIX[g.id]); });
+    const WHEN = ["Day 1", "Week 1", "Week 2", "Week 3", "Month 2"];
+    fixes.sort((a, b) => WHEN.indexOf(a[1]) - WHEN.indexOf(b[1]));
+    const plan = fixes.length ? fixes.slice(0, 6) : [["Walk through your setup and document everything", "Week 1"], ["Security baseline: MFA, managed antivirus, backups tested", "Week 2"], ["Meet every user; the help desk goes live", "Week 3"], ["Review: what we found, what we fixed, what's next", "Week 4"]];
+    list.push({ html: `<h2>How we'd close the gaps</h2><table class="sk-tbl"><tbody>
+      ${plan.map(([f, w]) => `<tr><td>${esc(f)}</td><td>${esc(w)}</td></tr>`).join("")}</tbody></table>
+      <p class="sk-foot">Most of it happens in the first 30 days, out of hours where possible.</p>`,
+      notes: "This is the bridge from their gaps to your plan. Point at the first two rows: \"These two alone remove most of the risk.\"" });
+
+    const proof = state.proof || {};
+    const rating = proof.rating || 5.0, reviews = proof.reviews || 35;
+    list.push({ html: `<h2>Why businesses choose Midas Tech</h2><div class="sk-grid3">
+      <div><b>★ ${esc(Number(rating).toFixed(1))} on Google</b><span>${esc(reviews)} reviews from local businesses</span></div>
+      <div><b>Since ${COMPANY.founded}</b><span>looking after Ontario small businesses</span></div>
+      <div><b>You deal with Ali</b><span>owner-led: someone who knows your business, not a ticket queue</span></div>
+      <div><b>Local</b><span>based in Richmond Hill, on-site across the GTA</span></div>
+      <div><b>Security first</b><span>Microsoft 365, backups in Canada, 24/7 monitoring</span></div>
+      <div><b>${esc(ic ? ic.title.split(" (")[0] : "Small businesses")}</b><span>${esc(ind === "healthcare" ? "PHIPA and EMR systems" : ind === "accounting" ? "CRA EFILE and tax-season pressure" : ind === "law" ? "Law Society expectations and trust accounts" : ind === "warehouse" ? "uptime, scanners and dock Wi-Fi" : "the tools you use every day")}</span></div></div>`,
+      notes: "60 seconds. The point: local, owner-led, security-first, and we know your industry." });
+
+    const stories = (proof.stories || []).filter(x => x && (x.who || x.result));
+    const story = stories.find(x => x.industry === ind) || stories[0];
+    if (story) list.push({ html: `<h2>A client like you</h2><p class="sk-sub">${esc(story.who || "")}</p><div class="sk-grid3 sk-story">
+      <div><b>Before</b><span>${esc(story.before || "")}</span></div><div><b>What we did</b><span>${esc(story.did || "")}</span></div><div><b>Result</b><span>${esc(story.result || "")}</span></div></div>
+      ${story.quote ? `<blockquote class="sk-quote-s">“${esc(story.quote)}”${story.by ? `<cite>${esc(story.by)}</cite>` : ""}</blockquote>` : ""}`,
+      notes: "Tell it as a story, in 60 seconds. A client like them, the same problem, what changed. Offer to put them in touch if the client agreed." });
+
     const rec = recommendedPackage();
-    list.push({ html: `<h2>Plans</h2><div class="sk-plans">${packages().map(p => `<div class="${p.id === rec ? "rec" : ""}">
-      ${p.id === rec ? `<em>Recommended for you</em>` : p.popular ? `<em>Most popular</em>` : ""}<b>${esc(p.name)}</b><strong>${money(p.price)}<small>/user/month</small></strong>
-      <ul>${p.features.slice(0, 5).map(f => `<li>${esc(f)}</li>`).join("")}</ul></div>`).join("")}</div>
-      <p class="sk-foot">Plus HST. Microsoft 365 licences at cost. Month to month, or 12 months with onboarding waived.</p>`,
-      notes: "Point at the recommended plan and tie it to their gaps. Don't read every line." });
-    list.push({ html: `<h2>Our promise</h2><div class="sk-grid3">
-      <div><b>Fast response</b><span>written response times; 1 hour on Secure+</span></div>
-      <div><b>No lock-in</b><span>month to month, 30 days' notice</span></div>
-      <div><b>One flat fee</b><span>no surprise invoices for support</span></div>
-      <div><b>Your data in Canada</b><span>backups in Canadian data centres</span></div>
-      <div><b>Plain English</b><span>monthly report you can actually read</span></div>
-      <div><b>Local people</b><span>on-site in the GTA when it matters</span></div></div>`,
-      notes: "These answer the usual worries before they're asked." });
-    list.push({ html: `<h2>Your first 30 days</h2><div class="sk-steps">
-      <div><b>Week 1</b><span>walkthrough, document systems, accounts and vendors</span></div>
-      <div><b>Week 2</b><span>security baseline: MFA, EDR, backups tested</span></div>
-      <div><b>Week 3</b><span>meet every user, help desk goes live</span></div>
-      <div><b>Week 4</b><span>review: what we found, what we fixed, what's next</span></div></div>`,
-      notes: "Shows it's organised and low-effort for them." });
-    list.push({ cls: "sk-s-title", html: `<h2>Next steps</h2><ol class="sk-big">
-      <li><b>Free full assessment</b><span>on-site or remote, about an hour</span></li>
-      <li><b>Written proposal within 48 hours</b><span>fixed monthly price, no surprises</span></li>
-      <li><b>Pick a start date</b><span>onboarding takes about 30 days</span></li></ol>
+    list.push({ html: `<h2>Your options</h2><div class="sk-plans">${packages().map(p => `<div class="${p.id === rec ? "rec" : ""}">
+      ${p.id === rec ? `<em>Recommended for you</em>` : ""}<b>${esc(p.name)}</b><strong>${money(p.price)}<small>/user/month</small></strong>
+      <p class="sk-for">${esc(p.for)}</p>
+      <ul>${p.features.slice(0, 4).map(f => `<li>${esc(f)}</li>`).join("")}</ul></div>`).join("")}</div>
+      <p class="sk-foot">Plus HST. Microsoft 365 licences at cost. Already have in-house IT? Co-managed from ${money((addons().find(a => a.id === "comanaged") || {}).price || 69)}/user. Month to month, or 12 months with onboarding waived.</p>`,
+      notes: "Point at the recommended plan and tie it to their top gaps. Don't read every line. Then stop talking and let them react." });
+
+    list.push({ html: `<h2>Switching is easier than you think</h2><div class="sk-steps">
+      <div><b>Week 1</b><span>we walk through everything and handle the handover with your current provider</span></div>
+      <div><b>Week 2</b><span>security basics in place: MFA, antivirus, backups tested</span></div>
+      <div><b>Week 3</b><span>we meet every user and the help desk goes live</span></div>
+      <div><b>Week 4</b><span>review: what we found, what we fixed, what's next</span></div></div>
+      <div class="sk-grid3 sk-promise"><div><b>No downtime</b><span>changes happen after hours</span></div><div><b>No lock-in</b><span>month to month, 30 days' notice</span></div><div><b>No surprise bills</b><span>one flat monthly fee</span></div></div>`,
+      notes: "Most people's real worry is the switch itself. Say: \"We do the handover with your current provider, so you don't have to have an awkward conversation.\"" });
+
+    if (state.extras) {
+      list.push({ html: `<h2>What your cyber insurer will ask</h2><ul class="sk-list">${MARKET.insurance.map(x => `<li>${esc(x)}</li>`).join("")}</ul>
+        <p class="sk-foot">Canadian insurers now ask these of small businesses too. A wrong answer on the application can mean a refused claim.</p>`,
+        notes: "Offer to check their last insurance application against what they really have." });
+      if (ic) list.push({ html: `<h2>What ${esc(ic.title.split(" (")[0].toLowerCase())} need to have in place</h2><ul class="sk-list">${ic.points.map(p => `<li>${esc(p)}</li>`).join("")}</ul>`,
+        notes: "Ask: \"Which of these has come up for you?\"" });
+    }
+
+    list.push({ cls: "sk-s-title", html: `<h2>Next step</h2><ol class="sk-big">
+      <li><b>Free full assessment</b><span>on-site or remote, about an hour. Let's pick a date now.</span></li>
+      <li><b>Written proposal within 48 hours</b><span>a fixed monthly price, no surprises</span></li>
+      <li><b>You decide</b><span>no pressure, and no long contract</span></li></ol>
       <p class="sk-contact">${esc(COMPANY.owner)} · ${esc(COMPANY.phone)} · ${esc(COMPANY.email)} · ${esc(COMPANY.web)}<br>${esc(COMPANY.address)}<br>LinkedIn ${esc(COMPANY.linkedin)} · Instagram ${esc(COMPANY.instagram)} · Facebook ${esc(COMPANY.facebook)}</p>`,
-      notes: "Ask for the assessment date now and book it before you hang up." });
+      notes: "Ask for the date, then stay quiet: \"What does your calendar look like next week for the full assessment?\" Book it before you leave." });
     return list;
   }
 
@@ -373,12 +441,13 @@ ${COMPANY.phone} · ${COMPANY.web}`;
       state.settingsLoaded = true;
       host.loadSettings().then(s => {
         if (s?.packages?.length) state.packages = DEFAULT_PACKAGES.map(p => ({ ...p, price: s.packages.find(x => x.id === p.id)?.price ?? p.price }));
+        if (s?.proof) state.proof = s.proof;
         if (s?.addons?.length) state.addons = DEFAULT_ADDONS.map(a => ({ ...a, price: s.addons.find(x => x.id === a.id)?.price ?? a.price }));
         draw();
       }).catch(() => {});
     }
     const l = lead();
-    if (l?.assessment && !Object.keys(state.answers).length) { state.answers = { ...(l.assessment.answers || {}) }; state.notes = l.assessment.notes || ""; }
+    if (l?.assessment && !Object.keys(state.answers).length) loadFromLead(l);
     draw();
   }
 
@@ -403,8 +472,27 @@ ${COMPANY.phone} · ${COMPANY.web}`;
 
   function deckHtml() {
     const s = slides();
+    const proof = state.proof || {};
+    const stories = [0, 1, 2].map(i => (proof.stories || [])[i] || {});
     return `<div class="sk-deck-actions"><button class="btn btn-primary" type="button" data-sk="present">▶ Present full screen</button>
-      <span class="or-muted">${s.length} slides · arrow keys to move · N shows your notes · Esc to exit</span></div>
+      <span class="or-muted">${s.length} slides · opens in a new tab · arrow keys to move · N shows your notes · F for full screen</span>
+      <label class="or-check-row"><input type="checkbox" data-sk="extras" ${state.extras ? "checked" : ""}> Add extra slides (insurance questions, industry rules)</label></div>
+      <details class="or-card sk-proof-edit"><summary><b>Your proof: Google rating and client stories</b> <span class="or-muted">${(proof.stories || []).filter(x => x && (x.who || x.result)).length} stories saved</span></summary>
+        <p class="or-muted">Real results only. A story shows on the deck when you meet a business in the same industry (or the first story otherwise). Ask the client's permission before using their name.</p>
+        <div class="sk-quote-form">
+          <label>Google rating<input type="number" step="0.1" min="1" max="5" data-sk="proof" data-id="rating" value="${esc(proof.rating ?? 5.0)}"></label>
+          <label>Number of reviews<input type="number" min="0" data-sk="proof" data-id="reviews" value="${esc(proof.reviews ?? 35)}"></label>
+        </div>
+        ${stories.map((st, i) => `<fieldset class="sk-story-edit"><legend>Story ${i + 1}</legend>
+          <label>Industry<select data-sk="story" data-i="${i}" data-id="industry">${Object.entries(INDUSTRY_LABEL).map(([k, v]) => `<option value="${k}" ${st.industry === k ? "selected" : ""}>${esc(v)}</option>`).join("")}</select></label>
+          <label>Who (can be anonymous)<input data-sk="story" data-i="${i}" data-id="who" value="${esc(st.who || "")}" placeholder="e.g. A 12-person dental clinic in Markham"></label>
+          <label>Before<input data-sk="story" data-i="${i}" data-id="before" value="${esc(st.before || "")}" placeholder="e.g. Backups hadn't worked for 4 months"></label>
+          <label>What we did<input data-sk="story" data-i="${i}" data-id="did" value="${esc(st.did || "")}" placeholder="e.g. New backup, MFA and managed antivirus"></label>
+          <label>Result<input data-sk="story" data-i="${i}" data-id="result" value="${esc(st.result || "")}" placeholder="e.g. Passed their insurance renewal first time"></label>
+          <label>Quote (optional)<input data-sk="story" data-i="${i}" data-id="quote" value="${esc(st.quote || "")}"></label>
+          <label>Quote by<input data-sk="story" data-i="${i}" data-id="by" value="${esc(st.by || "")}" placeholder="e.g. Dr. S., clinic owner"></label></fieldset>`).join("")}
+        <div class="or-edit-actions"><button class="btn btn-primary btn-sm" type="button" data-sk="save-proof">Save proof</button></div>
+      </details>
       <div class="sk-thumbs">${s.map((sl, i) => `<button type="button" class="sk-thumb" data-sk="present" data-v="${i}" aria-label="Present from slide ${i + 1}">
         <div class="sk-slide-wrap"><div class="sk-slide ${sl.cls || ""}">${sl.html}</div></div><span>${i + 1}. ${(sl.html.match(/<h[12][^>]*>([^<]*)/) || [, ""])[1] /* already escaped */}</span></button>`).join("")}</div>`;
   }
@@ -416,6 +504,16 @@ ${COMPANY.phone} · ${COMPANY.web}`;
       <section class="or-card"><h3>How to run the meeting</h3>${AGENDA.map(([h, items]) => `<div class="sk-agenda"><b>${esc(h)}</b><ul>${items.map(i => `<li>${esc(i)}</li>`).join("")}</ul></div>`).join("")}</section>
       <section class="or-card"><h3>Discovery questions</h3><p class="or-muted">Pick 6–8. Listen more than you talk.</p>${DISCOVERY.map(([h, qs]) => `<div class="sk-agenda"><b>${esc(h)}</b><ul>${qs.map(q => `<li>${esc(q)}</li>`).join("")}</ul></div>`).join("")}</section>
     </div>
+    <section class="or-card"><h3>What we heard</h3><p class="or-muted">Write it down as they talk, one point per line. It becomes the "What we heard" slide, so use their words.</p>
+      <div class="sk-heard-form">
+        <label>What they want<textarea data-sk="heard" data-id="goals" rows="3" placeholder="e.g. Stop worrying about ransomware&#10;Pass the insurance renewal">${esc(state.heard.goals || "")}</textarea></label>
+        <label>What's getting in the way<textarea data-sk="heard" data-id="pains" rows="3" placeholder="e.g. Slow fixes from the current provider&#10;Nobody knows if backups work">${esc(state.heard.pains || "")}</textarea></label>
+        <label>What's coming up<textarea data-sk="heard" data-id="coming" rows="3" placeholder="e.g. Insurance renews in March&#10;Hiring 3 people">${esc(state.heard.coming || "")}</textarea></label>
+      </div>
+      <div class="sk-quote-form sk-cost-form">
+        <label>People who'd stop working if IT went down<input type="number" min="1" data-sk="cost" data-id="staff" value="${esc(state.cost.staff || "")}" placeholder="${esc(state.quote.users || 10)}"></label>
+        <label>Average cost per person per hour ($)<input type="number" min="1" data-sk="cost" data-id="rate" value="${esc(state.cost.rate || "")}" placeholder="40"></label>
+      </div></section>
     <section class="or-card"><div class="or-card-head"><div><h3>${ASSESSMENT.length}-point quick assessment</h3><p class="or-muted">Ask these together in the meeting. The score and top gaps appear on the deck.</p></div>
       <div class="sk-score-mini"><b>${res.score}</b>/100 · ${esc(res.level)} · ${res.answered}/${ASSESSMENT.length} answered</div></div>
       ${ASSESSMENT.map(([id, q, why]) => `<div class="sk-q"><div><b>${esc(q)}</b><span class="or-muted">${esc(why)}</span></div>
@@ -514,10 +612,65 @@ ${COMPANY.phone} · ${COMPANY.web}`;
   }
 
   // ── presenting ──
-  let overlay = null;
+  // Opens the deck in its own tab (so the tracker stays open behind it). Falls back to presenting
+  // on top of the page if the browser blocks the new tab.
   function present(from) {
     const s = slides();
-    state.slide = Math.min(Math.max(0, from || 0), s.length - 1);
+    const start = Math.min(Math.max(0, from || 0), s.length - 1);
+    const w = window.open("", "_blank");
+    if (!w) { host.toast("Allow pop-ups to present in a new tab. Presenting here instead.", "error"); return presentHere(start); }
+    const css = [...document.querySelectorAll("style")].map(x => x.textContent).filter(t => t.includes(".sk-")).join("\n");
+    // Embed the logo so the new tab doesn't depend on loading it again.
+    let logo = "";
+    try {
+      const img = [...document.querySelectorAll("img.sk-logo")].find(i => i.complete && i.naturalWidth);
+      if (img) { const c = document.createElement("canvas"); c.width = img.naturalWidth; c.height = img.naturalHeight; c.getContext("2d").drawImage(img, 0, 0); logo = c.toDataURL("image/png"); }
+    } catch {}
+    const withLogo = h => logo ? h.replace('src="midas-logo.png"', `src="${logo}"`) : h;
+    const data = JSON.stringify(s.map(x => ({ cls: x.cls || "", html: withLogo(x.html), notes: x.notes || "" }))).replace(/</g, "\\u003c");
+    w.document.write(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<base href="${esc(location.href)}"><title>${esc(prospect() || "Meeting")} · Midas Tech</title>
+<style>${css}
+html,body{margin:0;height:100%;background:#0b1620;overflow:hidden}
+.sk-present{position:fixed;inset:0;display:flex;align-items:center;justify-content:center}
+.sk-present .sk-controls{opacity:.5}
+.sk-fs-hint{position:fixed;top:14px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,.95);color:#333;padding:8px 14px;border-radius:10px;font:600 14px Segoe UI,Arial,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.3);cursor:pointer}
+</style></head><body>
+<div class="sk-present" tabindex="-1"><div class="sk-stage"><div class="sk-slide-wrap"><div class="sk-slide"></div></div></div>
+<div class="sk-notes-pane" hidden></div>
+<div class="sk-controls"><button type="button" data-p="prev" aria-label="Previous">‹</button><span class="sk-count"></span>
+<button type="button" data-p="next" aria-label="Next">›</button><button type="button" data-p="notes">Notes</button><button type="button" data-p="fs">⛶ Full screen</button><button type="button" data-p="exit">Close</button></div></div>
+<div class="sk-fs-hint" data-p="fs">Click here or press F for full screen</div>
+<script>
+const S=${data};let i=${start};
+const $=q=>document.querySelector(q);
+function show(){const sl=S[i];const b=$(".sk-slide");b.className="sk-slide "+sl.cls;b.innerHTML=sl.html;$(".sk-count").textContent=(i+1)+" / "+S.length;$(".sk-notes-pane").textContent=sl.notes;}
+function move(d){i=Math.min(Math.max(0,i+d),S.length-1);show();}
+function fs(){const h=$(".sk-fs-hint");if(h)h.remove();if(document.fullscreenElement)document.exitFullscreen().catch(()=>{});else document.documentElement.requestFullscreen().catch(()=>{});}
+function notes(){const p=$(".sk-notes-pane");p.hidden=!p.hidden;}
+document.addEventListener("keydown",e=>{
+  if(["ArrowRight","PageDown"," "].includes(e.key)){e.preventDefault();move(1);}
+  else if(["ArrowLeft","PageUp"].includes(e.key)){e.preventDefault();move(-1);}
+  else if(e.key.toLowerCase()==="n")notes();
+  else if(e.key.toLowerCase()==="f")fs();
+  else if(e.key==="Home"){i=0;show();} else if(e.key==="End"){i=S.length-1;show();}
+});
+document.addEventListener("click",e=>{
+  const b=e.target.closest("[data-p]");
+  if(!b){if(!e.target.closest(".sk-notes-pane"))move(1);return;}
+  const a=b.dataset.p;
+  if(a==="prev")move(-1);else if(a==="next")move(1);else if(a==="notes")notes();else if(a==="fs")fs();else if(a==="exit")window.close();
+});
+setTimeout(()=>{const h=$(".sk-fs-hint");if(h)h.remove();},6000);
+show();
+<\/script></body></html>`);
+    w.document.close();
+    w.focus();
+  }
+
+  let overlay = null;
+  function presentHere(start) {
+    state.slide = start;
     overlay = document.createElement("div");
     overlay.className = "sk-present";
     overlay.tabIndex = -1;
@@ -556,7 +709,6 @@ ${COMPANY.phone} · ${COMPANY.web}`;
       else if (a === "notes") { const p = overlay.querySelector(".sk-notes-pane"); p.hidden = !p.hidden; }
     });
     document.addEventListener("keydown", onKey);
-    document.addEventListener("fullscreenchange", function fs() { if (!document.fullscreenElement && overlay) { document.removeEventListener("fullscreenchange", fs); } });
     show();
     overlay.requestFullscreen?.().catch(() => {});
     overlay.focus();
@@ -603,6 +755,18 @@ LinkedIn ${esc(COMPANY.linkedin)} · Instagram ${esc(COMPANY.instagram)} · Face
     catch { host.toast("Copy was blocked. Select the text instead.", "error"); }
   }
 
+  function saveProof() {
+    const pr = state.proof || {};
+    const clean = {
+      rating: Math.min(5, Math.max(1, Number(pr.rating) || 5)),
+      reviews: Math.max(0, Math.round(Number(pr.reviews) || 0)),
+      stories: (pr.stories || []).map(st => Object.fromEntries(["industry", "who", "before", "did", "result", "quote", "by"].map(k => [k, String(st?.[k] || "").trim().slice(0, 300)])))
+        .filter(st => st.who || st.result)
+    };
+    state.proof = clean;
+    host.saveSettings({ proof: clean }).then(() => { host.toast("Proof saved", "success"); draw(); }).catch(() => {});
+  }
+
   let savePricesTimer = null;
   function savePrices() {
     clearTimeout(savePricesTimer);
@@ -620,11 +784,12 @@ LinkedIn ${esc(COMPANY.linkedin)} · Instagram ${esc(COMPANY.instagram)} · Face
     if (a === "tab") { state.tab = t.dataset.v; remember(); draw(); }
     else if (a === "present") present(Number(t.dataset.v || 0));
     else if (a === "answer") { const id = t.dataset.id; state.answers[id] = state.answers[id] === t.dataset.v ? undefined : t.dataset.v; if (!state.answers[id]) delete state.answers[id]; draw(); }
-    else if (a === "clear-assessment") { if (confirm("Clear the answers and notes?")) { state.answers = {}; state.notes = ""; draw(); } }
+    else if (a === "clear-assessment") { if (confirm("Clear the answers and notes?")) { state.answers = {}; state.notes = ""; state.heard = {}; state.cost = {}; draw(); } }
+    else if (a === "save-proof") saveProof();
     else if (a === "save-assessment") {
       const l = lead(); if (!l) return;
       const res = assessmentScore(state.answers);
-      host.saveAssessment(l.id, { answers: { ...state.answers }, notes: state.notes, score: res.score, level: res.level, gaps: res.gaps.map(g => g.q), date: new Date().toISOString() })
+      host.saveAssessment(l.id, { answers: { ...state.answers }, notes: state.notes, heard: { ...state.heard }, cost: { ...state.cost }, score: res.score, level: res.level, gaps: res.gaps.map(g => g.q), date: new Date().toISOString() })
         .then(() => host.toast("Assessment saved to the lead", "success")).catch(err => host.toast(err?.message || "Couldn't save", "error"));
     }
     else if (a === "copy-followup") { const l = lead(); copy(FOLLOWUP_EMAIL(l ? String(l.name || "").split(" ")[0] : "", prospect()), "Email"); }
@@ -637,9 +802,7 @@ LinkedIn ${esc(COMPANY.linkedin)} · Instagram ${esc(COMPANY.instagram)} · Face
     const a = t.dataset.sk;
     if (a === "lead") {
       state.leadId = t.value;
-      const l = lead();
-      state.answers = l?.assessment?.answers ? { ...l.assessment.answers } : {};
-      state.notes = l?.assessment?.notes || "";
+      loadFromLead(lead());
       remember(); draw();
     } else if (a === "industry") { state.industry = t.value; remember(); draw(); }
     else if (a === "company") draw();
@@ -648,6 +811,7 @@ LinkedIn ${esc(COMPANY.linkedin)} · Instagram ${esc(COMPANY.instagram)} · Face
     else if (a === "q-addon") { state.quote.addons[t.dataset.id] = Math.max(0, Number(t.value) || 0); remember(); draw(); }
     else if (a === "q-check") { state.quote.addons[t.dataset.id] = t.checked; remember(); draw(); }
     else if (a === "q-waive") { state.quote.waive = t.checked; remember(); draw(); }
+    else if (a === "extras") { state.extras = t.checked; remember(); draw(); }
     else if (a === "price") { state.packages = packages().map(p => p.id === t.dataset.id ? { ...p, price: Math.max(0, Number(t.value) || 0) } : p); savePrices(); draw(); }
     else if (a === "addon-price") { state.addons = addons().map(x => x.id === t.dataset.id ? { ...x, price: Math.max(0, Number(t.value) || 0) } : x); savePrices(); draw(); }
   });
@@ -655,6 +819,15 @@ LinkedIn ${esc(COMPANY.linkedin)} · Instagram ${esc(COMPANY.instagram)} · Face
     const t = e.target.closest("[data-sk]");
     if (!t || !root?.contains(t)) return;
     if (t.dataset.sk === "notes") state.notes = t.value;
+    if (t.dataset.sk === "heard") state.heard[t.dataset.id] = t.value;
+    if (t.dataset.sk === "proof") { state.proof = { ...(state.proof || {}), [t.dataset.id]: Number(t.value) || "" }; }
+    if (t.dataset.sk === "story") {
+      const pr = { ...(state.proof || {}) };
+      const list = [0, 1, 2].map(i => ({ ...((pr.stories || [])[i] || {}) }));
+      list[Number(t.dataset.i)][t.dataset.id] = t.value;
+      pr.stories = list; state.proof = pr;
+    }
+    if (t.dataset.sk === "cost") state.cost[t.dataset.id] = Math.max(0, Number(t.value) || 0) || "";
     if (t.dataset.sk === "company") { state.company = t.value; remember(); }
   });
 

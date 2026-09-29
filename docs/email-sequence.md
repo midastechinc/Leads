@@ -23,6 +23,8 @@ The rules come from the 2026 cold email research (Gong, Lavender, Instantly, Bel
 | Industry | Detected from industry, title and company: accounting, healthcare, warehouse, law or general |
 | Role | Detected from the title: **finance** (CFO, controller, finance, bookkeeper), **operations** (COO, operations, office/practice/clinic/general manager, administrator), otherwise **owner** |
 | Domain finding | `lead.domainCheck`, from the free **email-domain check** (below) |
+| Trigger | **⚡ Trigger** in the lead window's Email drafts: Hiring, Hiring for IT, New location, Growing, or Other (write your own sentence), plus an optional detail |
+| Current IT | **Current IT** in the same place: Don't know, In-house IT, IT provider, or No one |
 | Booking link | Outreach → Settings, or Ali's Bookings page by default |
 
 ## The email-domain check
@@ -47,6 +49,21 @@ Personal addresses (gmail, rogers, and so on) are skipped. If a DNS lookup times
 Timing is roughly **days 1, 4, 9 and 16**: 3, 4 and 5 business days apart. Out-of-office replies push the next email back.
 
 ### 1. Opener (no pitch)
+
+Email 1 picks its opening in this order: **a trigger** if you set one, then **a domain finding**, then **the industry "why now" line**. When a trigger leads, a domain finding moves to email 2, so it's never lost.
+
+**With a trigger.** Subject: `{firm} new hires` / `{firm} IT hire` / `{firm} new location` / `{firm} growth` (Other uses the industry subject)
+```
+Hi {first},
+
+{trigger line, e.g. "Saw Maple Family Health is opening a second clinic in Aurora."} {why it matters, e.g. "A move is the easiest time to get the network, Wi-Fi and backups set up right, and the most expensive time to find out they weren't."}
+
+I run Midas Tech, a Richmond Hill IT and cybersecurity firm. Since 2010 we've looked after IT and security for {clinics / accounting firms / …} around the GTA.
+
+Worth a quick look for {firm}?
+
+Ali
+```
 
 **With a domain finding.** Subject: `{firm} email security`
 ```
@@ -92,8 +109,11 @@ The "why now" lines:
 Hi {first},
 
 {industry tip: CRA EFILE MFA / EMR MFA and backup restore / downtime and restore time / MFA on every mailbox and phone-confirmed wires / MFA on every account}
+  (or, when email 1 didn't use it: "One more thing: I noticed {domain} … It's usually a 15-minute fix.")
 
 {role line}{ Since {firm} is on Microsoft 365/Google Workspace, most of the fixes are settings you already pay for.}
+
+{current IT line}
 
 If it helps, I can check {firm} on a 15-minute call. Pick a time here: {booking link}
 
@@ -103,7 +123,13 @@ Ali
 The role line:
 - **Owner:** "…two or three small gaps like this, and closing them is exactly what insurers want to see."
 - **Operations:** "…eats your team's time later: old accounts, slow fixes, and nobody sure who to call."
-- **Finance:** "…stops fake payment and banking-change emails before they reach your team."
+- **Finance:** "…stops fake payment and banking-change emails before they reach your team." Finance people also get: "…and we usually find a few licences still being paid for people who've left."
+
+The current IT line says we work alongside, not replace:
+- **Don't know:** "If you already have someone for IT, we can work alongside them. It's a second pair of eyes, not a switch."
+- **In-house IT:** "We often work alongside in-house IT, taking security monitoring and after-hours issues off their plate."
+- **IT provider:** "This isn't about switching IT providers. A second opinion is often all it takes."
+- **No one:** no extra line.
 
 ### 3. Insurance checklist offer
 ```
@@ -132,7 +158,7 @@ Enjoy the rest of the {season}.
 Ali
 ```
 
-The outreach server adds Ali's signature and the CASL unsubscribe footer. Drafts opened in Outlook from the lead window get a short text signature instead.
+The outreach server adds a **plain-text signature** (name, title, phone, website, mailing address; no logo or images) and the CASL unsubscribe footer, and drops the "Ali" sign-off so the name isn't repeated. Plain emails land in the main inbox more often than designed ones. To use the full logo signature instead, set `OUTREACH_SIGNATURE=html` in Railway. Drafts opened in Outlook from the lead window get a short text signature.
 
 ## Alongside the emails
 

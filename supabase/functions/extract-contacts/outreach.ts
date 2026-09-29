@@ -20,7 +20,13 @@ const DAILY_MAX = Math.max(1, Number(Deno.env.get("OUTREACH_DAILY_MAX")) || 30);
 const SENDER_NAME = Deno.env.get("OUTREACH_SENDER_NAME") ?? "Ali Jaffar";
 const PUBLIC_URL = (Deno.env.get("OUTREACH_PUBLIC_URL") ?? "").replace(/\/+$/, "");
 const LOGO_URL = Deno.env.get("OUTREACH_LOGO_URL") ?? "https://midastechinc.github.io/Leads/email-logo.png";
-const SIGNATURE_ON = (Deno.env.get("OUTREACH_SIGNATURE") ?? "on").toLowerCase() !== "off";
+// "text" (default): a plain-text-style signature with no images, which lands in the inbox more often.
+// "html": the full signature with the logo. "off": no signature; the footer carries who is sending.
+const SIGNATURE_MODE = (() => {
+  const v = (Deno.env.get("OUTREACH_SIGNATURE") ?? "text").trim().toLowerCase();
+  return v === "off" ? "off" : v === "html" || v === "on" ? "html" : "text";
+})();
+const SIGNATURE_ON = SIGNATURE_MODE !== "off";
 const UNSUB_SECRET = Deno.env.get("OUTREACH_UNSUB_SECRET") ?? CLIENT_SECRET;
 const GRAPH = Deno.env.get("MS_GRAPH_URL") ?? "https://graph.microsoft.com/v1.0";
 const LOGIN = Deno.env.get("MS_LOGIN_URL") ?? "https://login.microsoftonline.com";
@@ -290,6 +296,16 @@ ${booking ? `<div style="margin-top:6px"><a href="${esc(booking)}" style="color:
 </td></tr></table>`;
 }
 
+// The cold-email signature: plain lines, no images or styling, so the email reads like a normal
+// one-to-one note. The mailing address stays in it for CASL.
+function signatureText() {
+  return `<p style="margin:14px 0 0">${esc(SENDER_NAME)}<br>
+Founder &amp; CTO, Midas Tech Inc<br>
+IT Services &amp; Cybersecurity · since 2010<br>
+905-787-2038 · <a href="https://www.midastech.ca">www.midastech.ca</a><br>
+30 Via Renzo Dr, Suite 200, Richmond Hill, ON L4S 0B8</p>`;
+}
+
 // Plain text to HTML: paragraphs, line breaks, and web addresses turned into links
 // (the booking link shows as "Book a 15-minute call" rather than the long address).
 function linkify(escaped: string, booking: string) {
@@ -301,8 +317,11 @@ function linkify(escaped: string, booking: string) {
 }
 
 function bodyHtml(text: string, unsub: string, booking = "") {
+  // The text signature starts with the full name, so drop a sign-off that is just the first name.
+  const first = SENDER_NAME.split(/\s+/)[0];
+  if (SIGNATURE_MODE === "text" && first) text = text.trim().replace(new RegExp(`\\n\\s*\\n${first}\\s*$`), "");
   const paragraphs = text.trim().split(/\n{2,}/).map((p) => `<p style="margin:0 0 12px">${linkify(esc(p), booking).replace(/\n/g, "<br>")}</p>`).join("");
-  return `<div style="font-family:Segoe UI,Arial,sans-serif;font-size:14px;color:#333;line-height:1.55">${paragraphs}</div>${SIGNATURE_ON ? signatureHtml(booking) : ""}${footerHtml(unsub)}`;
+  return `<div style="font-family:Segoe UI,Arial,sans-serif;font-size:14px;color:#333;line-height:1.55">${paragraphs}</div>${SIGNATURE_MODE === "html" ? signatureHtml(booking) : SIGNATURE_MODE === "text" ? signatureText() : ""}${footerHtml(unsub)}`;
 }
 
 export interface OutgoingEmail {

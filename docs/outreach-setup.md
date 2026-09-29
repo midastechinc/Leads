@@ -48,7 +48,8 @@ Cost: about CA$20–25 a month. That covers one extra mailbox (~$8), a second do
    ```
    These are optional:
    - `OUTREACH_DAILY_MAX`: a hard limit on emails per day. The default is 30.
-   - `OUTREACH_SENDER_NAME`: the name in the footer. The default is Ali Jaffar.
+   - `OUTREACH_SENDER_NAME`: the name in the signature. The default is Ali Jaffar.
+   - `OUTREACH_SIGNATURE`: `text` (the default) adds a plain-text signature with no images, which lands in the inbox more often. `html` uses the full logo signature. `off` leaves it out; the footer then carries your name and address.
    - `OUTREACH_PUBLIC_URL`: the address used in unsubscribe links. By default it's the Railway address the app calls.
 
    Railway redeploys on its own. When it's done, the **Mailbox connected** tile in the Outreach tab shows ✓.

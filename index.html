@@ -1690,6 +1690,11 @@
     .ld-list a { color: var(--blue); text-decoration: none; }
     .ld-list a:hover { text-decoration: underline; }
     .ld-tag { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; background: var(--yellow-light); color: var(--yellow); font-size: 11px; font-weight: 700; vertical-align: 1px; }
+    .ld-vbadge { display: inline-block; margin-left: 6px; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; vertical-align: 1px; }
+    .ld-vbadge.v-yes { background: #e7f6ee; color: #0f7a4f; }
+    .ld-vbadge.v-no { background: #fdecea; color: #b42318; }
+    .ld-verify { display: inline-flex; align-items: center; gap: 5px; margin-top: 6px; font-size: 12px; font-weight: 600; color: var(--gray-600); cursor: pointer; }
+    .ld-verify input { width: auto; margin: 0; }
     .ld-extras { margin-top: 14px; }
     .ld-extras summary { cursor: pointer; font-size: 13px; font-weight: 700; color: var(--blue); margin-bottom: 8px; list-style: none; }
     .ld-extras summary::before { content: "▸ "; }
@@ -2306,11 +2311,11 @@
         <div class="form-group"><label>Company</label><input type="text" id="editLeadCompany"></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Email</label><input type="email" id="editLeadEmail"></div>
-        <div class="form-group"><label>Phone</label><input type="text" id="editLeadPhone"></div>
+        <div class="form-group"><label>Email</label><input type="email" id="editLeadEmail"><label class="ld-verify"><input type="checkbox" id="editLeadEmailVerified"> Verified</label></div>
+        <div class="form-group"><label>Phone</label><input type="text" id="editLeadPhone"><label class="ld-verify"><input type="checkbox" id="editLeadPhoneVerified"> Verified</label></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Website</label><input type="text" id="editLeadWebsite"></div>
+        <div class="form-group"><label>Website</label><input type="text" id="editLeadWebsite"><label class="ld-verify"><input type="checkbox" id="editLeadWebsiteVerified"> Verified</label></div>
         <div class="form-group"><label>LinkedIn</label><input type="text" id="editLeadLinkedin"></div>
       </div>
       <div class="form-row">
@@ -2734,7 +2739,7 @@
         "id","name","company","email","phone","website","linkedin","industry","title","status","assignedTo",
         "contactCount","lastContacted","createdAt","updatedAt","source","country","city","employeeRange",
         "address","state","importBatchId","importFileName","importedBy","importedAt","adminGrantedAt",
-        "adminGrantedBy","createdBy","createdByName","autoCreated"
+        "adminGrantedBy","createdBy","createdByName","autoCreated","emailVerified","phoneVerified","websiteVerified"
       ]);
       return Object.keys(lead).filter(key =>
         !coreKeys.has(key) &&
@@ -4455,13 +4460,14 @@
       if (!l.disabled) act.push(`<button class="ld-action" type="button" onclick="setLeadsDisabled(['${l.id}'], true)" title="Hide this person from lists and follow-ups (you can enable them again)">🚫 Disable (no info found)</button>`);
       html += `<div class="ld-actions">${act.join("")}</div>`;
 
-      // Contact details
+      // Contact details. Email/phone/website carry a manual verified badge (default: unverified).
+      const vb = ok => `<span class="ld-vbadge ${ok ? "v-yes" : "v-no"}">${ok ? "✓ Verified" : "Unverified"}</span>`;
       const rows = [
-        ["Email", email ? `<a href="mailto:${esc(email)}">${esc(email)}</a>${emailNote ? ` <span class="ld-tag">${esc(emailNote)}</span>` : ""}` : ""],
-        ["Phone", phone ? `<a href="tel:${esc(phone)}">${esc(phone)}</a>` : ""],
+        ["Email", email ? `<a href="mailto:${esc(email)}">${esc(email)}</a>${emailNote ? ` <span class="ld-tag">${esc(emailNote)}</span>` : ""} ${vb(!!l.emailVerified)}` : ""],
+        ["Phone", phone ? `<a href="tel:${esc(phone)}">${esc(phone)}</a> ${vb(!!l.phoneVerified)}` : ""],
         ["Company", esc(l.company || "")],
         ["Title", esc(l.title || l.industry || "")],
-        ["Website", site ? `<a href="#" onclick="openUrl('${esc(site)}');return false">${esc(site.replace(/^https?:\/\//i, "").replace(/\/$/, ""))}</a>` : esc(l.website || "")],
+        ["Website", site ? `<a href="#" onclick="openUrl('${esc(site)}');return false">${esc(site.replace(/^https?:\/\//i, "").replace(/\/$/, ""))}</a> ${vb(!!l.websiteVerified)}` : esc(l.website || "")],
         ["LinkedIn", li ? `<a href="#" onclick="openUrl('${esc(li.url)}');return false">${esc(li.label)}</a>` : ""],
         ["Location", esc([l.city, l.state, l.country].filter(Boolean).join(", "))],
         ["Employees", esc(formatDetailValue(l.employeeRange))],
@@ -4518,7 +4524,8 @@
       // Everything else from the CSV import, folded away; only real web addresses become links
       const SKIP = new Set(["id","name","company","email","phone","website","linkedin",
         "industry","title","status","assignedTo","contactCount","lastContacted",
-        "createdAt","updatedAt","source","country","city","employeeRange","address","state"]);
+        "createdAt","updatedAt","source","country","city","employeeRange","address","state",
+        "emailVerified","phoneVerified","websiteVerified"]);
       const extras = Object.entries(l).filter(([k,v]) =>
         !SKIP.has(k) && !shouldHideDetailField(k) && v !== null && v !== undefined && v !== "");
       if (extras.length) {
@@ -4548,6 +4555,9 @@
       setInputValue("editLeadEmail", cleanEmail(lead.email));
       setInputValue("editLeadPhone", cleanPhone(lead.phone));
       setInputValue("editLeadWebsite", lead.website);
+      document.getElementById("editLeadEmailVerified").checked = !!lead.emailVerified;
+      document.getElementById("editLeadPhoneVerified").checked = !!lead.phoneVerified;
+      document.getElementById("editLeadWebsiteVerified").checked = !!lead.websiteVerified;
       setInputValue("editLeadLinkedin", lead.linkedin);
       setInputValue("editLeadTitle", lead.title);
       setInputValue("editLeadIndustry", lead.industry);
@@ -4589,6 +4599,9 @@
         email: cleanEmail(document.getElementById("editLeadEmail").value),
         phone: cleanPhone(document.getElementById("editLeadPhone").value),
         website: document.getElementById("editLeadWebsite").value.trim(),
+        emailVerified: document.getElementById("editLeadEmailVerified").checked,
+        phoneVerified: document.getElementById("editLeadPhoneVerified").checked,
+        websiteVerified: document.getElementById("editLeadWebsiteVerified").checked,
         linkedin: document.getElementById("editLeadLinkedin").value.trim(),
         title: document.getElementById("editLeadTitle").value.trim(),
         industry: document.getElementById("editLeadIndustry").value.trim(),
@@ -4627,7 +4640,7 @@
       document.getElementById("addLeadSub").textContent = "Only name is required.";
       ["newName","newCompany","newEmail","newPhone","newWebsite","newLinkedin","newTitle","newIndustry"].forEach(id =>
         document.getElementById(id).value = "");
-      populateRepSelect(document.getElementById("newAssigned"), currentUser);
+      populateRepSelect(document.getElementById("newAssigned"), "");
       document.getElementById("addLeadModal").classList.add("active");
       setTimeout(()=>document.getElementById("newName").focus(), 100);
     };
@@ -4658,7 +4671,7 @@
           linkedin:   document.getElementById("newLinkedin").value.trim(),
           title:      document.getElementById("newTitle").value.trim(),
           industry:   document.getElementById("newIndustry").value.trim(),
-          assignedTo: document.getElementById("newAssigned").value.trim() || currentUser,
+          assignedTo: document.getElementById("newAssigned").value.trim() || "",
           status:"New", contactCount:0, lastContacted:null,
           createdAt:serverTimestamp(), updatedAt:serverTimestamp(), source:"manual",
           ...(addLeadCompanyExtras || {})
@@ -4686,7 +4699,7 @@
       return {
         people, extras,
         company: pick("company"), website: pick("website"), industry: pick("industry"),
-        rep: (people.length && getCompanyAssignedRep(people)) || pick("assignedTo") || currentUser
+        rep: (people.length && getCompanyAssignedRep(people)) || pick("assignedTo") || ""
       };
     }
 
@@ -6046,7 +6059,7 @@ ${facts.map(f => `- ${f}`).join("\n")}`;
             address: p.address || "", city: p.city || "", state: p.province || "",
             country: p.country === "CA" ? "Canada" : (p.country || ""),
             industry: p.category || plState.query,
-            assignedTo: currentUser, status: "New", contactCount: 0, lastContacted: null,
+            assignedTo: "", status: "New", contactCount: 0, lastContacted: null,
             createdAt: serverTimestamp(), updatedAt: serverTimestamp(), source: "google-maps",
             ...(p.mapsUrl ? { googleMapsUrl: p.mapsUrl } : {}), ...(p.rating ? { googleRating: p.rating } : {})
           });
@@ -7022,7 +7035,7 @@ ${facts.map(f => `- ${f}`).join("\n")}`;
     }
     // App-managed fields (research results, disable flags) are shown elsewhere and must not be
     // edited as plain text, or saving the edit form would overwrite them.
-    const APP_FIELDS = new Set(["prospectid", "research", "companyresearch", "disabled", "disabledreason", "disabledby", "disabledat", "outreachtrigger", "outreachtriggernote", "currentit"]);
+    const APP_FIELDS = new Set(["prospectid", "research", "companyresearch", "disabled", "disabledreason", "disabledby", "disabledat", "outreachtrigger", "outreachtriggernote", "currentit", "emailverified", "phoneverified", "websiteverified"]);
     function shouldHideDetailField(key) {
       const normalized = String(key || "").toLowerCase().replace(/[\s_\-]+/g, "");
       return APP_FIELDS.has(normalized);

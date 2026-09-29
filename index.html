@@ -575,6 +575,28 @@
     .cp-scroll .sk-table td { white-space: normal; overflow: visible; font-size: 13px; }
     .cp-us td { background: #eaf7fd !important; }
     .cp-filters label { min-width: 0; }
+    /* Security snapshot — tab and report (app-level px) */
+    .sk-scan-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+    .sk-scan-bar input { flex: 1 1 240px; min-width: 0; border: 1px solid var(--gray-200); border-radius: 10px; padding: 10px 12px; font: inherit; }
+    .sk-scan-err { color: #c2413b; font-weight: 600; margin: 8px 0 0; }
+    .sk-report-head { display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; }
+    .sk-report-head h3 { margin: 0 0 2px; }
+    .sk-report-actions { margin-left: auto; }
+    .sk-grade { display: inline-flex; align-items: center; justify-content: center; width: 54px; height: 54px; border-radius: 12px; font-size: 30px; font-weight: 800; color: #fff; background: #0072BC; }
+    .sk-grade.g-a { background: #0f8a5f; } .sk-grade.g-b { background: #3f9c4f; } .sk-grade.g-c { background: #b7791f; } .sk-grade.g-d { background: #c2691f; } .sk-grade.g-f { background: #c2413b; }
+    .sk-finding { display: flex; gap: 10px; align-items: flex-start; padding: 10px 0; border-top: 1px solid var(--border); }
+    .sk-finding:first-of-type { border-top: none; }
+    .sk-finding p { margin: 3px 0 0; font-size: 14px; color: var(--gray-700); }
+    .sk-fix { color: var(--blue) !important; }
+    .sk-sev { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; padding: 3px 8px; border-radius: 999px; white-space: nowrap; }
+    .sk-sev-high { background: #fde8e7; color: #b42318; } .sk-sev-med { background: #fef3dc; color: #9a6300; } .sk-sev-low { background: #eef1f4; color: #4d4d4d; } .sk-sev-good { background: #e7f6ee; color: #0f7a4f; }
+    .sk-good-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .sk-report-note { background: #f2f9fd; border-left: 4px solid #00AEEF; border-radius: 6px; padding: 10px 12px; font-size: 12.5px; color: var(--gray-600); margin-top: 12px; }
+    /* Security snapshot — deck slide (em, scales with the slide) */
+    .sk-slide .sk-snap { display: flex; gap: 1em; align-items: center; }
+    .sk-slide .sk-snap-grade { flex: none; width: 2.2em; height: 2.2em; border-radius: 0.3em; display: flex; align-items: center; justify-content: center; font-size: 2em; font-weight: 800; color: #fff; background: #0072BC; }
+    .sk-slide .sk-snap-grade.g-a { background: #0f8a5f; } .sk-slide .sk-snap-grade.g-b { background: #3f9c4f; } .sk-slide .sk-snap-grade.g-c { background: #b7791f; } .sk-slide .sk-snap-grade.g-d { background: #c2691f; } .sk-slide .sk-snap-grade.g-f { background: #c2413b; }
+    .sk-slide .sk-snap-sum { font-size: 1.15em; margin: 0 0 0.3em; }
     .sk-present { position: fixed; inset: 0; z-index: 1000; background: #0b1620; display: flex; flex-direction: column; align-items: center; justify-content: center; outline: none; }
     .sk-present .sk-stage { width: min(100vw, 177.78vh); padding: 0; }
     .sk-present .sk-slide-wrap { border-radius: 0; }
@@ -5099,6 +5121,8 @@ ${shape}`;
       },
       loadSettings: () => loadAppSettings("salesKit"),
       saveSettings: patch => saveAppSettings("salesKit", patch),
+      securityScan: async domain => (await outreachCall("securityscan", { domain })).scan,
+      logoUrl: () => new URL("email-logo.png", location.href).href,
       toast: (m, t) => showToast(m, t)
     };
     const competitorsHost = {

@@ -99,6 +99,7 @@ match /appSettings/{doc} {
 | "The app isn't allowed to use …" | The step 2 PowerShell commands haven't run, or the scope's address doesn't match `OUTREACH_MAILBOX`. Changes can take up to an hour to apply. |
 | "The email service isn't deployed yet" | Redeploy the Railway service so it picks up `outreach.ts`. |
 | Domain badges never appear | Redeploy the Railway service so it has the `/outreach/domaincheck` route. |
+| The security snapshot says "isn't deployed yet" | Redeploy the Railway service so it has the `/outreach/securityscan` route. |
 | Emails land in spam | Check SPF, DKIM and DMARC with a free checker such as mail-tester.com, and send fewer a day for a while. |
 
 ---

@@ -250,7 +250,8 @@ ${COMPANY.phone} · ${COMPANY.web}`;
   let host = null;
   let root = null;
   const state = { tab: "deck", leadId: "", company: "", industry: "generic", packages: null, addons: null, settingsLoaded: false,
-    answers: {}, notes: "", heard: {}, cost: {}, proof: null, extras: false, quote: { pkg: "business", users: 10, addons: {}, waive: true }, slide: 0 };
+    answers: {}, notes: "", heard: {}, cost: {}, proof: null, extras: false, quote: { pkg: "business", users: 10, addons: {}, waive: true }, slide: 0,
+    scanDomain: "", scan: null, scanning: false, scanError: "" };
   try { Object.assign(state, JSON.parse(localStorage.getItem("midas-saleskit-ui") || "{}"), { slide: 0 }); } catch {}
   const remember = () => { try { localStorage.setItem("midas-saleskit-ui", JSON.stringify({ tab: state.tab, leadId: state.leadId, company: state.company, industry: state.industry, quote: state.quote, extras: state.extras })); } catch {} };
 
@@ -423,6 +424,17 @@ ${COMPANY.phone} · ${COMPANY.web}`;
         notes: "Ask: \"Which of these has come up for you?\"" });
     }
 
+    // External security snapshot slide, when one has been run for this company's domain.
+    const scan = state.scan;
+    if (scan) {
+      const open = scan.findings.filter(f => f.severity !== "good").slice(0, 5);
+      list.push({ html: `<h2>Your public security snapshot</h2>
+        <div class="sk-snap"><div class="sk-snap-grade g-${scan.grade.toLowerCase()}">${scan.grade}</div>
+          <div><p class="sk-snap-sum">${esc(scanSummaryLine(scan))} <b>${scan.score}/100</b></p>
+          ${open.length ? `<ul class="sk-list">${open.map(f => `<li><b>${esc(f.title)}</b> — ${esc(f.area)}</li>`).join("")}</ul>` : `<p>The public basics look well configured.</p>`}</div></div>
+        <p class="sk-foot">${esc(scan.domain)} · public records only, nothing internal accessed.</p>`,
+        notes: "This is from public records only. Say: \"I ran this before we met, on public information anyone can see. It's a snapshot, not a full audit — the full assessment is where we look inside.\"" });
+    }
     list.push({ cls: "sk-s-title", html: `<h2>Next step</h2><ol class="sk-big">
       <li><b>Free full assessment</b><span>on-site or remote, about an hour. Let's pick a date now.</span></li>
       <li><b>Written proposal within 48 hours</b><span>a fixed monthly price, no surprises</span></li>
@@ -433,7 +445,7 @@ ${COMPANY.phone} · ${COMPANY.web}`;
   }
 
   // ── rendering ──
-  const TABS = [["deck", "🎞️ Meeting deck"], ["guide", "🧭 Meeting guide"], ["packages", "📦 Packages & quote"], ["market", "🔍 Market research"]];
+  const TABS = [["deck", "🎞️ Meeting deck"], ["guide", "🧭 Meeting guide"], ["security", "🔒 Security snapshot"], ["packages", "📦 Packages & quote"], ["market", "🔍 Market research"]];
 
   function render(el, h) {
     root = el; host = h;
@@ -467,7 +479,7 @@ ${COMPANY.phone} · ${COMPANY.web}`;
         ${state.leadId ? `<span class="sk-chip">${esc(INDUSTRY_LABEL[industry()])}</span>` : ""}
       </div>
       <div class="sk-tabs" role="tablist">${TABS.map(([k, n]) => `<button type="button" role="tab" data-sk="tab" data-v="${k}" aria-selected="${state.tab === k}">${n}</button>`).join("")}</div>
-      <div class="sk-panel">${state.tab === "deck" ? deckHtml() : state.tab === "guide" ? guideHtml() : state.tab === "packages" ? packagesHtml() : marketHtml()}</div>`;
+      <div class="sk-panel">${state.tab === "deck" ? deckHtml() : state.tab === "guide" ? guideHtml() : state.tab === "security" ? securityHtml() : state.tab === "packages" ? packagesHtml() : marketHtml()}</div>`;
   }
 
   function deckHtml() {
@@ -609,6 +621,114 @@ ${COMPANY.phone} · ${COMPANY.web}`;
       </div>
       <section class="or-card"><h3>What your industries need</h3><div class="sk-comp">${Object.values(MARKET.industries).map(i => `<div><b>${esc(i.title)}</b><ul class="sk-list-sm">${i.points.map(p => `<li>${esc(p)}</li>`).join("")}</ul><a href="${esc(i.url)}" target="_blank" rel="noopener">Source ↗</a></div>`).join("")}</div></section>
       <section class="or-card"><h3>Sources</h3><ul class="sk-list-sm">${MARKET.sources.map(([t, u]) => `<li><a href="${esc(u)}" target="_blank" rel="noopener">${esc(t)}</a></li>`).join("")}</ul></section>`;
+  }
+
+  // ── external security snapshot ──
+  // Enter a prospect's domain and get a branded, non-intrusive report from public records only
+  // (email auth, DNSSEC, website security headers). It never claims anything that can't be seen from
+  // outside. The report can be printed to PDF and added to the meeting deck.
+  const SEV = { high: ["High", "sk-sev-high"], medium: ["Medium", "sk-sev-med"], low: ["Low", "sk-sev-low"], good: ["OK", "sk-sev-good"] };
+  const scanDomainFor = () => {
+    const l = lead();
+    const raw = l?.email ? String(l.email).split("@")[1] : "";
+    const web = l?.website ? String(l.website) : "";
+    return (raw || web || state.scanDomain || "").replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "").trim();
+  };
+  async function runScan() {
+    const domain = (state.scanDomain || scanDomainFor()).trim();
+    if (!domain) { host.toast("Enter a company domain first, e.g. acme.ca", "error"); return; }
+    if (typeof host.securityScan !== "function") { host.toast("The Railway service is needed for this.", "error"); return; }
+    state.scanning = true; state.scanError = ""; draw();
+    try {
+      const scan = await host.securityScan(domain);
+      state.scan = scan; state.scanDomain = domain;
+      if (!scan) { state.scanError = "That doesn't look like a company domain (personal email domains are skipped)."; host.toast(state.scanError, "error"); }
+    } catch (e) { state.scanError = e.message || "Couldn't run the snapshot."; host.toast(state.scanError, "error"); }
+    state.scanning = false; draw();
+  }
+  const gradeClass = g => g === "A" ? "g-a" : g === "B" ? "g-b" : g === "C" ? "g-c" : g === "D" ? "g-d" : "g-f";
+  function scanSummaryLine(scan) {
+    const highs = scan.findings.filter(f => f.severity === "high").length;
+    const meds = scan.findings.filter(f => f.severity === "medium").length;
+    if (!highs && !meds) return "No high or medium issues found on the public checks.";
+    const bits = [];
+    if (highs) bits.push(`${highs} high-priority item${highs > 1 ? "s" : ""}`);
+    if (meds) bits.push(`${meds} medium item${meds > 1 ? "s" : ""}`);
+    return `${bits.join(" and ")} worth reviewing.`;
+  }
+  function findingsListHtml(scan) {
+    const open = scan.findings.filter(f => f.severity !== "good");
+    const good = scan.findings.filter(f => f.severity === "good");
+    return `${open.length ? open.map(f => {
+      const [lbl, cls] = SEV[f.severity];
+      return `<div class="sk-finding"><span class="sk-sev ${cls}">${lbl}</span><div><b>${esc(f.area)}: ${esc(f.title)}</b><p>${esc(f.detail)}</p>${f.fix ? `<p class="sk-fix"><b>Fix:</b> ${esc(f.fix)}</p>` : ""}</div></div>`;
+    }).join("") : `<p class="sk-sub">No issues found on the public checks. Nice.</p>`}
+      ${good.length ? `<div class="sk-good-row">${good.map(f => `<span class="sk-sev sk-sev-good">✓ ${esc(f.title)}</span>`).join("")}</div>` : ""}`;
+  }
+  const notChecked = scan => Object.entries({ Email: scan.checked.email, DNS: scan.checked.dns, Website: scan.checked.website }).filter(([, v]) => !v).map(([k]) => k);
+  function securityHtml() {
+    const scan = state.scan;
+    const suggested = scanDomainFor();
+    return `<section class="or-card"><h3>External security snapshot</h3>
+      <p class="or-muted">Enter a prospect's website domain. We read only public records — email authentication (SPF, DKIM, DMARC), DNSSEC, and the security headers their own website sends. Nothing internal is accessed and no scanning is done, so it's safe to run before a first meeting.</p>
+      <div class="sk-scan-bar">
+        <input data-sk="scan-domain" value="${esc(state.scanDomain || suggested)}" placeholder="acme.ca" aria-label="Company domain">
+        <button class="btn btn-primary" type="button" data-sk="run-scan" ${state.scanning ? "disabled" : ""}>${state.scanning ? "Checking…" : "Run snapshot"}</button>
+      </div>
+      ${state.scanError ? `<p class="sk-scan-err">${esc(state.scanError)}</p>` : ""}
+      ${state.scanning ? `<p class="sk-sub">Reading public records for ${esc(state.scanDomain || suggested)}…</p>` : ""}</section>
+      ${scan ? `<section class="or-card sk-report">
+        <div class="sk-report-head">
+          <div><span class="sk-grade ${gradeClass(scan.grade)}">${esc(scan.grade)}</span></div>
+          <div><h3>External Security Snapshot — ${esc(scan.domain)}</h3>
+            <p class="or-muted">${esc(scanSummaryLine(scan))} Score ${scan.score}/100.${scan.provider ? ` Email hosted on ${esc(scan.provider)}.` : ""}</p>
+            ${notChecked(scan).length ? `<p class="or-muted">Couldn't read: ${esc(notChecked(scan).join(", "))} (may be blocked or unavailable right now).</p>` : ""}</div>
+          <div class="sk-report-actions"><button class="btn btn-secondary btn-sm" type="button" data-sk="print-report">🖨️ Print / PDF</button></div>
+        </div>
+        ${findingsListHtml(scan)}
+        <p class="sk-report-note">${esc(scan.note)}</p>
+        <p class="or-muted">This snapshot is now on a slide at the end of the meeting deck.</p>
+      </section>
+      <section class="or-card"><h3>Turn it into outreach</h3><p class="or-muted">A specific, true opening beats "would you like a free IT assessment?". For example:</p>
+        <pre class="sk-pre">${esc(outreachFromScan(scan))}</pre>
+        <button class="btn btn-secondary btn-sm" type="button" data-sk="copy-scan-email">Copy</button></section>` : ""}`;
+  }
+  function outreachFromScan(scan) {
+    const top = scan.findings.find(f => f.severity === "high") || scan.findings.find(f => f.severity === "medium");
+    const co = prospect() || scan.domain;
+    const line = top ? `While getting ready, I did a quick check of ${scan.domain}'s public setup and noticed one thing worth flagging: ${top.title.toLowerCase()}. ${top.detail}` :
+      `I did a quick check of ${scan.domain}'s public-facing setup. The basics look well configured, which is rarer than you'd think.`;
+    return `Hi {first},\n\n${line}\n\nI only looked at public records — nothing internal — but it's the kind of thing worth a second pair of eyes. Would it be worth a quick look at ${co}'s setup?\n\nAli`;
+  }
+  function printReport() {
+    const scan = state.scan; if (!scan) return;
+    const w = window.open("", "_blank"); if (!w) return host.toast("Allow pop-ups to print the report.", "error");
+    const logo = typeof host.logoUrl === "function" ? host.logoUrl() : "email-logo.png";
+    const open = scan.findings.filter(f => f.severity !== "good");
+    const good = scan.findings.filter(f => f.severity === "good");
+    const sevColor = { high: "#c2413b", medium: "#b7791f", low: "#4D4D4D", good: "#0f8a5f" };
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Security Snapshot — ${esc(scan.domain)}</title>
+<style>body{font-family:Segoe UI,Arial,sans-serif;color:#333;max-width:760px;margin:28px auto;padding:0 24px;line-height:1.5}
+header{display:flex;justify-content:space-between;align-items:center;border-bottom:4px solid #00AEEF;padding-bottom:14px;margin-bottom:8px}
+header img{height:52px} h1{color:#0072BC;font-size:23px;margin:0 0 2px} .sub{color:#4D4D4D;font-size:13px}
+.top{display:flex;gap:18px;align-items:center;margin:18px 0}
+.grade{width:64px;height:64px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:34px;font-weight:800;color:#fff;background:#0072BC}
+.g-a{background:#0f8a5f}.g-b{background:#3f9c4f}.g-c{background:#b7791f}.g-d{background:#c2691f}.g-f{background:#c2413b}
+.f{border:1px solid #e3e3e3;border-left-width:5px;border-radius:8px;padding:10px 14px;margin:8px 0;break-inside:avoid}
+.f b{color:#333} .f p{margin:4px 0 0;font-size:14px} .fix{color:#0072BC}
+.sev{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em}
+.good{color:#0f8a5f;font-size:13px;margin:3px 0} h2{color:#0072BC;font-size:15px;margin:20px 0 6px}
+.note{background:#f2f9fd;border-left:4px solid #00AEEF;border-radius:6px;padding:10px 12px;font-size:12.5px;color:#4D4D4D;margin-top:16px}
+footer{margin-top:22px;padding-top:12px;border-top:1px solid #ddd;color:#4D4D4D;font-size:12px}</style></head><body>
+<header><div><h1>External Security Snapshot</h1><div class="sub">Prepared for <b>${esc(prospect() || scan.domain)}</b> · ${esc(new Date(scan.scannedAt).toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" }))}</div></div><img src="${esc(logo)}" alt="Midas Tech" onerror="this.remove()"></header>
+<div class="top"><div class="grade ${gradeClass(scan.grade)}">${esc(scan.grade)}</div>
+<div><div style="font-size:16px;font-weight:700">${esc(scan.domain)} — ${scan.score}/100</div><div class="sub">${esc(scanSummaryLine(scan))}${scan.provider ? ` Email hosted on ${esc(scan.provider)}.` : ""}</div></div></div>
+${open.length ? `<h2>What we found</h2>${open.map(f => `<div class="f" style="border-left-color:${sevColor[f.severity]}"><span class="sev" style="color:${sevColor[f.severity]}">${SEV[f.severity][0]} · ${esc(f.area)}</span><br><b>${esc(f.title)}</b><p>${esc(f.detail)}</p>${f.fix ? `<p class="fix"><b>Suggested fix:</b> ${esc(f.fix)}</p>` : ""}</div>`).join("")}` : `<h2>What we found</h2><p>No issues on the public checks.</p>`}
+${good.length ? `<h2>Already in good shape</h2>${good.map(f => `<div class="good">✓ ${esc(f.title)} — ${esc(f.detail)}</div>`).join("")}` : ""}
+<div class="note">${esc(scan.note)}</div>
+<footer><b>Midas Tech Inc</b> · IT Services &amp; Cybersecurity · ${esc(COMPANY.owner)} · ${esc(COMPANY.phone)} · ${esc(COMPANY.email)} · ${esc(COMPANY.web)}<br>${esc(COMPANY.address)}</footer>
+<script>window.onload=()=>setTimeout(()=>window.print(),300)<\/script></body></html>`);
+    w.document.close();
   }
 
   // ── presenting ──
@@ -795,6 +915,9 @@ LinkedIn ${esc(COMPANY.linkedin)} · Instagram ${esc(COMPANY.instagram)} · Face
     else if (a === "copy-followup") { const l = lead(); copy(FOLLOWUP_EMAIL(l ? String(l.name || "").split(" ")[0] : "", prospect()), "Email"); }
     else if (a === "copy-quote") copy(quoteText(), "Quote");
     else if (a === "print-quote") printQuote();
+    else if (a === "run-scan") runScan();
+    else if (a === "print-report") printReport();
+    else if (a === "copy-scan-email" && state.scan) copy(outreachFromScan(state.scan), "Email");
   });
   document.addEventListener("change", e => {
     const t = e.target.closest("[data-sk]");
@@ -829,6 +952,7 @@ LinkedIn ${esc(COMPANY.linkedin)} · Instagram ${esc(COMPANY.instagram)} · Face
     }
     if (t.dataset.sk === "cost") state.cost[t.dataset.id] = Math.max(0, Number(t.value) || 0) || "";
     if (t.dataset.sk === "company") { state.company = t.value; remember(); }
+    if (t.dataset.sk === "scan-domain") state.scanDomain = t.value.trim();
   });
 
   window.SalesKit = { render, _test: { assessmentScore, quoteTotals, slides, state } };

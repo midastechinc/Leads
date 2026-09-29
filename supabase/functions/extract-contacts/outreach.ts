@@ -248,6 +248,157 @@ export async function checkDomains(domains: unknown[]) {
   return results.filter(Boolean);
 }
 
+// ── External security snapshot ───────────────────────────────────────────────
+// A non-intrusive review of a prospect's OWN public records: email authentication (SPF/DKIM/DMARC),
+// DNSSEC, and the security headers their own website sends over normal HTTPS. It only reads public
+// DNS and makes one ordinary web request to the site's front page — the same things any browser or
+// mail server sees. It does not scan ports, enumerate services, probe internal systems, look up
+// breached credentials, or do anything a visitor's browser wouldn't. Every finding is something the
+// domain owner can confirm and fix themselves. Findings that can't be proven from outside (e.g.
+// whether MFA is enforced) are never asserted.
+export interface SecurityFinding {
+  id: string;
+  severity: "high" | "medium" | "low" | "good";
+  area: "Email" | "DNS" | "Website";
+  title: string;
+  detail: string;
+  fix: string;
+}
+export interface SecurityScan {
+  domain: string;
+  scannedAt: string;
+  provider: string;
+  score: number;              // 0-100, higher is better
+  grade: string;              // A–F
+  checked: { email: boolean; dns: boolean; website: boolean };
+  findings: SecurityFinding[];
+  note: string;
+}
+const scanCache = new Map<string, { at: number; result: SecurityScan }>();
+
+// Does DNSSEC exist for the domain? A DNSKEY answer over DoH means yes. Unreadable => null (unknown).
+async function hasDnssec(domain: string): Promise<boolean | null> {
+  try {
+    const res = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(domain)}&type=DNSKEY`, {
+      headers: { accept: "application/dns-json" }, signal: AbortSignal.timeout(6000),
+    });
+    const j = await res.json();
+    if (j.Status !== 0 && j.Status !== 3) return null;
+    return (j.Answer ?? []).some((a: { type: number }) => a.type === 48);
+  } catch { return null; }
+}
+
+// Is DKIM published on any common selector? Presence only; we never read key strength.
+async function hasDkim(domain: string, provider: string): Promise<boolean | null> {
+  const selectors = provider === "Microsoft 365" ? ["selector1", "selector2"]
+    : provider === "Google Workspace" ? ["google", "default"]
+    : ["selector1", "selector2", "google", "default", "k1", "dkim", "mail", "s1", "s2"];
+  let anyOk = false;
+  for (const sel of selectors) {
+    const r = await lookup(`${sel}._domainkey.${domain}`, "TXT");
+    if (r.ok) anyOk = true;
+    if (r.ok && r.records.some((t) => /v=DKIM1|k=rsa|p=[A-Za-z0-9]/i.test(t))) return true;
+  }
+  return anyOk ? false : null;
+}
+
+// One ordinary HTTPS GET to the site's front page, following redirects, to read the headers a browser
+// would receive. Returns null if the site can't be reached that way.
+async function fetchSite(domain: string): Promise<{ url: string; https: boolean; status: number; headers: Headers } | null> {
+  for (const scheme of ["https", "http"]) {
+    try {
+      const res = await fetch(`${scheme}://${domain}`, {
+        method: "GET", redirect: "follow", signal: AbortSignal.timeout(8000),
+        headers: { "user-agent": "MidasTech-SecuritySnapshot/1.0 (+https://www.midastech.ca)" },
+      });
+      await res.body?.cancel();
+      return { url: res.url, https: res.url.startsWith("https://"), status: res.status, headers: res.headers };
+    } catch { /* try next scheme */ }
+  }
+  return null;
+}
+
+const SEC_HEADERS: [string, string, string, SecurityFinding["severity"]][] = [
+  ["strict-transport-security", "HSTS (forces HTTPS)", "Add a Strict-Transport-Security header so browsers always use HTTPS.", "medium"],
+  ["content-security-policy", "Content Security Policy", "Add a Content-Security-Policy header to limit where scripts and content can load from.", "low"],
+  ["x-frame-options", "Clickjacking protection", "Add X-Frame-Options (or a CSP frame-ancestors rule) to stop the site being framed by others.", "low"],
+  ["x-content-type-options", "MIME-sniffing protection", "Add X-Content-Type-Options: nosniff.", "low"],
+  ["referrer-policy", "Referrer policy", "Add a Referrer-Policy header to control what is shared when users click away.", "low"],
+];
+
+export async function securityScan(raw: string): Promise<SecurityScan | null> {
+  const domain = String(raw ?? "").trim().toLowerCase().replace(/^.*@/, "").replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/.*$/, "");
+  if (!/^[a-z0-9.-]+\.[a-z]{2,}$/.test(domain) || PERSONAL_DOMAINS.has(domain)) return null;
+  const hit = scanCache.get(domain);
+  if (hit && Date.now() - hit.at < 12 * 3600_000) return hit.result;
+
+  const [dom, dnssec, site] = await Promise.all([checkDomain(domain), hasDnssec(domain), fetchSite(domain)]);
+  const provider = dom?.provider ?? "";
+  const dkim = dom && dom.finding !== "unknown" ? await hasDkim(domain, provider) : null;
+  const findings: SecurityFinding[] = [];
+
+  // Email authentication
+  const emailOk = !!dom && dom.finding !== "unknown";
+  if (dom) {
+    if (dom.finding === "no_dmarc")
+      findings.push({ id: "dmarc", severity: "high", area: "Email", title: "No DMARC record", detail: "Anyone can send email that looks like it comes from this domain. DMARC is what stops spoofing and CEO-fraud emails.", fix: "Publish a DMARC record, starting at p=none to monitor, then move to p=quarantine and p=reject." });
+    else if (dom.finding === "dmarc_none")
+      findings.push({ id: "dmarc", severity: "high", area: "Email", title: "DMARC is monitor-only (p=none)", detail: "A DMARC record exists but does not block anything, so spoofed email is still delivered.", fix: "After reviewing DMARC reports, move the policy to p=quarantine and then p=reject." });
+    else if (dom.finding === "no_spf")
+      findings.push({ id: "spf", severity: "high", area: "Email", title: "No SPF record", detail: "Without SPF, receiving mail servers can't tell which servers are allowed to send as this domain.", fix: "Publish an SPF (TXT) record listing your mail provider, ending in -all." });
+    else if (dom.finding === "weak_spf")
+      findings.push({ id: "spf", severity: "medium", area: "Email", title: `SPF is permissive (${dom.spfAll})`, detail: "The SPF record allows any server to send as this domain, which defeats the purpose.", fix: "Change the SPF record to end in -all (hard fail) and list only your real senders." });
+    else if (dom.finding === "no_mail")
+      findings.push({ id: "mx", severity: "low", area: "Email", title: "No mail servers found", detail: "No MX records were found, so this domain may not receive email.", fix: "If this domain should receive email, add MX records at your mail provider." });
+    else if (dom.finding === "ok")
+      findings.push({ id: "email", severity: "good", area: "Email", title: "Email authentication looks solid", detail: `SPF, DMARC (${dom.dmarcPolicy}) and mail hosting are configured${provider ? ` on ${provider}` : ""}.`, fix: "" });
+
+    if (dom.finding !== "no_mail" && dom.finding !== "unknown") {
+      if (dkim === false) findings.push({ id: "dkim", severity: "medium", area: "Email", title: "DKIM not detected", detail: "No DKIM signature was found on the usual selectors. DKIM lets receivers verify a message really came from you and wasn't altered.", fix: "Turn on DKIM signing at your mail provider and publish the DKIM records it gives you." });
+      else if (dkim === true) findings.push({ id: "dkim", severity: "good", area: "Email", title: "DKIM detected", detail: "The domain publishes DKIM keys, so outgoing mail can be signed.", fix: "" });
+    }
+  }
+
+  // DNS
+  if (dnssec === true) findings.push({ id: "dnssec", severity: "good", area: "DNS", title: "DNSSEC enabled", detail: "DNS answers for this domain are signed, which protects against DNS tampering.", fix: "" });
+  else if (dnssec === false) findings.push({ id: "dnssec", severity: "low", area: "DNS", title: "DNSSEC not enabled", detail: "DNS responses aren't signed, so they're easier to tamper with. Not critical for most small businesses, but worth doing.", fix: "Ask your DNS provider or registrar to enable DNSSEC for the domain." });
+
+  // Website. Only treat it as checked when we actually loaded a real page (a real HTTPS response, or an
+  // http response that served content). An error status over http alone isn't proof the site is HTTP-only.
+  const pageLoaded = !!site && (site.https || site.status < 400);
+  const websiteOk = pageLoaded;
+  if (site && pageLoaded) {
+    if (!site.https)
+      findings.push({ id: "https", severity: "high", area: "Website", title: "Website not served over HTTPS", detail: "The front page loaded over plain HTTP, so visitor traffic isn't encrypted.", fix: "Install a TLS certificate and redirect all HTTP traffic to HTTPS." });
+    else {
+      const missing = SEC_HEADERS.filter(([h]) => !site.headers.get(h));
+      for (const [, title, fix, sev] of missing)
+        findings.push({ id: `hdr-${title}`, severity: sev, area: "Website", title: `Missing security header: ${title}`, detail: "This response header wasn't set. It's a low-effort hardening step that many sites skip.", fix });
+      if (!missing.length)
+        findings.push({ id: "headers", severity: "good", area: "Website", title: "Core security headers present", detail: "The site sends the main hardening headers (HSTS, CSP and others).", fix: "" });
+      const powered = site.headers.get("x-powered-by") || "";
+      if (powered) findings.push({ id: "banner", severity: "low", area: "Website", title: `Technology exposed in headers (${powered.slice(0, 60)})`, detail: "The site advertises its software and sometimes version in response headers, which helps attackers target known bugs.", fix: "Remove or mask the X-Powered-By/Server version headers at the web server or CDN." });
+    }
+  }
+
+  // Score: start at 100, subtract per open finding by severity. Good findings don't subtract.
+  const weight = { high: 22, medium: 10, low: 4, good: 0 };
+  const score = Math.max(0, Math.min(100, 100 - findings.reduce((s, f) => s + weight[f.severity], 0)));
+  const grade = score >= 90 ? "A" : score >= 80 ? "B" : score >= 65 ? "C" : score >= 50 ? "D" : "F";
+  const order = { high: 0, medium: 1, low: 2, good: 3 };
+  findings.sort((a, b) => order[a.severity] - order[b.severity]);
+
+  const result: SecurityScan = {
+    domain, scannedAt: new Date().toISOString(), provider, score, grade,
+    checked: { email: emailOk, dns: dnssec !== null, website: websiteOk },
+    findings,
+    note: "Based only on public DNS records and the website's own responses. No internal systems were accessed and no scanning was performed. Some items (for example whether multi-factor authentication is enforced) can only be confirmed from inside.",
+  };
+  // Only cache a scan that actually read something, so transient failures retry.
+  if (emailOk || websiteOk || dnssec !== null) scanCache.set(domain, { at: Date.now(), result });
+  return result;
+}
+
 // ── Sending ─────────────────────────────────────────────────────────────────
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 

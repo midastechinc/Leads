@@ -4699,7 +4699,7 @@
       return {
         people, extras,
         company: pick("company"), website: pick("website"), industry: pick("industry"),
-        rep: (people.length && getCompanyAssignedRep(people)) || pick("assignedTo") || ""
+        rep: ""  // new leads default to Unassigned, even for a company others already own
       };
     }
 
@@ -6512,7 +6512,8 @@ ${facts.map(f => `- ${f}`).join("\n")}`;
       state: ["state","province","region","territory"],
       address: ["address","fulladdress","streetaddress","streetname","street","mailingaddress"],
       employeeRange: ["employee","employees","emprange","headcount","companysize","employeerange","staffsize"],
-      assignedTo: ["assignedto","assigned","salesrep","rep","owner","agent","accountowner"]
+      // NOTE: no auto-alias for assignedTo — an "Owner"/"Agent"/"Rep" column in a CSV should
+      // NOT silently assign every lead. Users can still map a column to "Assigned To" by hand.
     };
     const FIXED_IMPORT_FIELDS = [
       { value: "__ignore__", label: "Ignore this column" },

@@ -19,7 +19,7 @@ import { createRemoteJWKSet, jwtVerify } from "npm:jose@5";
 import { type CompanyInput, type LeadInput, ResearchError, researchCompany, researchLead } from "./research.ts";
 import { ApifyError, findPlaces, scanWebsite } from "./apify.ts";
 import {
-  checkReplies, confirmUnsubscribe, OutreachError, outreachStatus, sendOutreach, unsubscribe, verifyEmails,
+  checkDomains, checkReplies, confirmUnsubscribe, OutreachError, outreachStatus, sendOutreach, unsubscribe, verifyEmails,
 } from "./outreach.ts";
 
 const FIREBASE_PROJECT_ID = Deno.env.get("FIREBASE_PROJECT_ID") ?? "midas-leads-a8b13";
@@ -238,9 +238,9 @@ function publicBase(req: Request): string {
   return `${proto}://${host}`;
 }
 
-// POST /outreach/status | verify { emails } | send { messages } | replies { since, addresses }
+// POST /outreach/status | verify { emails } | domaincheck { domains } | send { messages, bookingUrl } | replies { since, addresses }
 async function handleOutreach(req: Request, action: string): Promise<Response> {
-  let body: { emails?: unknown[]; messages?: unknown[]; since?: string; addresses?: unknown[]; bookingUrl?: string } = {};
+  let body: { emails?: unknown[]; domains?: unknown[]; messages?: unknown[]; since?: string; addresses?: unknown[]; bookingUrl?: string } = {};
   try {
     const raw = await req.text();
     if (raw.length > 400_000) return json(req, 413, { error: "That request is too large." });
@@ -251,6 +251,7 @@ async function handleOutreach(req: Request, action: string): Promise<Response> {
   try {
     if (action === "status") return json(req, 200, await outreachStatus());
     if (action === "verify") return json(req, 200, { results: await verifyEmails(Array.isArray(body.emails) ? body.emails : []) });
+    if (action === "domaincheck") return json(req, 200, { results: await checkDomains(Array.isArray(body.domains) ? body.domains : []) });
     if (action === "send") {
       const messages = Array.isArray(body.messages) ? body.messages : [];
       if (!messages.length) return json(req, 400, { error: "Nothing to send." });

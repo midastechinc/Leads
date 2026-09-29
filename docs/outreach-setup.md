@@ -2,7 +2,7 @@
 
 The **✉️ Outreach** tab sends the 4-email sequence from a Microsoft 365 mailbox:
 - Every weekday you read and approve the emails that are due, then press **Send approved**.
-- Follow-ups go out as replies in the same thread: email 2 three business days after email 1, email 3 four business days after that, and email 4 seven business days after that.
+- Follow-ups go out as replies in the same thread: email 2 three business days after email 1, email 3 four business days after that, and email 4 five business days after that (about days 1, 4, 9 and 16). The wording is in [email-sequence.md](email-sequence.md).
 - A reply, a bounce or an unsubscribe stops the sequence.
 
 The emails go out through the Railway service (`supabase/functions/extract-contacts/outreach.ts`), using Microsoft Graph. The app's step-by-step checklist is at the top of the Outreach tab. This page has the technical details.
@@ -85,6 +85,7 @@ match /appSettings/{doc} {
   - A reply or "not interested" stops the sequence and appears under **Replies to answer**.
   - Out-of-office replies push the next email back 3 business days.
   - Bounces stop the sequence and mark the email as bad.
+- **Email-domain check:** when leads are added to outreach, the server also reads each company domain's public DNS: who hosts their email, SPF and DMARC. It's free and needs no API key. A missing or monitor-only DMARC record becomes email 1's opening line; a protected domain gets the industry opener instead. A lookup that fails shows "couldn't check" and is never used as a claim. You can re-run it from the lead window with **🔍 Check email domain**.
 - **✨ Personal first line** writes one opening sentence from the lead's saved research. It uses the free Midas AI Gateway, or 1min.ai if the gateway isn't set up. Check each line before sending.
 - **Logging:** every email sent is logged as an Email activity on the lead. A New lead becomes Contacted.
 
@@ -96,6 +97,7 @@ match /appSettings/{doc} {
 | "The server couldn't sign in to Microsoft 365" | The tenant ID, client ID or secret is wrong, or the secret has expired. |
 | "The app isn't allowed to use …" | The step 2 PowerShell commands haven't run, or the scope's address doesn't match `OUTREACH_MAILBOX`. Changes can take up to an hour to apply. |
 | "The email service isn't deployed yet" | Redeploy the Railway service so it picks up `outreach.ts`. |
+| Domain badges never appear | Redeploy the Railway service so it has the `/outreach/domaincheck` route. |
 | Emails land in spam | Check SPF, DKIM and DMARC with a free checker such as mail-tester.com, and send fewer a day for a while. |
 
 ---

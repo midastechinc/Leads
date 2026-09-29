@@ -3873,69 +3873,6 @@
 
     // ── DETAIL VIEW ────────────────────────────────────────────────
     // ── EMAIL DRAFTS ─────────────────────────────────────────────────
-    // Midas Tech 4-email outreach sequence. Emails 1 and 2 are written per industry
-    // (law, accounting, healthcare, warehouse, general); 3 (quick checks) and 4 (close the loop) are shared.
-    const EMAIL_TEMPLATES = {
-      "law": {
-        "1": {
-          "subject": "Quick question about IT security at {{firm}}",
-          "body": "Hi {{first}},\n\nI'm Ali from Midas Tech, a local IT and cybersecurity company in Richmond Hill.\n\nI'm reaching out because we work with Ontario businesses on protecting Microsoft 365, email, backups, and sensitive client data. For law firms especially, email account security and fraudulent payment instructions continue to be areas worth reviewing.\n\nI'd be happy to offer {{firm}} a complimentary IT security check to identify any obvious gaps or areas that could be improved.\n\nWould you be open to a quick 15-minute conversation next week?\n\nThanks,\n\nAli Jaffar\nMidas Tech Inc.\nIT Services & Cybersecurity\n905-787-2038\nmidastech.ca"
-        },
-        "2": {
-          "subject": "One thing worth checking at {{firm}}",
-          "body": "Hi {{first}},\n\nFollowing up on my note from last week.\n\nHere's one thing worth checking: is multi-factor authentication turned on for every Microsoft 365 account at {{firm}}, including shared mailboxes and accounts for people who have left? It's the gap we find most often at law firms, and it's usually a quick fix.\n\nIf you'd like a second pair of eyes on it, the complimentary IT security check still stands. Happy to work around your court and client schedule.\n\nThanks,\n\nAli Jaffar\nMidas Tech Inc.\nIT Services & Cybersecurity\n905-787-2038\nmidastech.ca"
-        }
-      },
-      "accounting": {
-        "1": {
-          "subject": "Before tax season: a quick IT check for {{firm}}",
-          "body": "Hi {{first}},\n\nI'm Ali from Midas Tech, a local IT and cybersecurity company in Richmond Hill.\n\nI'm reaching out because we work with Ontario businesses on protecting Microsoft 365, email, backups, and sensitive client data. For accounting firms especially, email account security, client portal access and tax-season phishing continue to be areas worth reviewing.\n\nI'd be happy to offer {{firm}} a complimentary IT security check to identify any obvious gaps or areas that could be improved.\n\nWould you be open to a quick 15-minute conversation next week?\n\nThanks,\n\nAli Jaffar\nMidas Tech Inc.\nIT Services & Cybersecurity\n905-787-2038\nmidastech.ca"
-        },
-        "2": {
-          "subject": "Two questions for {{firm}} before tax season",
-          "body": "Hi {{first}},\n\nFollowing up on my note from last week.\n\nTwo quick questions worth asking before the rush:\n\n1. Does everyone at {{firm}} use multi-factor authentication for email and your tax or portal software?\n2. When did someone last test restoring client files from backup?\n\nIf either answer is \"not sure\", our complimentary IT security check covers both, and I'm happy to fit it around your schedule.\n\nThanks,\n\nAli Jaffar\nMidas Tech Inc.\nIT Services & Cybersecurity\n905-787-2038\nmidastech.ca"
-        }
-      },
-      "healthcare": {
-        "1": {
-          "subject": "Keeping patient records safe at {{firm}}",
-          "body": "Hi {{first}},\n\nI'm Ali from Midas Tech, a local IT and cybersecurity company in Richmond Hill.\n\nI'm reaching out because we work with Ontario businesses on protecting Microsoft 365, email, backups, and sensitive patient data. For clinics especially, access to patient records, EMR security and backup recovery continue to be areas worth reviewing.\n\nI'd be happy to offer {{firm}} a complimentary IT security check to identify any obvious gaps or areas that could be improved.\n\nWould you be open to a quick 15-minute conversation next week?\n\nThanks,\n\nAli Jaffar\nMidas Tech Inc.\nIT Services & Cybersecurity\n905-787-2038\nmidastech.ca"
-        },
-        "2": {
-          "subject": "If your systems went down tomorrow at {{firm}}",
-          "body": "Hi {{first}},\n\nFollowing up on my note from last week.\n\nA question worth asking: if your main computer or EMR went down tomorrow morning, how long would it take {{firm}} to start seeing patients again? Most clinics we talk to have backups but have never timed a restore.\n\nOur complimentary IT security check includes a quick look at exactly that. Happy to find a time outside clinic hours.\n\nThanks,\n\nAli Jaffar\nMidas Tech Inc.\nIT Services & Cybersecurity\n905-787-2038\nmidastech.ca"
-        }
-      },
-      "warehouse": {
-        "1": {
-          "subject": "Keeping {{firm}} shipping if IT goes down",
-          "body": "Hi {{first}},\n\nI'm Ali from Midas Tech, a local IT and cybersecurity company in Richmond Hill.\n\nI'm reaching out because we work with Ontario businesses on protecting Microsoft 365, email, backups, and sensitive business data. For warehouses and logistics teams especially, network uptime and fraudulent supplier payment requests continue to be areas worth reviewing.\n\nI'd be happy to offer {{firm}} a complimentary IT security check to identify any obvious gaps or areas that could be improved.\n\nWould you be open to a quick 15-minute conversation next week?\n\nThanks,\n\nAli Jaffar\nMidas Tech Inc.\nIT Services & Cybersecurity\n905-787-2038\nmidastech.ca"
-        },
-        "2": {
-          "subject": "One question about downtime at {{firm}}",
-          "body": "Hi {{first}},\n\nFollowing up on my note from last week.\n\nA question worth asking: if your server or internet went down during a busy shift, how long before {{firm}} could ship again? And does anyone confirm supplier banking changes by phone before paying?\n\nOur complimentary IT security check looks at both. Happy to come by or do it over a call, whichever is easier.\n\nThanks,\n\nAli Jaffar\nMidas Tech Inc.\nIT Services & Cybersecurity\n905-787-2038\nmidastech.ca"
-        }
-      },
-      "generic": {
-        "1": {
-          "subject": "Quick question about IT security at {{firm}}",
-          "body": "Hi {{first}},\n\nI'm Ali from Midas Tech, a local IT and cybersecurity company in Richmond Hill.\n\nI'm reaching out because we work with Ontario businesses on protecting Microsoft 365, email, backups, and sensitive client data. Email account security and fraudulent payment instructions continue to be areas worth reviewing for most small businesses.\n\nI'd be happy to offer {{firm}} a complimentary IT security check to identify any obvious gaps or areas that could be improved.\n\nWould you be open to a quick 15-minute conversation next week?\n\nThanks,\n\nAli Jaffar\nMidas Tech Inc.\nIT Services & Cybersecurity\n905-787-2038\nmidastech.ca"
-        },
-        "2": {
-          "subject": "One thing worth checking at {{firm}}",
-          "body": "Hi {{first}},\n\nFollowing up on my note from last week.\n\nHere's one thing worth checking: is multi-factor authentication turned on for every email account at {{firm}}, including shared mailboxes and accounts for people who have left? It's the gap we find most often, and it's usually a quick fix.\n\nIf you'd like a second pair of eyes on it, the complimentary IT security check still stands.\n\nThanks,\n\nAli Jaffar\nMidas Tech Inc.\nIT Services & Cybersecurity\n905-787-2038\nmidastech.ca"
-        }
-      }
-    };
-    const EMAIL_TEMPLATE_STEP3 = {
-      "subject": "3 quick IT checks for {{firm}}",
-      "body": "Hi {{first}},\n\nI know you're busy, so I'll keep this short. Here are three checks that take under an hour:\n\n1. Multi-factor authentication is on for every email account, including shared ones.\n2. Someone has restored a file from backup in the last three months, and it worked.\n3. Accounts for people who have left are switched off.\n\nIf any of those is a \"not sure\", that's exactly what our complimentary IT security check covers. Want me to send over a couple of times?\n\nThanks,\n\nAli Jaffar\nMidas Tech Inc.\nIT Services & Cybersecurity\n905-787-2038\nmidastech.ca"
-    };
-    const EMAIL_TEMPLATE_STEP4 = {
-      "subject": "Should I close the loop?",
-      "body": "Hi {{first}},\n\nI haven't heard back, so I'll assume the timing isn't right and stop following up.\n\nIf anything changes, the complimentary IT security check for {{firm}} is always available. Just reply to this email or call me at 905-787-2038.\n\nEnjoy the rest of the {{season}}.\n\nThanks,\n\nAli Jaffar\nMidas Tech Inc.\nIT Services & Cybersecurity\n905-787-2038\nmidastech.ca"
-    };
-
     function detectFirmType(lead) {
       const text = `${lead?.industry||""} ${lead?.title||""} ${lead?.company||""}`.toLowerCase();
       if (/\b(law|legal|lawyers?|attorneys?|barristers?|solicitors?|counsel|llp|paralegal)\b/.test(text)) return "law";
@@ -3951,11 +3888,6 @@
       if (m <= 7) return "summer";
       return "fall";
     }
-    function getEmailTemplate(lead, step) {
-      if (step === 3) return EMAIL_TEMPLATE_STEP3;
-      if (step === 4) return EMAIL_TEMPLATE_STEP4;
-      return EMAIL_TEMPLATES[detectFirmType(lead)][step];
-    }
     // First name for the greeting: skips titles like "Dr." and falls back to "there"
     // when the Name field holds a company ("Meretsky Law Firm") instead of a person.
     function greetingName(lead) {
@@ -3969,14 +3901,127 @@
       if (!first || !/[a-z]/i.test(first)) return "there";
       return first.charAt(0).toUpperCase() + first.slice(1);
     }
-    function fillEmailTemplate(str, lead) {
-      const first = greetingName(lead);
-      const firm  = String(lead?.company||"").trim() || "your business";
-      return str
-        .replace(/\{\{first\}\}/g, first)
-        .replace(/\{\{firm\}\}/g, firm)
-        .replace(/\{\{season\}\}/g, getCurrentSeason());
+    // Midas Tech 4-email sequence, built per lead (see docs/email-sequence.md):
+    //   1. A true, specific opening: the company's public email-security finding (lead.domainCheck, from
+    //      /outreach/domaincheck) or, without one, a time-bound reason for their industry. No pitch; it asks
+    //      whether it's worth a look.
+    //   2. One useful thing to check, framed for the reader's role (owner / operations / finance), and the booking link.
+    //   3. Offers the one-page cyber insurance checklist by reply.
+    //   4. Asks who the right person is, and closes the loop.
+    // The outreach server adds the HTML signature; mailto drafts get a short text signature.
+    const EMAIL_INDUSTRY = {
+      accounting: {
+        people: "accounting firms",
+        timing: () => {
+          const m = new Date().getMonth();
+          return m <= 3 ? "Tax season is when accounting firms get the most fake CRA and invoice emails, and it's in full swing."
+            : "With tax season coming, this is when accounting firms start getting the most fake CRA and invoice emails.";
+        },
+        subject: "{{firm}} before tax season",
+        why: "For an accounting firm, that's how a fake CRA or invoice email can reach your clients in your name.",
+        check: "One thing worth checking before January: the CRA now requires multi-factor sign-in for EFILE and Represent a Client, and cyber insurers ask about it at renewal."
+      },
+      healthcare: {
+        people: "clinics",
+        timing: () => "Since Ontario's privacy commissioner started issuing PHIPA fines, clinics are being asked harder questions about how patient data is protected.",
+        subject: "{{firm}} and patient data",
+        why: "For a clinic, that's how a fake email can reach your patients in your name.",
+        check: "One thing worth checking: whether your EMR and email accounts all have multi-factor sign-in, and whether anyone has restored a backup lately. Those are the first questions after a privacy breach."
+      },
+      warehouse: {
+        people: "warehouses and distributors",
+        timing: () => "Fake \"our banking details have changed\" emails are one of the costliest scams hitting businesses that pay suppliers.",
+        subject: "{{firm}} supplier payments",
+        why: "For a warehouse, that's how a fake payment or banking-change email can reach your suppliers and customers in your name.",
+        check: "One thing worth checking: if your server or internet went down in the middle of a busy shift, how long before you could ship again? Most teams have backups, but have never timed a restore."
+      },
+      law: {
+        people: "law firms",
+        timing: () => "Fake wire instructions sent in a law firm's name are one of the biggest trust-account risks the Law Society warns about.",
+        subject: "{{firm}} wire fraud",
+        why: "For a law firm, that's how fake wire instructions can reach your clients in your name.",
+        check: "One thing worth checking: whether every mailbox, including shared and former staff accounts, has multi-factor sign-in, and whether wire changes are always confirmed by phone."
+      },
+      generic: {
+        people: "local businesses",
+        timing: () => "Cyber insurers now ask small businesses about multi-factor sign-in, backups and incident plans at renewal, and a wrong answer can mean a refused claim.",
+        subject: "{{firm}} IT question",
+        why: "That's how a fake invoice or payment request can reach your customers in your name.",
+        check: "One thing worth checking: whether every email account, including shared ones and people who have left, has multi-factor sign-in. It's the gap we find most often."
+      }
+    };
+    const EMAIL_ROLE_LINES = {
+      owner:   "The businesses we look after usually have two or three small gaps like this, and closing them is exactly what insurers want to see.",
+      ops:     "It's usually the kind of thing that eats your team's time later: old accounts, slow fixes, and nobody sure who to call.",
+      finance: "It's also the setting that stops fake payment and banking-change emails before they reach your team."
+    };
+    // Who we're writing to: owners and executives, operations, or finance.
+    function emailRole(lead) {
+      const t = String(lead?.title || "").toLowerCase();
+      if (/\b(cfo|controller|comptroller|finance|financial|treasurer|payable|bookkeep\w*)\b/.test(t)) return "finance";
+      if (/\b(coo|operations?|office manager|practice manager|clinic manager|general manager|administrator|admin)\b/.test(t)) return "ops";
+      return "owner";
     }
+    const DOMAIN_FINDINGS = new Set(["no_dmarc", "dmarc_none", "no_spf", "weak_spf"]);
+    // The lead's email-security finding, when there is one worth mentioning for their current email domain.
+    function emailFinding(lead) {
+      const dc = lead?.domainCheck;
+      const domain = splitEmail(cleanEmail(lead?.email)).address.split("@")[1] || "";
+      return dc && DOMAIN_FINDINGS.has(dc.finding) && dc.domain === domain ? dc : null;
+    }
+    function findingLine(dc, firm) {
+      const d = dc.domain;
+      return {
+        no_dmarc: `I noticed ${d} doesn't have DMARC protection set up, so anyone can send email that looks like it came from ${firm}.`,
+        dmarc_none: `I noticed ${d}'s email protection (DMARC) is set to monitor only, so emails pretending to be ${firm} still get delivered.`,
+        no_spf: `I noticed ${d} has no SPF record, which makes it easier for fake emails to look like they came from ${firm}.`,
+        weak_spf: `I noticed ${d}'s SPF record lets any server send email as ${firm}.`
+      }[dc.finding];
+    }
+    // Returns { subject, body } for step 1-4, filled in for this lead. {{booking}} becomes the Bookings link.
+    function buildEmail(lead, step) {
+      const ind = EMAIL_INDUSTRY[detectFirmType(lead)] || EMAIL_INDUSTRY.generic;
+      const first = greetingName(lead);
+      const firm = String(lead?.company || "").trim() || "your business";
+      const dc = emailFinding(lead);
+      const provider = lead?.domainCheck?.provider;
+      const fill = s => s.replace(/\{\{firm\}\}/g, firm).replace(/\{\{first\}\}/g, first);
+      const subject1 = dc ? `${firm} email security` : fill(ind.subject);
+      const hi = `Hi ${first},`;
+      let subject, parts;
+      if (step === 1) {
+        subject = subject1;
+        parts = dc
+          ? [hi, `${findingLine(dc, firm)} ${ind.why}`,
+             "I run Midas Tech, a Richmond Hill IT and cybersecurity firm; we've looked after local businesses since 2010. It's usually a 15-minute fix.",
+             "Worth me sending you what I found?"]
+          : [hi, ind.timing(),
+             `I run Midas Tech, a Richmond Hill IT and cybersecurity firm. Since 2010 we've helped ${ind.people} put simple protections in place for exactly this.`,
+             `Worth a quick look for ${firm}?`];
+      } else if (step === 2) {
+        subject = `Re: ${subject1}`;
+        const providerLine = /Microsoft 365|Google Workspace/.test(provider || "")
+          ? ` Since ${firm} is on ${provider}, most of the fixes are settings you already pay for.` : "";
+        parts = [hi, ind.check, EMAIL_ROLE_LINES[emailRole(lead)] + providerLine,
+          `If it helps, I can check ${firm} on a 15-minute call. Pick a time here: {{booking}}`];
+      } else if (step === 3) {
+        subject = "Cyber insurance checklist";
+        parts = [hi,
+          "Cyber insurers in Canada now ask 40 to 80 security questions at renewal, and a wrong answer can mean a refused claim. I put together a one-page checklist of what they look for.",
+          "Want me to send it over? No call needed."];
+      } else {
+        subject = `Right person at ${firm}?`;
+        parts = [hi,
+          `I'll leave it here. If IT isn't on your plate, who's the best person at ${firm} for me to talk to?`,
+          dc ? `If it's just bad timing, the email spoofing setting on ${dc.domain} is still worth fixing. I'm happy to point your current IT person to it.`
+             : "If it's just bad timing, no problem. You can always reach me at 905-787-2038.",
+          `Enjoy the rest of the ${getCurrentSeason()}.`];
+      }
+      const booking = typeof bookingUrl === "function" ? bookingUrl() : "";
+      const body = [...parts, "Ali"].join("\n\n").replace(/\{\{booking\}\}/g, booking);
+      return { subject, body, finding: !!dc };
+    }
+    const EMAIL_STEP_NAMES = ["", "Opener", "Useful tip", "Insurance checklist", "Right person?"];
     function buildMailtoUrl(to, subject, body) {
       return `mailto:${to}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
     }
@@ -4045,12 +4090,16 @@
       const variantLabel = FIRM_TYPE_LABELS[detectFirmType(lead)];
       wrap.innerHTML = `<div class="extras-heading">Email Drafts <span style="font-weight:400;text-transform:none;letter-spacing:0;">— ${esc(variantLabel)} template</span></div>
         ${outreachLeadHtml(lead)}
+        <div class="ld-outreach">${lead.domainCheck && lead.domainCheck.domain === leadDomain(lead)
+          ? `${domainBadgeHtml(lead)}<span class="or-muted">${esc(lead.domainCheck.summary)}${lead.domainCheck.provider ? ` · ${esc(lead.domainCheck.provider)}` : ""}</span>`
+          : `<span class="or-muted">Email domain not checked yet.</span>`}
+          <button class="btn btn-secondary btn-sm" type="button" onclick="checkLeadDomain('${esc(lead.id)}')">🔍 ${lead.domainCheck ? "Check again" : "Check email domain"}</button></div>
         <div class="email-draft-btns">
           ${[1,2,3,4].map(step => {
             const sent = emailDraftHistory[step];
             const badge = sent ? `<span class="email-sent-badge">✓ Sent ${esc(sent.dateLabel)}</span>` : "";
-            const subj = fillEmailTemplate(getEmailTemplate(lead, step).subject, lead);
-            const name = ["", "Intro", "Follow-up", "Quick checks", "Close the loop"][step];
+            const subj = buildEmail(lead, step).subject;
+            const name = EMAIL_STEP_NAMES[step];
             return `<button class="btn btn-secondary btn-sm" title="Subject: ${esc(subj)}" onclick="sendEmailDraft('${esc(lead.id)}', ${step})">${step}. ${name}${badge}</button>`;
           }).join("")}
         </div>`;
@@ -4061,9 +4110,10 @@
       const email = splitEmail(cleanEmail(lead.email)).address;
       if (!email) return showToast("No email address on file","error");
       const variant = detectFirmType(lead);
-      const tpl = getEmailTemplate(lead, step);
-      const subject = fillEmailTemplate(tpl.subject, lead);
-      const body    = fillEmailTemplate(tpl.body, lead);
+      const built = buildEmail(lead, step);
+      const subject = built.subject;
+      // Emails opened in Outlook get a short text signature (the outreach server adds the full one).
+      const body = built.body.replace(/\n\nAli$/, "\n\nAli Jaffar\nMidas Tech Inc. · IT Services & Cybersecurity\n905-787-2038 · midastech.ca");
       window.location.href = buildMailtoUrl(email, subject, body);
       try {
         await addDoc(collection(db,"activities"), {
@@ -4871,15 +4921,15 @@ ${shape}`;
     };
 
     // ── EMAIL OUTREACH ─────────────────────────────────────────────
-    // The 4-email sequence (EMAIL_TEMPLATES) sent from the Microsoft 365 outreach mailbox through the
+    // The 4-email sequence (buildEmail) sent from the Microsoft 365 outreach mailbox through the
     // Railway service (/outreach/*). Nothing is sent without approval: every day the Outreach view lists
     // the emails due, the rep checks and approves them, then presses Send. Follow-ups go out as replies
     // in the same thread. The server adds the CASL footer (sender, address, unsubscribe link).
     // A lead's sequence lives on the lead: lead.outreach = { status, step, nextDue, firstMsgId, subject1,
     // emailCheck, reply, handledIds, ... }; lead.doNotContact marks unsubscribes.
-    const OUTREACH_GAP_DAYS = { 2: 3, 3: 4, 4: 7 };      // business days before each follow-up
+    const OUTREACH_GAP_DAYS = { 2: 3, 3: 4, 4: 5 };      // business days before each follow-up (about days 1, 4, 9 and 16)
     const OUTREACH_RAMP = [5, 10, 20, 30];               // daily limit in warm-up weeks 1, 2, 3, 4+
-    const OUTREACH_STEP_NAMES = ["", "Intro", "Follow-up", "Quick checks", "Close the loop"];
+    const OUTREACH_STEP_NAMES = EMAIL_STEP_NAMES;
     const OUTREACH_SETTINGS_KEY = "midas-outreach-settings";
     // Ali's "Free 15-Minute IT & Cybersecurity Assessment" Bookings page, used until another link is saved in Settings.
     const DEFAULT_BOOKING_URL = "https://bookings.cloud.microsoft/bookwithme/user/ca7a2c8351734923bc94c2af5ee84764@midastech.ca/meetingtype/Q7p_J0lQc0aeYCC0Izck5Q2?anonymous";
@@ -4979,6 +5029,46 @@ ${shape}`;
     const outreachActive = l => l?.outreach?.status === "active" && !l.doNotContact && !l.disabled;
     const outreachLeads = () => getVisibleLeads().filter(l => l.outreach);
 
+    // ── email-domain security check (public DNS: provider, SPF, DMARC) ──
+    const DOMAIN_BADGE = {
+      no_dmarc: ["risky", "🔓 no DMARC"], dmarc_none: ["risky", "🔓 DMARC monitor-only"], no_spf: ["risky", "🔓 no SPF"],
+      weak_spf: ["risky", "🔓 weak SPF"], ok: ["valid", "🔒 domain protected"], no_mail: ["unknown", "no mail servers"], unknown: ["unknown", "domain not checked"]
+    };
+    const leadDomain = l => outreachEmail(l).split("@")[1] || "";
+    // Checks the leads' email domains on the server and saves the result on each lead (lead.domainCheck).
+    async function runDomainChecks(leads) {
+      const domains = [...new Set(leads.map(leadDomain).filter(Boolean))];
+      if (!domains.length) return 0;
+      const { results = [] } = await outreachCall("domaincheck", { domains });
+      const byDomain = Object.fromEntries(results.map(r => [r.domain, r]));
+      let n = 0;
+      for (const l of leads) {
+        const r = byDomain[leadDomain(l)];
+        if (!r || r.finding === "unknown") continue;
+        const domainCheck = { ...r, at: new Date().toISOString() };
+        try { await updateDoc(doc(db, "leads", l.id), { domainCheck }); l.domainCheck = domainCheck; n++; } catch (e) { console.warn(e); }
+      }
+      return n;
+    }
+    window.checkLeadDomain = async function (id) {
+      const l = allLeads[id]; if (!l) return;
+      if (!leadDomain(l)) return showToast("No email address to check", "error");
+      showToast("Checking the email domain…");
+      try {
+        const n = await runDomainChecks([l]);
+        const dc = allLeads[id]?.domainCheck || l.domainCheck;
+        showToast(n && dc ? `${dc.domain}: ${dc.summary}` : "Couldn't check this domain right now. Try again later.", n ? "success" : "error");
+        delete outreachDrafts[id];
+        if (currentLeadId === id) setTimeout(() => renderEmailDraftSection(allLeads[id] || l), 300);
+      } catch (e) { showToast(e.message, "error"); }
+    };
+    function domainBadgeHtml(l) {
+      const dc = l.domainCheck;
+      if (!dc || dc.domain !== leadDomain(l)) return "";
+      const [cls, label] = DOMAIN_BADGE[dc.finding] || DOMAIN_BADGE.unknown;
+      return `<span class="or-badge ${cls}" title="${esc(`${dc.summary}${dc.provider ? ` · ${dc.provider}` : ""}`)}">${esc(label)}</span>`;
+    }
+
     // ── starting a sequence ──
     async function startOutreach(ids) {
       const leads = ids.map(id => allLeads[id]).filter(Boolean);
@@ -5001,6 +5091,9 @@ ${shape}`;
         const { results } = await outreachCall("verify", { emails: candidates.map(outreachEmail) });
         (results || []).forEach(r => { checks[r.email] = r; });
       } catch (e) { console.warn("Email check skipped:", e); }
+      // The domain's public email security gives email 1 its opening line.
+      try { await runDomainChecks(candidates.filter(l => !l.domainCheck || l.domainCheck.domain !== leadDomain(l))); }
+      catch (e) { console.warn("Domain check skipped:", e); }
       let added = 0;
       const today = todayKey();
       for (const l of candidates) {
@@ -5060,14 +5153,11 @@ ${shape}`;
       const step = (l.outreach.step || 0) + 1;
       const d = outreachDrafts[l.id];
       if (d && d.step === step) return d;
-      const tpl = getEmailTemplate(l, step);
+      const built = buildEmail(l, step);
       const fresh = {
         step,
-        subject: step === 1 ? fillEmailTemplate(tpl.subject, l) : `Re: ${l.outreach.subject1 || fillEmailTemplate(getEmailTemplate(l, 1).subject, l)}`,
-        // The server adds Ali's HTML signature, so the template's plain-text signature is dropped.
-        // Emails 1-3 also offer the booking link, for people who'd rather pick a time than reply.
-        body: fillEmailTemplate(tpl.body, l).replace(/\n+Ali Jaffar\nMidas Tech Inc\.[\s\S]*$/, "")
-          .replace(/\n\nThanks,$/, step < 4 ? `\n\nIf it's easier, just grab a time that suits you: ${bookingUrl()}\n\nThanks,` : "\n\nThanks,"),
+        subject: step === 1 ? built.subject : `Re: ${l.outreach.subject1 || buildEmail(l, 1).subject}`,
+        body: built.body,
         approved: false,
         personalized: false
       };
@@ -5268,6 +5358,11 @@ ${facts.map(f => `- ${f}`).join("\n")}`;
         showToast(action === "qualified" ? "Marked Qualified 🎉" : "Done", "success");
       } catch (e) { showToast("Couldn't save", "error"); }
     };
+    const CHECKLIST_URL = "https://midastechinc.github.io/Leads/insurance-checklist.html";
+    window.copyChecklistLink = async function () {
+      try { await navigator.clipboard.writeText(CHECKLIST_URL); showToast("Checklist link copied", "success"); }
+      catch { prompt("Copy the checklist link:", CHECKLIST_URL); }
+    };
     window.copyBookingLink = async function () {
       const url = bookingUrl();
       if (!url) return showToast("Add your Bookings link in Outreach → Settings first.", "error");
@@ -5331,6 +5426,7 @@ ${facts.map(f => `- ${f}`).join("\n")}`;
           <div class="or-edit-actions">
             <a class="btn btn-secondary btn-sm" href="https://outlook.office.com/mail/" target="_blank" rel="noopener">Open Outlook</a>
             <button class="btn btn-secondary btn-sm" type="button" onclick="copyBookingLink()">📅 Copy booking link</button>
+            <button class="btn btn-secondary btn-sm" type="button" onclick="copyChecklistLink()" title="The one-page cyber insurance checklist email 3 offers">📋 Copy checklist link</button>
             <button class="btn btn-primary btn-sm" type="button" onclick="resolveOutreachReply('${l.id}','qualified')">Mark Qualified</button>
             <button class="btn btn-secondary btn-sm" type="button" onclick="resolveOutreachReply('${l.id}','dead')">Not interested</button>
             <button class="btn btn-secondary btn-sm" type="button" onclick="resolveOutreachReply('${l.id}','done')">Done</button>
@@ -5365,6 +5461,7 @@ ${facts.map(f => `- ${f}`).join("\n")}`;
               <span class="or-muted">${esc([l.title, l.company].filter(Boolean).join(" · "))} · ${esc(outreachEmail(l))}</span></div>
             <span class="or-step ${d.step === 1 ? "s1" : ""}">${d.step}. ${OUTREACH_STEP_NAMES[d.step]}</span>
             <span class="or-badge ${esc(chk.status)}" title="${esc(chk.reason || "")}">${chk.status === "valid" ? "✓ email ok" : chk.status === "risky" ? "⚠ " + (/shared/i.test(chk.reason) ? "shared inbox" : "check email") : chk.status === "invalid" ? "✗ bad email" : "email not checked"}</span>
+            ${domainBadgeHtml(l)}
             ${d.personalized ? `<span class="or-badge valid">✨ personal</span>` : ""}
           </div>
           ${blocker ? `<p class="or-muted" style="padding:0 12px 10px">Can't send: ${esc(blocker)}</p>` : ""}

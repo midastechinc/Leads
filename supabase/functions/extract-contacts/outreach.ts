@@ -1,5 +1,6 @@
 // Email outreach for the lead tracker, sent from a Microsoft 365 mailbox through Microsoft Graph.
 //   verifyEmails:  free address check (format, the domain's mail servers, shared or personal inboxes).
+//   checkDomains:  a company's public email security (who hosts its mail, SPF, DMARC) for the first line.
 //   sendOutreach:  sends first emails and follow-ups (as replies in the same thread) with the CASL footer
 //                  added here, so no email can leave without sender details and an unsubscribe link.
 //   checkReplies:  reads the mailbox for replies, bounces and unsubscribes from the people emailed.
@@ -146,6 +147,99 @@ export async function verifyEmails(emails: unknown[]) {
     if (mail.how === "a") return { email, status: "risky", reason: `${domain} has no proper mail server record` };
     return { email, status: "valid", reason: `${domain} accepts email` };
   }));
+}
+
+// ── Email domain security check ─────────────────────────────────────────────
+// Reads a company's public DNS: who hosts its email (MX), and whether SPF and DMARC protect the
+// domain from being spoofed. The findings give outreach emails a true, specific first line.
+// Everything here is public information any mail server looks up.
+const domainCache = new Map<string, { at: number; result: DomainCheck }>();
+export interface DomainCheck {
+  domain: string;
+  provider: string;
+  spf: string;           // "" when missing
+  spfAll: string;        // "-all" | "~all" | "?all" | "+all" | ""
+  dmarc: string;         // "" when missing
+  dmarcPolicy: string;   // "none" | "quarantine" | "reject" | ""
+  finding: "unknown" | "no_mail" | "no_dmarc" | "dmarc_none" | "no_spf" | "weak_spf" | "ok";
+  summary: string;
+}
+
+// One DNS lookup. "Not found" is a real answer (empty list); a timeout or blocked resolver is not,
+// so it falls back to DNS-over-HTTPS and, failing that, reports ok: false. A failed lookup must never
+// turn into "you have no SPF/DMARC" in an email.
+async function lookup(name: string, type: "TXT" | "MX"): Promise<{ ok: boolean; records: string[] }> {
+  try {
+    const r = await Deno.resolveDns(name, type);
+    return { ok: true, records: type === "TXT" ? (r as string[][]).map((parts) => parts.join("")) : (r as { exchange: string }[]).map((m) => m.exchange) };
+  } catch (err) {
+    if (err instanceof Deno.errors.NotFound) return { ok: true, records: [] };
+  }
+  try {
+    const res = await fetch(`https://dns.google/resolve?name=${encodeURIComponent(name)}&type=${type}`, {
+      headers: { accept: "application/dns-json" }, signal: AbortSignal.timeout(6000),
+    });
+    const j = await res.json();
+    if (j.Status === 3) return { ok: true, records: [] };               // NXDOMAIN
+    if (j.Status !== 0) return { ok: false, records: [] };
+    const want = type === "TXT" ? 16 : 15;
+    const records = (j.Answer ?? []).filter((a: { type: number }) => a.type === want).map((a: { data: string }) =>
+      type === "TXT" ? String(a.data).replace(/"\s*"/g, "").replace(/^"|"$/g, "").replace(/\\"/g, '"') : String(a.data).split(/\s+/).pop()!.replace(/\.$/, ""));
+    return { ok: true, records };
+  } catch {
+    return { ok: false, records: [] };
+  }
+}
+
+function providerOf(mx: string[]): string {
+  const hosts = mx.join(" ").toLowerCase();
+  if (/protection\.outlook\.com|\.mx\.microsoft|outlook\.com/.test(hosts)) return "Microsoft 365";
+  if (/google\.com|googlemail\.com/.test(hosts)) return "Google Workspace";
+  if (/pphosted\.com|proofpoint/.test(hosts)) return "Proofpoint";
+  if (/mimecast/.test(hosts)) return "Mimecast";
+  if (/barracuda/.test(hosts)) return "Barracuda";
+  if (/secureserver\.net/.test(hosts)) return "GoDaddy email";
+  if (/zoho/.test(hosts)) return "Zoho Mail";
+  if (/rogers|bell\.net|sympatico/.test(hosts)) return "Internet provider email";
+  return mx.length ? "Other email host" : "";
+}
+
+export async function checkDomain(raw: string): Promise<DomainCheck | null> {
+  const domain = String(raw ?? "").trim().toLowerCase().replace(/^.*@/, "").replace(/^www\./, "").replace(/\/.*$/, "");
+  if (!/^[a-z0-9.-]+\.[a-z]{2,}$/.test(domain) || PERSONAL_DOMAINS.has(domain)) return null;
+  const hit = domainCache.get(domain);
+  if (hit && Date.now() - hit.at < 12 * 3600_000) return hit.result;
+
+  const [mxRes, rootRes, dmarcRes] = await Promise.all([lookup(domain, "MX"), lookup(domain, "TXT"), lookup(`_dmarc.${domain}`, "TXT")]);
+  const mx = mxRes.records.filter((x) => x && x !== ".");
+  const rootTxt = rootRes.records, dmarcTxt = dmarcRes.records;
+  if (!mxRes.ok || !rootRes.ok || !dmarcRes.ok) {
+    // Couldn't read everything: say so rather than guess. Not cached, so the next check retries.
+    return { domain, provider: providerOf(mx), spf: "", spfAll: "", dmarc: "", dmarcPolicy: "", finding: "unknown", summary: "Couldn't check this domain right now" };
+  }
+  const spf = rootTxt.find((t) => /^v=spf1\b/i.test(t.trim())) ?? "";
+  const spfAll = (spf.match(/([-~?+])all\b/i)?.[0] ?? (/\sall\b/i.test(spf) ? "+all" : "")).toLowerCase();
+  const dmarc = dmarcTxt.find((t) => /^v=DMARC1\b/i.test(t.trim())) ?? "";
+  const dmarcPolicy = (dmarc.match(/\bp=(none|quarantine|reject)\b/i)?.[1] ?? "").toLowerCase();
+  const provider = providerOf(mx);
+
+  let finding: DomainCheck["finding"], summary: string;
+  if (!mx.length) { finding = "no_mail"; summary = "No mail servers found for this domain"; }
+  else if (!dmarc) { finding = "no_dmarc"; summary = "No DMARC: anyone can send email pretending to be this domain"; }
+  else if (!dmarcPolicy || dmarcPolicy === "none") { finding = "dmarc_none"; summary = "DMARC is monitor-only (p=none): spoofed email still gets delivered"; }
+  else if (!spf) { finding = "no_spf"; summary = "No SPF record"; }
+  else if (spfAll === "+all" || spfAll === "?all") { finding = "weak_spf"; summary = `SPF ends in ${spfAll}, which allows any server to send`; }
+  else { finding = "ok"; summary = `Protected: DMARC ${dmarcPolicy}, SPF ${spfAll || "set"}`; }
+
+  const result: DomainCheck = { domain, provider, spf: spf.slice(0, 300), spfAll, dmarc: dmarc.slice(0, 300), dmarcPolicy, finding, summary };
+  domainCache.set(domain, { at: Date.now(), result });
+  return result;
+}
+
+export async function checkDomains(domains: unknown[]) {
+  const list = [...new Set(domains.map((d) => String(d ?? "").trim().toLowerCase()).filter(Boolean))].slice(0, 50);
+  const results = await Promise.all(list.map((d) => checkDomain(d)));
+  return results.filter(Boolean);
 }
 
 // ── Sending ─────────────────────────────────────────────────────────────────

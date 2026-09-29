@@ -575,6 +575,27 @@
     .cp-scroll .sk-table td { white-space: normal; overflow: visible; font-size: 13px; }
     .cp-us td { background: #eaf7fd !important; }
     .cp-filters label { min-width: 0; }
+    .cp-progress { text-align: right; white-space: nowrap; }
+    .cp-progress b { font-size: 22px; color: var(--blue); } .cp-progress span { color: var(--gray-500,#808080); font-size: 12px; margin-left: 4px; }
+    .cp-bar { height: 8px; border-radius: 999px; background: #e6eef3; overflow: hidden; margin: 10px 0 4px; }
+    .cp-bar span { display: block; height: 100%; background: linear-gradient(90deg,#00AEEF,#0072BC); }
+    .cp-grow-filters { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+    .cp-grow-filters button { border: 1px solid var(--gray-200); background: #fff; color: var(--gray-700); border-radius: 999px; padding: 5px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+    .cp-grow-filters button.on { background: var(--blue); color: #fff; border-color: var(--blue); }
+    .cp-imp { margin-bottom: 10px; border-left: 4px solid var(--blue); }
+    .cp-imp-done { opacity: 0.6; border-left-color: #0f7a4f; }
+    .cp-imp-top { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
+    .cp-imp-top h4 { margin: 6px 0 0; font-size: 16px; color: var(--gray-900); }
+    .cp-imp-meta { font-size: 12px; color: var(--gray-500,#808080); }
+    .cp-imp-status { display: flex; gap: 4px; flex-wrap: wrap; }
+    .cp-imp-status button { border: 1px solid var(--gray-200); background: #fff; color: var(--gray-600); border-radius: 8px; padding: 5px 10px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
+    .cp-imp-status button.on.cp-st-todo { background: #eef1f4; color: #4d4d4d; border-color: #cdd5dc; }
+    .cp-imp-status button.on.cp-st-doing { background: #fef3dc; color: #9a6300; border-color: #f0d79a; }
+    .cp-imp-status button.on.cp-st-done { background: #e7f6ee; color: #0f7a4f; border-color: #a9dcc0; }
+    .cp-imp-detail { margin: 8px 0 4px; }
+    .cp-imp-why { margin: 0; font-size: 14px; color: var(--gray-700); }
+    .cp-imp .cp-note { margin-top: 8px; }
+    .cp-log { margin-bottom: 10px; } .cp-log b { color: var(--blue); }
     /* Security snapshot — tab and report (app-level px) */
     .sk-scan-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
     .sk-scan-bar input { flex: 1 1 240px; min-width: 0; border: 1px solid var(--gray-200); border-radius: 10px; padding: 10px 12px; font: inherit; }

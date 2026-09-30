@@ -1936,6 +1936,7 @@
           <button class="btn btn-secondary" id="importCsvBtn" style="display:none" onclick="closeAdminMenu();document.getElementById('csvInput').click()">Import CSV</button>
           <button class="btn btn-secondary" id="importBatchesBtn" style="display:none" onclick="closeAdminMenu();openImportBatches()">Delete an import batch</button>
           <button class="btn btn-secondary" id="recentlyClearedBtn" style="display:none" onclick="closeAdminMenu();openRecentlyCleared()">Recently cleared</button>
+          <button class="btn btn-secondary" id="unassignAllBtn" style="display:none" onclick="closeAdminMenu();unassignAllLeads()">Unassign all leads…</button>
           <button class="btn btn-danger" id="clearAllBtn" style="display:none" onclick="closeAdminMenu();clearAllLeads()">Clear all leads…</button>
         </div>
       </details>
@@ -2849,6 +2850,8 @@
       const importBatchesBtn = document.getElementById("importBatchesBtn");
       const recentlyClearedBtn = document.getElementById("recentlyClearedBtn");
       if (clearBtn) clearBtn.style.display = isAdminUser() ? "inline-flex" : "none";
+      const unassignBtn = document.getElementById("unassignAllBtn");
+      if (unassignBtn) unassignBtn.style.display = isAdminUser() ? "inline-flex" : "none";
       const adminMenu = document.getElementById("adminMenu");
       if (adminMenu) adminMenu.style.display = isAdminUser() ? "" : "none";
       if (adminBtn) adminBtn.style.display = isAdminUser() ? "inline-flex" : "none";
@@ -5308,6 +5311,8 @@ ${shape}`;
       if (lead.disabled) return "Disabled";
       const { address, note } = splitEmail(cleanEmail(lead.email));
       if (!address) return "No email address";
+      // Only email leads whose email address has been manually verified.
+      if (!lead.emailVerified) return "Email not verified yet — tick Verified on the lead first";
       // CASL: cold email only goes to addresses the business published. Guessed addresses are skipped.
       if (/unverified|guess|pattern|not found/i.test(note)) return "Email is a guess, not a published address";
       if (lead.outreach?.emailCheck?.status === "invalid") return `Email doesn't work (${lead.outreach.emailCheck.reason || "invalid"})`;
@@ -6465,6 +6470,22 @@ ${facts.map(f => `- ${f}`).join("\n")}`;
     };
 
     // ── CLEAR ALL ──────────────────────────────────────────────────
+    window.unassignAllLeads = async function () {
+      if (!isAdminUser()) return showToast("Admin access only","error");
+      const ids = Object.keys(allLeads).filter(id => (allLeads[id]?.assignedTo || "").trim());
+      if (!ids.length) return showToast("All leads are already unassigned","");
+      if (!confirm(`Set all ${ids.length} assigned lead${ids.length!==1?"s":""} to Unassigned? You can reassign them afterward.`)) return;
+      showToast("Unassigning…");
+      try {
+        for (let i = 0; i < ids.length; i += 450) {
+          const batch = writeBatch(db);
+          ids.slice(i, i + 450).forEach(id => batch.update(doc(db, "leads", id), { assignedTo: "", updatedAt: serverTimestamp() }));
+          await batch.commit();
+        }
+        showToast(`Unassigned ${ids.length} lead${ids.length!==1?"s":""}`,"success");
+      } catch (e) { console.error("unassignAllLeads:", e); showToast("Couldn't unassign all leads","error"); }
+    };
+
     window.clearAllLeads = async function () {
       if (!isAdminUser()) return showToast("Admin access only","error");
       const ids = Object.keys(allLeads);

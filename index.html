@@ -3651,6 +3651,23 @@
       renderTable(lastTableLeads);
     };
 
+    // Rank a contact by seniority so decision-makers sort to the top of a company.
+    function titleRank(lead) {
+      const t = String(lead?.title || "").toLowerCase();
+      if (!t) return 90;
+      const has = re => re.test(t);
+      if (has(/\b(owner|founder|co-?founder|proprietor)\b/)) return 0;
+      if (has(/\b(ceo|chief executive|president|managing partner|managing director)\b/)) return 1;
+      if (has(/\b(coo|cfo|cto|ciso|cio|cmo|chief)\b/)) return 2;
+      if (has(/\b(partner|principal)\b/)) return 3;
+      if (has(/\b(vp|vice[- ]president|head of|director)\b/)) return 4;
+      if (has(/\b(controller|manager|office manager|practice manager|clinic manager|general manager|administrator)\b/)) return 5;
+      if (has(/\b(lead|supervisor|coordinator|officer|specialist|analyst)\b/)) return 6;
+      if (has(/\b(assistant|reception|clerk|intern)\b/)) return 8;
+      return 7;
+    }
+    const byTitleThenName = (a, b) => titleRank(a) - titleRank(b) || String(a.name || "").localeCompare(String(b.name || ""));
+
     function renderTable(leads) {
       lastTableLeads = leads;
       const tbody = document.getElementById("leadTableBody");
@@ -3670,6 +3687,7 @@
         if (!groups.has(groupKey)) groups.set(groupKey, { companyName, groupKey, leads: [] });
         groups.get(groupKey).leads.push(l);
       });
+      groups.forEach(g => g.leads.sort(byTitleThenName));  // decision-makers first within each company
 
       const renderLeadRow = l => {
         const email = cleanEmail(l.email);
@@ -3829,7 +3847,7 @@
         contacts: (a,b) => (b.contactCount||0) - (a.contactCount||0)
       }[sort] || ((a,b) => 0);
       companies.forEach(c => {
-        c.leads.sort(leadSort);
+        c.leads.sort((a, b) => titleRank(a) - titleRank(b) || leadSort(a, b));  // top-tier contacts first
         c.due = c.leads.filter(wsNeedsFollowup).length;
         c.open = c.leads.filter(l => !wsIsDone(l)).length;
         c.worst = Math.max(...c.leads.map(urgency));

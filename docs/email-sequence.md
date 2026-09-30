@@ -166,3 +166,11 @@ The outreach server adds a **plain-text signature** (name, title, phone, website
 The research shows email plus LinkedIn plus one phone call gets far more replies than email alone:
 - **Day 1–2:** view their LinkedIn profile and connect, with no pitch in the note. Use the lead window's LinkedIn note.
 - **Day 5:** a short call. *"Hi {first}, it's Ali from Midas Tech in Richmond Hill. I sent you a note about {firm}'s email security. Did I catch you at a bad time?"*
+
+## "Show Me You Know Me" (personalize) for high-value leads
+
+For your best prospects, research the lead (🔎) then press **✨ Personalize (Show Me You Know Me)** in the Outreach queue. It uses the saved research to write:
+- a **specific opening line** (e.g. "Congratulations on opening your second clinic in Aurora this year"), inserted right after the greeting, and
+- a **research-based subject** so specific it only makes sense to them (e.g. "Aurora clinic + email").
+
+This is Sam McKenna's SMYKM method — best kept for a smaller number of high-value leads, while the templated emails carry the volume. Always read the line before sending.

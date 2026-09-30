@@ -220,6 +220,22 @@
     ["\"Microsoft keeps our email safe / it's all in the cloud.\"", "Microsoft keeps its servers running, but securing your accounts is your job: MFA, who has access, and backups. Deleted or encrypted email is only recoverable for a short time without a separate backup."],
     ["\"We're in a contract right now.\"", "When does it renew? Let's do the free assessment now, so you have a clear comparison well before the renewal date. I'll put a reminder in 60 days before."]
   ];
+  // Climb the three levels of pain (TruMethods) — bigger deals live at the bottom. Mapped to SPIN.
+  const PAIN_LADDER = [
+    ["1 · Technical pain", "The surface complaint. Start here, but it's the lowest-value layer — don't stop.", "SPIN: Situation → Problem",
+      ["What's slow, broken or annoying about IT day to day?", "How often do things go wrong, and how long to get fixed?"]],
+    ["2 · Business pain", "What that actually costs the business. This is where the deal grows.", "SPIN: Implication",
+      ["When IT goes down, how many people stop working — and what's an hour of their time worth?", "Has a fake-invoice or banking-change email ever nearly caught you?", "Ever lost billable hours, missed a deadline, or lost a client because of IT?"]],
+    ["3 · Emotional pain", "What it costs them personally. This is what closes.", "SPIN: Need-payoff — let them say the value out loud",
+      ["Whose evening or weekend gets ruined when something breaks?", "How would it feel to explain a data breach to your patients / clients?", "What keeps you up at night about your insurance renewal or an audit?"]]
+  ];
+  const QUALIFY = [
+    ["Budget", "They've agreed a rough monthly range and it's realistic for what they need."],
+    ["Decision-maker", "Everyone who signs off is in the room, or named with a date to bring them in."],
+    ["Timeline", "There's a real reason to decide now — a renewal, a contract end, an incident, an audit."]
+  ];
+  const SELL_CAKE = "Sell the outcome, not the tools. Never read out a list of software (RMM, EDR, patching, ticketing) — that turns you into a line-item bill and invites price haggling. Talk about being protected, recoverable, supported and planned, for one flat price. One cake, not a bag of ingredients.";
+
   const FOLLOWUP_EMAIL = (who, company) => `Subject: Thanks for today, ${company || "and next steps"}
 
 Hi ${who || "there"},
@@ -514,7 +530,12 @@ ${COMPANY.phone} · ${COMPANY.web}`;
     const l = lead();
     return `<div class="sk-cols">
       <section class="or-card"><h3>How to run the meeting</h3>${AGENDA.map(([h, items]) => `<div class="sk-agenda"><b>${esc(h)}</b><ul>${items.map(i => `<li>${esc(i)}</li>`).join("")}</ul></div>`).join("")}</section>
-      <section class="or-card"><h3>Discovery questions</h3><p class="or-muted">Pick 6–8. Listen more than you talk.</p>${DISCOVERY.map(([h, qs]) => `<div class="sk-agenda"><b>${esc(h)}</b><ul>${qs.map(q => `<li>${esc(q)}</li>`).join("")}</ul></div>`).join("")}</section>
+      <section class="or-card"><h3>Discovery: climb the 3 levels of pain</h3>
+        <p class="or-muted">Deals grow as you go down the ladder. Solve technical pain and you win a cheap ticket; surface business and emotional pain and you win a Technology Success agreement.</p>
+        ${PAIN_LADDER.map(([h, why, spin, qs]) => `<div class="sk-agenda sk-pain"><b>${esc(h)}</b><span class="or-muted">${esc(why)} <i>${esc(spin)}</i></span><ul>${qs.map(q => `<li>${esc(q)}</li>`).join("")}</ul></div>`).join("")}
+        <details class="sk-obj"><summary>More topic questions (business, current IT, security, compliance, decision)</summary>
+          ${DISCOVERY.map(([h, qs]) => `<div class="sk-agenda"><b>${esc(h)}</b><ul>${qs.map(q => `<li>${esc(q)}</li>`).join("")}</ul></div>`).join("")}</details>
+        <p class="sk-cake">💡 ${esc(SELL_CAKE)}</p></section>
     </div>
     <section class="or-card"><h3>What we heard</h3><p class="or-muted">Write it down as they talk, one point per line. It becomes the "What we heard" slide, so use their words.</p>
       <div class="sk-heard-form">
@@ -536,6 +557,9 @@ ${COMPANY.phone} · ${COMPANY.web}`;
         ${l ? "" : `<span class="or-muted">Pick a lead at the top to save it.</span>`}
         ${l?.assessment?.date ? `<span class="or-muted">Last saved ${esc(new Date(l.assessment.date).toLocaleDateString("en-CA"))}</span>` : ""}</div>
     </section>
+    <section class="or-card"><h3>Qualify before you quote</h3>
+      <p class="or-muted">Never send a proposal until all three are a yes. If one is missing, book another call instead — a proposal into silence just stalls.</p>
+      <ul class="sk-qualify">${QUALIFY.map(([k, v]) => `<li><b>${esc(k)}:</b> ${esc(v)}</li>`).join("")}</ul></section>
     <section class="or-card"><h3>Handling objections</h3>${OBJECTIONS.map(([o, a]) => `<details class="sk-obj"><summary>${esc(o)}</summary><p>${esc(a)}</p></details>`).join("")}</section>
     <section class="or-card"><div class="or-card-head"><div><h3>Thank-you email (send the same day)</h3></div><button class="btn btn-secondary btn-sm" type="button" data-sk="copy-followup">Copy</button></div>
       <pre class="sk-pre">${esc(FOLLOWUP_EMAIL(l ? String(l.name || "").split(" ")[0] : "", prospect()))}</pre></section>`;

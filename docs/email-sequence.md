@@ -13,6 +13,7 @@ The rules come from the 2026 cold email research (Gong, Lavender, Instantly, Bel
 - **Something true about them first.** A specific finding or a reason to act now, instead of "I'm Ali from…".
 - **No pitch in email 1.** It asks "worth a look?" instead of asking for a meeting. The booking link comes in email 2.
 - **Every follow-up adds something new.** Email 2 is a useful tip, email 3 is a checklist offer, and email 4 asks who the right person is.
+- **Names the business and emotional stake**, not just the technical issue (the 3 levels of pain from MSP sales training).
 - **Written about the reader** ("you"), for owners and executives, operations, or finance.
 
 ## What the emails use

@@ -490,6 +490,12 @@
     .sk-cols > .or-card { margin-bottom: 14px; }
     .sk-agenda { margin-top: 10px; }
     .sk-agenda b { color: var(--gray-900); }
+    .sk-pain { border-left: 3px solid #00AEEF; padding-left: 10px; }
+    .sk-pain b { display: block; }
+    .sk-pain > span { display: block; margin: 2px 0 4px; }
+    .sk-pain > span i { color: #0072BC; font-style: italic; }
+    .sk-cake { background: #f2f9fd; border-radius: 8px; padding: 10px 12px; font-size: 13px; color: var(--gray-700); margin: 10px 0 0; }
+    .sk-qualify { margin: 4px 0 0; padding-left: 18px; display: grid; gap: 6px; color: var(--gray-700); }
     .sk-agenda ul, .sk-list-sm { margin: 4px 0 0; padding-left: 18px; color: var(--gray-700); display: grid; gap: 3px; }
     .sk-agenda p { margin: 2px 0 0; color: var(--gray-600); }
     .sk-q { display: flex; gap: 12px; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
@@ -4089,35 +4095,35 @@
             : "With tax season coming, this is when accounting firms start getting the most fake CRA and invoice emails.";
         },
         subject: "{{firm}} before tax season",
-        why: "For an accounting firm, that means a fake CRA or invoice email could reach your clients in your name.",
+        why: "For an accounting firm, that means a fake CRA or invoice email could reach your clients in your name — and client trust is the whole business.",
         check: "One thing worth checking before January: the CRA now requires multi-factor sign-in for EFILE and Represent a Client, and cyber insurers ask about it at renewal."
       },
       healthcare: {
         people: "clinics",
         timing: () => "Since Ontario's privacy commissioner started issuing PHIPA fines, clinics are being asked harder questions about how patient data is protected.",
         subject: "{{firm}} and patient data",
-        why: "For a clinic, that means a fake email could reach your patients in your name.",
+        why: "For a clinic, that means a fake email could reach your patients in your name, and patient trust is hard to win back after a breach.",
         check: "One thing worth checking is whether your EMR and email accounts all have multi-factor sign-in, and whether anyone has restored a backup lately. Those are the first questions after a privacy breach."
       },
       warehouse: {
         people: "warehouses and distributors",
         timing: () => "Fake \"our banking details have changed\" emails are one of the costliest scams hitting businesses that pay suppliers.",
         subject: "{{firm}} supplier payments",
-        why: "For a warehouse, that means a fake payment or banking-change email could reach your suppliers and customers in your name.",
+        why: "For a warehouse, that means a fake banking-change email could reach the people who pay you — and one wrong payment is real money gone.",
         check: "One thing worth checking: if your server or internet went down in the middle of a busy shift, how long would it take to start shipping again? Most teams have backups but have never timed a restore."
       },
       law: {
         people: "law firms",
         timing: () => "Fake wire instructions sent in a law firm's name are one of the biggest trust-account risks the Law Society warns about.",
         subject: "{{firm}} wire fraud",
-        why: "For a law firm, that means fake wire instructions could reach your clients in your name.",
+        why: "For a law firm, that means fake wire instructions could go out in your name — and the firm carries the liability.",
         check: "One thing worth checking is whether every mailbox, including shared and former staff accounts, has multi-factor sign-in, and whether wire changes are always confirmed by phone."
       },
       generic: {
         people: "local businesses",
         timing: () => "Cyber insurers now ask small businesses about multi-factor sign-in, backups and incident plans at renewal, and a wrong answer can mean a refused claim.",
         subject: "{{firm}} IT question",
-        why: "That means a fake invoice or payment request could reach your customers in your name.",
+        why: "That means a fake invoice or payment request could reach your customers in your name — and it is your name on the line.",
         check: "One thing worth checking is whether every email account, including shared ones and people who have left, has multi-factor sign-in. It's the gap we find most often."
       }
     };

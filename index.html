@@ -3993,8 +3993,12 @@
             });
             await batch.commit();
           }
+          // Company-level: pull every other contact at the same companies to the same rep.
+          const groups = new Set(assignTarget.leadIds.map(id => getCompanyGroupKey(allLeads[id]?.company || "")));
+          let cascaded = 0;
+          for (const g of groups) cascaded += await cascadeCompanyToRep(g, nextAssignedTo, null);
           const actionLabel = nextAssignedTo ? `assigned to ${nextAssignedTo}` : "unassigned";
-          showToast(`${assignTarget.companyName} ${actionLabel}`,"success");
+          showToast(`${assignTarget.companyName}${cascaded ? ` and ${cascaded} colleague${cascaded === 1 ? "" : "s"}` : ""} ${actionLabel}`,"success");
           if (assignTarget.clearSelectionAfter) clearLeadSelection();
         }
         closeModal("assignModal");
@@ -4625,8 +4629,9 @@
       if (!updates.name) return showToast("Name is required","error");
       try {
         await updateDoc(doc(db, "leads", currentLeadId), updates);
+        const spread = await cascadeCompanyToRep(getCompanyGroupKey(updates.company), updates.assignedTo, currentLeadId);
         closeModal("editLeadModal");
-        showToast("Lead updated","success");
+        showToast(spread ? `Lead updated · ${spread} colleague${spread === 1 ? "" : "s"} set to ${updates.assignedTo || "Unassigned"}` : "Lead updated","success");
         openDetail(currentLeadId);
       } catch (e) {
         console.error("saveEditedLead error:", e);
@@ -4702,7 +4707,7 @@
       return {
         people, extras,
         company: pick("company"), website: pick("website"), industry: pick("industry"),
-        rep: ""  // new leads default to Unassigned, even for a company others already own
+        rep: (people.length && getCompanyAssignedRep(people)) || ""  // inherit the company's rep if it has one, else Unassigned
       };
     }
 
@@ -7048,6 +7053,20 @@ ${facts.map(f => `- ${f}`).join("\n")}`;
       const reps = [...new Set(leads.map(l => (l.assignedTo || "").trim()).filter(Boolean))];
       if (reps.length === 1) return reps[0];
       return "";
+    }
+    // Company-level ownership: assigning one contact assigns everyone at that company.
+    // Skips leads with no company, and (for reps) leads owned by a different rep.
+    async function cascadeCompanyToRep(groupKey, rep, exceptId) {
+      if (!groupKey || groupKey === "__no_company__") return 0;
+      const sibs = getCompanyLeads(groupKey).filter(l =>
+        l.id !== exceptId && (l.assignedTo || "").trim() !== (rep || "").trim() &&
+        (isAdminUser() || canCurrentUserManageLeadAssignment(l)));
+      for (let i = 0; i < sibs.length; i += 450) {
+        const batch = writeBatch(db);
+        sibs.slice(i, i + 450).forEach(l => batch.update(doc(db, "leads", l.id), { assignedTo: rep, updatedAt: serverTimestamp() }));
+        await batch.commit();
+      }
+      return sibs.length;
     }
     function getCompanyAssignmentLabel(leads) {
       const reps = [...new Set(leads.map(l => (l.assignedTo || "").trim()).filter(Boolean))];

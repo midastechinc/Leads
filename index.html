@@ -2199,7 +2199,7 @@
           </div>
           <div class="or-actions">
             <label class="sel-all"><input type="checkbox" class="sel-check" id="orSelAll" onchange="approveAllOutreach(this.checked)"> Approve all</label>
-            <button class="btn btn-secondary btn-sm" type="button" onclick="personalizeAllOutreach()" title="Write a personal first line from each lead's research">✨ Personalize</button>
+            <button class="btn btn-secondary btn-sm" type="button" onclick="personalizeAllOutreach()" title="Show Me You Know Me: writes a research-based opening line and specific subject for every researched lead">✨ Personalize all (SMYKM)</button>
             <button class="btn btn-primary" type="button" id="orSendBtn" onclick="sendApprovedOutreach()">Send approved</button>
           </div>
         </div>
@@ -5513,14 +5513,23 @@ ${shape}`;
       if (d.step !== 1 || d.personalized) return false;
       const facts = researchFacts(l);
       if (!facts.length) return false;
-      const prompt = `Write ONE friendly, specific opening sentence (max 30 words) for a cold email from Ali at Midas Tech, a Richmond Hill IT and cybersecurity company, to ${l.name || "the owner"}${l.title ? `, ${l.title}` : ""} at ${l.company || "their company"}.
-Base it on one of these researched facts. Don't flatter, don't mention IT or selling, no exclamation marks, no greeting, no quotes. Reply with the sentence only.
+      // "Show Me You Know Me": one specific opener AND a subject that only makes sense to this prospect.
+      const prompt = `You are writing a cold email from Ali at Midas Tech, a Richmond Hill IT and cybersecurity company, to ${l.name || "the owner"}${l.title ? `, ${l.title}` : ""} at ${l.company || "their company"}.
+Using ONE of the researched facts below, write two things:
+SUBJECT: a 2 to 4 word subject line so specific it really only makes sense to this person or company (a "+" is fine, e.g. "Aurora clinic + backups"). No generic wording, never "IT services".
+LINE: one friendly, specific opening sentence (max 30 words). No greeting, no pitch, no mention of IT or selling, no exclamation marks, no quotes.
 Facts:
-${facts.map(f => `- ${f}`).join("\n")}`;
-      let line = (await aiText(prompt)).trim().split("\n").find(x => x.trim()) || "";
+${facts.map(f => `- ${f}`).join("\n")}
+Reply in exactly this format:
+SUBJECT: <subject>
+LINE: <sentence>`;
+      const out = (await aiText(prompt)).trim();
+      const subj = (out.match(/SUBJECT:\s*(.+)/i)?.[1] || "").replace(/^["'“”]+|["'“”]+$/g, "").trim();
+      let line = (out.match(/LINE:\s*([\s\S]+)/i)?.[1] || out).split("\n").map(x => x.trim()).find(x => x && !/^subject:/i.test(x)) || "";
       line = line.replace(/^["'“”]+|["'“”]+$/g, "").trim();
       if (!line || line.length > 260) return false;
       d.body = d.body.replace(/^(Hi [^\n]*,\n\n)/, `$1${line}\n\n`);
+      if (subj && subj.length <= 60 && subj.split(/\s+/).length <= 6) d.subject = subj;  // SMYKM subject when it looks sane
       d.personalized = true;
       return true;
     }
@@ -5766,7 +5775,7 @@ ${facts.map(f => `- ${f}`).join("\n")}`;
             <span class="or-badge ${esc(chk.status)}" title="${esc(chk.reason || "")}">${chk.status === "valid" ? "✓ email ok" : chk.status === "risky" ? "⚠ " + (/shared/i.test(chk.reason) ? "shared inbox" : "check email") : chk.status === "invalid" ? "✗ bad email" : "email not checked"}</span>
             ${domainBadgeHtml(l)}
             ${emailTrigger(l) ? `<span class="or-badge valid" title="${esc(emailTrigger(l).line(l.company || "", emailTrigger(l).note))}">⚡ ${esc(emailTrigger(l).label.replace(/ \(write it\)$/, ""))}</span>` : ""}
-            ${d.personalized ? `<span class="or-badge valid">✨ personal</span>` : ""}
+            ${d.personalized ? `<span class="or-badge valid" title="Show Me You Know Me: a research-based first line and subject">✨ personalized</span>` : ""}
           </div>
           ${blocker ? `<p class="or-muted" style="padding:0 12px 10px">Can't send: ${esc(blocker)}</p>` : ""}
           <details><summary>${esc(d.subject)} ▾</summary>
@@ -5775,7 +5784,7 @@ ${facts.map(f => `- ${f}`).join("\n")}`;
               <textarea oninput="editOutreachDraft('${l.id}','body',this.value)" aria-label="Email text">${esc(d.body)}</textarea>
               <p class="or-muted">A short plain-text signature (name, title, phone, website, address) and an unsubscribe line are added below the email automatically. No images, so it lands in the inbox more often.</p>
               <div class="or-edit-actions">
-                ${d.step === 1 ? `<button class="btn btn-secondary btn-sm" type="button" onclick="personalizeOneOutreach('${l.id}')">✨ Personal first line</button>` : ""}
+                ${d.step === 1 ? `<button class="btn btn-secondary btn-sm" type="button" onclick="personalizeOneOutreach('${l.id}')" title="Show Me You Know Me: writes a research-based opening line and a specific subject for this lead">✨ Personalize (Show Me You Know Me)</button>` : ""}
                 <button class="btn btn-secondary btn-sm" type="button" onclick="resetOutreachDraft('${l.id}')">Reset</button>
                 <button class="btn btn-secondary btn-sm" type="button" onclick="stopLeadOutreach('${l.id}')">Stop this sequence</button>
               </div>

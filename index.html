@@ -1636,6 +1636,18 @@
     }
     .admin-menu-list .btn { width: 100%; justify-content: flex-start; text-align: left; }
     .admin-menu-list #clearAllBtn { margin-top: 4px; }
+    .costs-sec { margin: 6px 0 18px; }
+    .costs-sec h3 { font-size: 14px; margin: 0 0 8px; display: flex; align-items: center; gap: 8px; }
+    .costs-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .costs-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--gray-600); border-bottom: 1px solid var(--border); padding: 6px 10px; }
+    .costs-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+    .costs-table tr:last-child td { border-bottom: none; }
+    .costs-table .ct-feat { font-weight: 700; }
+    .costs-table code { font-size: 11px; background: rgba(100,116,139,0.12); padding: 1px 5px; border-radius: 5px; }
+    .costs-pill { display: inline-block; font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 999px; }
+    .costs-pill.free { background: rgba(22,163,74,0.14); color: #15803d; }
+    .costs-pill.paid { background: rgba(217,119,6,0.16); color: #b45309; }
+    .costs-note { font-size: 12px; color: var(--gray-600); margin-top: 2px; }
 
     @media (max-width: 900px) {
       .metrics { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; overflow: visible; }
@@ -1947,6 +1959,7 @@
           <button class="btn btn-secondary" id="importBatchesBtn" style="display:none" onclick="closeAdminMenu();openImportBatches()">Delete an import batch</button>
           <button class="btn btn-secondary" id="recentlyClearedBtn" style="display:none" onclick="closeAdminMenu();openRecentlyCleared()">Recently cleared</button>
           <button class="btn btn-secondary" id="unassignAllBtn" style="display:none" onclick="closeAdminMenu();unassignAllLeads()">Unassign all leads…</button>
+          <button class="btn btn-secondary" id="costsBtn" style="display:none" onclick="closeAdminMenu();openCosts()">💳 Costs &amp; APIs</button>
           <button class="btn btn-danger" id="clearAllBtn" style="display:none" onclick="closeAdminMenu();clearAllLeads()">Clear all leads…</button>
         </div>
       </details>
@@ -2447,6 +2460,18 @@
     </div>
   </div>
 
+  <!-- ══ Costs & APIs (admin reference) ══ -->
+  <div class="modal-overlay" id="costsModal">
+    <div class="modal modal-wide">
+      <h2>💳 Costs &amp; APIs</h2>
+      <p class="modal-sub">What's free, what costs money, and which service each feature uses. All API keys live on the Railway server — never in the browser.</p>
+      <div id="costsBody"></div>
+      <div class="modal-actions">
+        <button class="btn btn-primary" onclick="closeModal('costsModal')">Close</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ══ Lead Research Modal ══ -->
   <div class="modal-overlay" id="researchModal">
     <div class="modal modal-wide">
@@ -2864,6 +2889,8 @@
       if (clearBtn) clearBtn.style.display = isAdminUser() ? "inline-flex" : "none";
       const unassignBtn = document.getElementById("unassignAllBtn");
       if (unassignBtn) unassignBtn.style.display = isAdminUser() ? "inline-flex" : "none";
+      const costsBtn = document.getElementById("costsBtn");
+      if (costsBtn) costsBtn.style.display = isAdminUser() ? "inline-flex" : "none";
       const adminMenu = document.getElementById("adminMenu");
       if (adminMenu) adminMenu.style.display = isAdminUser() ? "" : "none";
       if (adminBtn) adminBtn.style.display = isAdminUser() ? "inline-flex" : "none";
@@ -3460,6 +3487,65 @@
       btn.setAttribute("aria-expanded", String(open));
     };
     window.closeAdminMenu = function () { document.getElementById("adminMenu")?.removeAttribute("open"); };
+
+    // ── COSTS & APIS reference (Admin menu → 💳 Costs & APIs) ──────────────────
+    // MAINTENANCE: when a feature that calls an external/paid API is added or changed,
+    // add or edit a row below and bump COSTS_REVIEWED. Keep it in sync with
+    // supabase/functions/extract-contacts/* (where the API keys are read) and docs/.
+    const COSTS_REVIEWED = "2026-10-01";
+    const COST_FREE = [
+      ["Lead tracking core — All Leads, Workspace, add/edit, assign, verified & won't-contact flags, sorting", "Firebase / Firestore — free tier"],
+      ["LinkedIn lead tracker sync", "Supabase — free tier"],
+      ["App hosting", "GitHub Pages — free"],
+      ["Research panel — Free Quick Search links (LinkedIn, email, phone, team page, directory)", "Opens Google/LinkedIn tabs — no API"],
+      ["🔍 Check email domain (SPF / DMARC / provider)", "Public DNS lookup — free"],
+      ["External security snapshot (Sales Kit)", "Public DNS + one page fetch — free"],
+      ["Outreach email drafting — the 4 templates, triggers, domain findings", "Generated in-app — free"],
+      ["Competitors · Growth · Sales Kit content · Insurance checklist", "Static content — free"],
+    ];
+    const COST_PAID = [
+      { feature: "Research with Claude (cheap)", api: "Anthropic — claude-sonnet-5", key: "ANTHROPIC_API_KEY", cost: "~a few cents per person (shows cost after)" },
+      { feature: "Research with 1min.ai", api: "1min.ai", key: "ONEMIN_API_KEY", cost: "1min.ai credits" },
+      { feature: "Scan company website (Research panel)", api: "Apify — contact-info-scraper", key: "APIFY_TOKEN", cost: "Free monthly allowance, then paid" },
+      { feature: "🗺️ Find new leads (Google Maps)", api: "Apify — Google Places crawler", key: "APIFY_TOKEN", cost: "Paid per results pulled" },
+      { feature: "📷 From screenshot (read a team page)", api: "1min.ai vision — gpt-4o", key: "ONEMIN_API_KEY", cost: "1min.ai credits" },
+      { feature: "✨ Personalize (Show Me You Know Me)", api: "Midas LLM gateway (midas-smart) → 1min.ai fallback", key: "LLM_GATEWAY_KEY / ONEMIN_API_KEY", cost: "Metered per call" },
+      { feature: "Other in-app AI (Sales Kit helpers, etc.)", api: "Midas LLM gateway (midas-fast/smart/vision/web)", key: "LLM_GATEWAY_KEY", cost: "Metered" },
+      { feature: "Send outreach emails", api: "Microsoft 365 Graph (app-only send)", key: "MS_TENANT_ID / MS_CLIENT_ID / MS_CLIENT_SECRET", cost: "Your existing M365 licence — not per-email; 30/day cap" },
+      { feature: "Daily social posts (GitHub Action)", api: "1min.ai gpt-4o or gateway midas-web/midas-smart", key: "ONEMIN_API_KEY / LLM_GATEWAY_KEY", cost: "Credits / metered" },
+      { feature: "Social Studio generator", api: "1min.ai", key: "ONEMIN_API_KEY", cost: "1min.ai credits" },
+    ];
+    const COST_ACCOUNTS = [
+      ["Anthropic (Claude)", "AI research, written per-person"],
+      ["1min.ai", "Screenshot reading, social posts, alt-research (credit pool)"],
+      ["Apify", "Find new leads + website contact scraping (free monthly allowance)"],
+      ["Midas LLM gateway", "Personalization + misc in-app AI (bills the model it routes to)"],
+      ["Microsoft 365", "Sending outreach email (licence you already pay for)"],
+    ];
+    window.openCosts = function () {
+      const free = COST_FREE.map(([f, a]) => `<tr><td class="ct-feat">${esc(f)}</td><td>${esc(a)}</td></tr>`).join("");
+      const paid = COST_PAID.map(p => `<tr>
+        <td class="ct-feat">${esc(p.feature)}</td>
+        <td>${esc(p.api)}</td>
+        <td>${p.key.split(" / ").map(k => `<code>${esc(k)}</code>`).join(" ")}</td>
+        <td>${esc(p.cost)}</td></tr>`).join("");
+      const accts = COST_ACCOUNTS.map(([n, d]) => `<tr><td class="ct-feat">${esc(n)}</td><td>${esc(d)}</td></tr>`).join("");
+      document.getElementById("costsBody").innerHTML = `
+        <div class="costs-sec">
+          <h3><span class="costs-pill free">FREE</span> No per-use cost</h3>
+          <table class="costs-table"><thead><tr><th>Feature</th><th>Uses</th></tr></thead><tbody>${free}</tbody></table>
+        </div>
+        <div class="costs-sec">
+          <h3><span class="costs-pill paid">PAID</span> Metered — only when you press the button</h3>
+          <table class="costs-table"><thead><tr><th>Feature</th><th>API</th><th>Key (Railway)</th><th>Cost</th></tr></thead><tbody>${paid}</tbody></table>
+        </div>
+        <div class="costs-sec">
+          <h3>Paid accounts behind it all</h3>
+          <table class="costs-table"><thead><tr><th>Account</th><th>Used for</th></tr></thead><tbody>${accts}</tbody></table>
+          <p class="costs-note">The app is free to run day-to-day — you only spend money on AI Research, Find new leads, screenshot reading, Personalize, and sending email. Last reviewed ${esc(COSTS_REVIEWED)}.</p>
+        </div>`;
+      document.getElementById("costsModal").classList.add("active");
+    };
     document.addEventListener("click", e => {
       const menu = document.getElementById("adminMenu");
       if (menu?.open && !menu.contains(e.target)) menu.removeAttribute("open");

@@ -15,7 +15,15 @@ export interface LeadInput {
   linkedin?: string;
   city?: string;
   country?: string;
+  context?: string; // known facts from earlier company research, to save searches
 }
+
+// How hard to search. "quick" is cheapest (fewer searches, low effort); "deep" digs more.
+export type ResearchDepth = "quick" | "deep";
+const DEPTH = {
+  person:  { quick: { maxUses: 2, maxTurns: 5, effort: "low" },    deep: { maxUses: 4, maxTurns: 7, effort: "medium" } },
+  company: { quick: { maxUses: 4, maxTurns: 7, effort: "low" },    deep: { maxUses: 8, maxTurns: 10, effort: "medium" } },
+} as const;
 
 export interface CompanyInput {
   company?: string;
@@ -175,7 +183,8 @@ function describePerson(lead: LeadInput): string {
     field("Name", lead.name), field("Title", lead.title), field("Company", lead.company),
     field("Email", lead.email), field("Phone", lead.phone), field("Website", lead.website),
     field("LinkedIn", lead.linkedin), field("City", lead.city), field("Country", lead.country || "Canada"),
-  ].join("\n");
+    clip(lead.context, 600) ? `\nWhat we already know about the company (use it to save searches — you can infer this person's email from the pattern below and cite the page it came from, instead of searching for the company again):\n${clip(lead.context, 600)}` : "",
+  ].filter(Boolean).join("\n");
 }
 
 function describeCompany(input: CompanyInput): string {
@@ -202,6 +211,7 @@ async function runResearch(
   prompt: string,
   maxUses: number,
   maxTurns: number,
+  effort: "low" | "medium" | "high" = "low",
 ) {
   const messages: Anthropic.Beta.Messages.BetaMessageParam[] = [{ role: "user", content: prompt }];
   let searches = 0, fetches = 0, inputTokens = 0, outputTokens = 0, cacheWrite = 0, cacheRead = 0, nudged = false;
@@ -213,7 +223,7 @@ async function runResearch(
       model: MODEL,
       max_tokens: 16000,
       cache_control: { type: "ephemeral" },
-      output_config: { effort: "low" },
+      output_config: { effort },
       system,
       tools: [
         { type: "web_search_20260209", name: "web_search", max_uses: maxUses },
@@ -260,10 +270,12 @@ async function runResearch(
   throw new ResearchError("The research didn't finish. Try again.", 502);
 }
 
-export function researchLead(client: Anthropic, lead: LeadInput) {
-  return runResearch(client, PERSON_SYSTEM, PERSON_TOOL, describePerson(lead), 3, 6);
+export function researchLead(client: Anthropic, lead: LeadInput, depth: ResearchDepth = "quick") {
+  const d = DEPTH.person[depth] ?? DEPTH.person.quick;
+  return runResearch(client, PERSON_SYSTEM, PERSON_TOOL, describePerson(lead), d.maxUses, d.maxTurns, d.effort);
 }
 
-export function researchCompany(client: Anthropic, input: CompanyInput) {
-  return runResearch(client, COMPANY_SYSTEM, COMPANY_TOOL, describeCompany(input), 5, 8);
+export function researchCompany(client: Anthropic, input: CompanyInput, depth: ResearchDepth = "quick") {
+  const d = DEPTH.company[depth] ?? DEPTH.company.quick;
+  return runResearch(client, COMPANY_SYSTEM, COMPANY_TOOL, describeCompany(input), d.maxUses, d.maxTurns, d.effort);
 }

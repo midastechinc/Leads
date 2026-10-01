@@ -170,7 +170,7 @@ async function relayGateway(req: Request): Promise<Response> {
 // Body: { lead } researches one person; { company: { company, website, city, country, people } }
 // researches a whole company, checking the people we have and finding more.
 async function handleResearch(req: Request): Promise<Response> {
-  let body: { lead?: LeadInput; company?: CompanyInput };
+  let body: { lead?: LeadInput; company?: CompanyInput; depth?: string };
   try {
     body = await req.json();
   } catch {
@@ -178,11 +178,12 @@ async function handleResearch(req: Request): Promise<Response> {
   }
   const company = body.company;
   const lead = body.lead ?? {};
+  const depth = body.depth === "deep" ? "deep" : "quick";
   if (company ? !String(company.company ?? "").trim() : !String(lead.name ?? "").trim() && !String(lead.company ?? "").trim()) {
     return json(req, 400, { error: company ? "The company needs a name to research." : "The lead needs a name or a company to research." });
   }
   try {
-    const { result, stats } = company ? await researchCompany(client, company) : await researchLead(client, lead);
+    const { result, stats } = company ? await researchCompany(client, company, depth) : await researchLead(client, lead, depth);
     console.log("research done:", JSON.stringify({ mode: company ? "company" : "person", company: company?.company ?? lead.company, ...stats }));
     return json(req, 200, { result, stats });
   } catch (err) {

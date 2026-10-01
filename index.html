@@ -402,6 +402,10 @@
     .disabled-toggle.on { background: #2b2520; color: #fff; border-color: #2b2520; }
     tr.lead-disabled td { opacity: 0.6; }
     .dis-tag { display: inline-block; font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 999px; background: rgba(100,116,139,0.14); color: var(--gray-600); margin-left: 6px; vertical-align: middle; }
+    .wc-tag { display: inline-block; font-size: 10px; font-weight: 800; padding: 2px 7px; border-radius: 999px; background: rgba(217,119,6,0.14); color: #b45309; margin-left: 6px; vertical-align: middle; }
+    tr.lead-wontcontact td { opacity: 0.5; }
+    .ws-person.is-wontcontact { opacity: 0.5; }
+    .ld-wontcontact { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 10px 12px; border-radius: 12px; background: rgba(217,119,6,0.10); color: #92400e; font-size: 13px; margin-bottom: 10px; }
     .ld-disabled { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 10px 12px; border-radius: 12px; background: rgba(100,116,139,0.10); color: var(--gray-700); font-size: 13px; margin-bottom: 10px; }
     .ld-person.is-disabled { opacity: 0.55; }
     .bulk-bar .bulk-disable { background: rgba(255,255,255,0.12); color: #fff; }
@@ -1955,6 +1959,7 @@
       <label class="sel-all" title="Select every lead in this list"><input type="checkbox" class="sel-check" id="selAllLeads" onchange="selectAllShownLeads(this.checked)"> Select all</label>
       <span id="leadsBarText"></span>
       <button type="button" class="disabled-toggle" id="disabledToggle" onclick="toggleShowDisabled()" hidden title="Contacts you disabled because no information could be found">🚫 Disabled (<b>0</b>)</button>
+      <button type="button" class="disabled-toggle" id="wontContactToggle" onclick="toggleHideWontContact()" hidden title="Hide people you've marked 'Won't contact'">🙈 Hide won't-contact (<b>0</b>)</button>
       <span class="ws-expand">
         <button type="button" onclick="setAllLeadsCompanies(true)">Expand all</button>
         <button type="button" onclick="setAllLeadsCompanies(false)">Collapse all</button>
@@ -2746,7 +2751,8 @@
         "id","name","company","email","phone","website","linkedin","industry","title","status","assignedTo",
         "contactCount","lastContacted","createdAt","updatedAt","source","country","city","employeeRange",
         "address","state","importBatchId","importFileName","importedBy","importedAt","adminGrantedAt",
-        "adminGrantedBy","createdBy","createdByName","autoCreated","emailVerified","phoneVerified","websiteVerified"
+        "adminGrantedBy","createdBy","createdByName","autoCreated","emailVerified","phoneVerified","websiteVerified",
+        "wontContact","wontContactBy"
       ]);
       return Object.keys(lead).filter(key =>
         !coreKeys.has(key) &&
@@ -3490,6 +3496,7 @@
         const email = cleanEmail(l.email);
         return (
           (showDisabledOnly ? !!l.disabled : !l.disabled) &&
+          (showDisabledOnly || !hideWontContact || !l.wontContact) &&
           (!search  || (l.name||"").toLowerCase().includes(search) ||
                        (l.company||"").toLowerCase().includes(search) ||
                        email.toLowerCase().includes(search) ||
@@ -3500,6 +3507,13 @@
           (!title   || (l.title||l.industry||"").includes(title))
         );
       });
+      const wcCount = getVisibleLeads().filter(l => !l.disabled && l.wontContact).length;
+      const wcBtn = document.getElementById("wontContactToggle");
+      if (wcBtn) {
+        wcBtn.hidden = showDisabledOnly || (!wcCount && !hideWontContact);
+        wcBtn.querySelector("b").textContent = wcCount;
+        wcBtn.classList.toggle("on", hideWontContact);
+      }
       document.querySelectorAll(".metric-card").forEach(c => c.classList.toggle("active-filter", c.id === (status ? `mc-${status}` : "mc-total")));
       const activeFilters = [status, rep, country, title].filter(Boolean).length;
       const fc = document.getElementById("filtersCount");
@@ -3530,6 +3544,37 @@
       selectedLeadIds.clear();
       applyFilters();
       updateMetrics();
+    };
+    // ── WON'T-CONTACT CONTACTS ─────────────────────────────────────
+    // People you've decided not to reach out to (e.g. reception, assistants). They stay in the
+    // list, greyed with a "Won't contact" tag, and are never emailed by Outreach. The toggle in
+    // the leads bar hides them for a clean decision-maker view.
+    let hideWontContact = false;
+    window.toggleHideWontContact = function () {
+      hideWontContact = !hideWontContact;
+      document.getElementById("wontContactToggle")?.classList.toggle("on", hideWontContact);
+      applyFilters();
+    };
+    window.setLeadsWontContact = async function (ids, flag) {
+      const leads = ids.map(id => allLeads[id]).filter(Boolean);
+      const allowed = leads.filter(canCurrentUserManageLeadAssignment);
+      if (!allowed.length) return showToast("You can only change your own or unassigned leads", "error");
+      const change = flag
+        ? { wontContact: true, wontContactBy: currentUser }
+        : { wontContact: false };
+      try {
+        for (let i = 0; i < allowed.length; i += 450) {
+          const batch = writeBatch(db);
+          allowed.slice(i, i + 450).forEach(l => batch.update(doc(db, "leads", l.id), { ...change, updatedAt: serverTimestamp() }));
+          await batch.commit();
+        }
+        const skipped = leads.length - allowed.length;
+        const who = allowed.length === 1 ? (allowed[0].name || "Lead") : `${allowed.length} contacts`;
+        showToast(`${who} ${flag ? "marked won't-contact" : "will be contacted again"}${skipped ? ` (${skipped} assigned to another rep skipped)` : ""}`, "success");
+        if (ids.length === 1 && document.getElementById("detailModal").classList.contains("active")) openDetail(ids[0]);
+      } catch (err) {
+        showToast("Couldn't update: " + (err.message || err), "error");
+      }
     };
     window.setLeadsDisabled = async function (ids, disable, fromResearch) {
       const leads = ids.map(id => allLeads[id]).filter(Boolean);
@@ -3701,12 +3746,12 @@
         const touch = l.lastContacted?.toDate
           ? `<div>${l.contactCount||0} contact${(l.contactCount||0)===1?"":"s"} · ${lastC}</div>${fu ? `<div class="touch-flag">Follow up · ${fu.days} day${fu.days===1?"":"s"} ago</div>` : `<div class="td-sub">${relDays(l.lastContacted.toDate())}</div>`}`
           : (fu ? `<div class="touch-flag">Not contacted yet</div>` : `<div class="td-muted">—</div>`);
-        return `<tr class="${l.disabled ? "lead-disabled" : fu ? "needs-followup" : ""}">
+        return `<tr class="${l.disabled ? "lead-disabled" : l.wontContact ? "lead-wontcontact" : fu ? "needs-followup" : ""}">
           <td class="c-name" title="${esc(l.name||'')}">
             <div class="name-wrap">
               <input type="checkbox" class="sel-check" ${selectedLeadIds.has(l.id) ? "checked" : ""} onchange="toggleLeadSelect('${l.id}', this.checked)" aria-label="Select ${esc(l.name||"lead")}">
               <div style="min-width:0">
-                <div class="td-name"><a href="#" onclick="openDetail('${l.id}');return false;" style="color:inherit;text-decoration:none">${esc(l.name||"—")}</a>${l.disabled ? `<span class="dis-tag">Disabled</span>` : ""}</div>
+                <div class="td-name"><a href="#" onclick="openDetail('${l.id}');return false;" style="color:inherit;text-decoration:none">${esc(l.name||"—")}</a>${l.disabled ? `<span class="dis-tag">Disabled</span>` : l.wontContact ? `<span class="wc-tag">Won't contact</span>` : ""}</div>
                 ${(l.title||l.industry)?`<div class="td-sub">${esc(l.title||l.industry)}</div>`:""}
               </div>
             </div>
@@ -3719,6 +3764,7 @@
             ${webBtn}${liBtn}
             <button class="icon-btn" onclick="openResearch('${l.id}')" title="Research this person" aria-label="Research this person">🔎</button>
             <button class="icon-btn" onclick="openActivity('${l.id}')" title="Log activity" aria-label="Log activity">📝</button>
+            <button class="icon-btn" onclick="setLeadsWontContact(['${l.id}'], ${l.wontContact ? "false" : "true"})" title="${l.wontContact ? "Contact this person again" : "Won't contact — hide from outreach"}" aria-label="${l.wontContact ? "Contact again" : "Mark won't contact"}">${l.wontContact ? "↩️" : "🙈"}</button>
             <button class="icon-btn" onclick="openDetail('${l.id}')"  title="View details" aria-label="View details">👁</button>
           </div></td>
         </tr>`;
@@ -3824,6 +3870,7 @@
       if (fuBtn) { fuBtn.classList.toggle("on", wsFollowupOnly); fuBtn.setAttribute("aria-pressed", String(wsFollowupOnly)); }
 
       const myLeads = allMine.filter(l =>
+        (!hideWontContact || !l.wontContact) &&
         (!status || l.status === status) &&
         (!wsFollowupOnly || wsNeedsFollowup(l)) &&
         (!search || [l.name, l.company, l.title, l.email].some(v => String(v||"").toLowerCase().includes(search)))
@@ -3897,13 +3944,14 @@
           const last = wsLastContactDate(l);
           const pri = wsPriority(l);
           const statusCls = `status-${(l.status||"New").replace(/\s/g,"")}`;
-          return `<div class="ws-person">
+          return `<div class="ws-person${l.wontContact ? " is-wontcontact" : ""}">
             <div style="min-width:0">
               <div class="ws-person-top">
                 <input type="checkbox" class="sel-check" ${selectedLeadIds.has(l.id) ? "checked" : ""} onchange="toggleLeadSelect('${l.id}', this.checked)" aria-label="Select ${esc(l.name||"lead")}">
                 <span class="ws-dot ${pri}" title="${pri==="high"?"Follow up now":pri==="med"?"Follow up soon":pri==="done"?"Closed":"Recently contacted"}"></span>
                 <button type="button" class="ws-pname" onclick="openDetail('${l.id}')">${esc(l.name||"—")}</button>
                 ${(l.title||l.industry) ? `<span class="ws-ptitle">${esc(l.title||l.industry)}</span>` : ""}
+                ${l.wontContact ? `<span class="wc-tag">Won't contact</span>` : ""}
                 <span class="status-badge ${statusCls}">${esc(l.status||"New")}</span>
               </div>
               <div class="ws-links">
@@ -3916,6 +3964,7 @@
               <div class="ws-last${last ? "" : " never"}">${last ? `Last contact<br>${fmtDate(last)}${l.contactCount ? ` · ${l.contactCount}×` : ""}` : (wsIsDone(l) ? "No contact logged" : "Never contacted")}</div>
               <button class="btn btn-primary btn-sm" onclick="openActivity('${l.id}')">Log Activity</button>
               <button class="btn btn-secondary btn-sm" onclick="openResearch('${l.id}')" title="Research this person on the web">🔎</button>
+              <button class="btn btn-secondary btn-sm" onclick="setLeadsWontContact(['${l.id}'], ${l.wontContact ? "false" : "true"})" title="${l.wontContact ? "Contact this person again" : "Won't contact — hide from outreach"}">${l.wontContact ? "↩️" : "🙈"}</button>
               <button class="btn btn-secondary btn-sm" onclick="openDetail('${l.id}')">Details</button>
             </div>
           </div>`;
@@ -4471,6 +4520,8 @@
       // Summary: status, owner, last touch
       let html = l.disabled ? `<div class="ld-disabled"><span>🚫 <b>Disabled</b>${l.disabledReason ? ` · ${esc(l.disabledReason)}` : ""}${l.disabledBy ? ` · by ${esc(l.disabledBy)}` : ""}. Hidden from lists, counters and follow-ups.</span>
         <button class="btn btn-secondary btn-sm" type="button" onclick="setLeadsDisabled(['${l.id}'], false)">Enable again</button></div>` : "";
+      if (!l.disabled && l.wontContact) html += `<div class="ld-wontcontact"><span>🙈 <b>Won't contact</b>${l.wontContactBy ? ` · by ${esc(l.wontContactBy)}` : ""}. Excluded from outreach; hidden when "Hide won't-contact" is on.</span>
+        <button class="btn btn-secondary btn-sm" type="button" onclick="setLeadsWontContact(['${l.id}'], false)">Contact again</button></div>`;
       html += `<div class="ld-summary">
         <label class="ld-chip">Status
           <select class="status-select status-${esc(l.status||"New")}" onchange="this.className='status-select status-'+this.value;updateStatus('${l.id}',this.value)">${statusOpts}</select>
@@ -4488,6 +4539,7 @@
       if (site)  act.push(`<a class="ld-action" href="#" onclick="openUrl('${esc(site)}');return false">🌐 Website</a>`);
       if (li)    act.push(`<a class="ld-action" href="#" onclick="openUrl('${esc(li.url)}');return false">in ${li.search ? "Find on LinkedIn" : "LinkedIn"}</a>`);
       act.push(`<button class="ld-action" type="button" onclick="openResearch('${l.id}')" title="Research only this person">🔎 ${l.research ? "Research person again" : "Research person"}</button>`);
+      if (!l.disabled) act.push(`<button class="ld-action" type="button" onclick="setLeadsWontContact(['${l.id}'], ${l.wontContact ? "false" : "true"})" title="${l.wontContact ? "Include this person in outreach again" : "Keep this person but never email them in outreach"}">${l.wontContact ? "↩️ Contact again" : "🙈 Won't contact"}</button>`);
       if (!l.disabled) act.push(`<button class="ld-action" type="button" onclick="setLeadsDisabled(['${l.id}'], true)" title="Hide this person from lists and follow-ups (you can enable them again)">🚫 Disable (no info found)</button>`);
       html += `<div class="ld-actions">${act.join("")}</div>`;
 
@@ -4514,7 +4566,7 @@
         html += `<div class="ld-section-title">People at ${esc(l.company)} <span class="ld-count">${others.length + 1}</span></div>
           <div class="ld-people">
             ${others.map(p => `<button class="ld-person${p.disabled ? " is-disabled" : ""}" type="button" onclick="openDetail('${p.id}')">
-                <span><b>${esc(p.name || "Unnamed")}</b>${p.disabled ? `<span class="dis-tag">Disabled</span>` : ""}${(p.title || p.industry) ? `<small>${esc(p.title || p.industry)}</small>` : ""}</span>
+                <span><b>${esc(p.name || "Unnamed")}</b>${p.disabled ? `<span class="dis-tag">Disabled</span>` : p.wontContact ? `<span class="wc-tag">Won't contact</span>` : ""}${(p.title || p.industry) ? `<small>${esc(p.title || p.industry)}</small>` : ""}</span>
                 <span class="status-badge status-${esc(p.status || "New")}">${esc(p.status || "New")}</span>
               </button>`).join("")}
             <div class="ld-people-actions">
@@ -5338,6 +5390,7 @@ ${shape}`;
       if (!lead) return "Lead not found";
       if (lead.doNotContact) return "Unsubscribed / do not contact";
       if (lead.disabled) return "Disabled";
+      if (lead.wontContact) return "Marked won't contact";
       const { address, note } = splitEmail(cleanEmail(lead.email));
       if (!address) return "No email address";
       // Only email leads whose email address has been manually verified.
@@ -5347,7 +5400,7 @@ ${shape}`;
       if (lead.outreach?.emailCheck?.status === "invalid") return `Email doesn't work (${lead.outreach.emailCheck.reason || "invalid"})`;
       return "";
     }
-    const outreachActive = l => l?.outreach?.status === "active" && !l.doNotContact && !l.disabled;
+    const outreachActive = l => l?.outreach?.status === "active" && !l.doNotContact && !l.disabled && !l.wontContact;
     const outreachLeads = () => getVisibleLeads().filter(l => l.outreach);
 
     // ── email-domain security check (public DNS: provider, SPF, DMARC) ──
@@ -7109,7 +7162,7 @@ LINE: <sentence>`;
     }
     // App-managed fields (research results, disable flags) are shown elsewhere and must not be
     // edited as plain text, or saving the edit form would overwrite them.
-    const APP_FIELDS = new Set(["prospectid", "research", "companyresearch", "disabled", "disabledreason", "disabledby", "disabledat", "outreachtrigger", "outreachtriggernote", "currentit", "emailverified", "phoneverified", "websiteverified"]);
+    const APP_FIELDS = new Set(["prospectid", "research", "companyresearch", "disabled", "disabledreason", "disabledby", "disabledat", "wontcontact", "wontcontactby", "outreachtrigger", "outreachtriggernote", "currentit", "emailverified", "phoneverified", "websiteverified"]);
     function shouldHideDetailField(key) {
       const normalized = String(key || "").toLowerCase().replace(/[\s_\-]+/g, "");
       return APP_FIELDS.has(normalized);

@@ -1826,6 +1826,9 @@
     .rs-tag { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: rgba(22,163,74,0.10); color: var(--green); }
     .rs-tag.warn { background: #fff4e5; color: #8a4b00; }
     .rs-tag.muted { background: rgba(100,116,139,0.10); color: var(--gray-500); }
+    .rs-tag.conf-high { background: rgba(22,163,74,0.16); color: #15803d; }
+    .rs-tag.conf-med { background: rgba(217,119,6,0.14); color: #b45309; }
+    .rs-tag.conf-low { background: #fff4e5; color: #8a4b00; }
     .rs-h-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
     .rs-select { display: flex; gap: 2px; text-transform: none; letter-spacing: 0; }
     .rs-select button { border: none; background: none; color: var(--blue); font: 700 12px inherit; font-family: inherit; cursor: pointer; padding: 4px 8px; border-radius: 8px; }
@@ -5290,12 +5293,12 @@
       const isCompany = !!request.company;
       const shape = isCompany
         ? `{"company":{"name":"","website":"","phone":"","address":"","city":"","industry":"","employee_range":"","description":"","source":""},
-"people":[{"name":"","title":"","email":"","email_status":"found|pattern_guess|not_found","phone":"","linkedin":"","status":"current|left|unknown","source":""}],
+"people":[{"name":"","title":"","role_category":"owner|executive|partner|director|manager|professional|admin|other","email":"","email_status":"found|pattern_guess|not_found","phone":"","linkedin":"","status":"current|left|unknown","confidence":"high|medium|low","source":""}],
 "talking_points":[{"point":"","source":""}],"notes":""}`
-        : `{"person":{"name":"","title":"","title_source":"","email":"","email_status":"found|pattern_guess|not_found","email_source":"","phone":"","phone_source":"","linkedin":"","linkedin_source":""},
+        : `{"person":{"name":"","title":"","title_source":"","role_category":"owner|executive|partner|director|manager|professional|admin|other","email":"","email_status":"found|pattern_guess|not_found","email_source":"","phone":"","phone_source":"","linkedin":"","linkedin_source":"","confidence":"high|medium|low"},
 "talking_points":[{"point":"","source":""}],"notes":""}`;
       const task = isCompany
-        ? `Research this company and its people. For every person listed, check they still work there and find their current title, business email, direct phone and LinkedIn profile URL. Also add up to 10 other decision makers (owners, partners, directors, office or IT managers).
+        ? `Research this company and its people. For every person listed, check they still work there and find their current title, business email, direct phone and LinkedIn profile URL. Also add up to 20 other decision makers (owners, partners, directors, office or IT managers). Don't duplicate someone already listed.
 Company: ${request.company.company}
 Website: ${request.company.website || "(unknown)"}
 City: ${request.company.city || "(unknown)"}
@@ -5310,7 +5313,7 @@ Email we have: ${request.lead.email || "(none)"}`;
       const prompt = `You research B2B sales leads in Canada for an IT services company. Use web search.
 ${task}
 
-Rules: public business information only. Never invent anything; leave a field "" when not found. Give the web page URL where you found each value in the matching source field. email_status is "found" only if the exact email appears on a web page, "pattern_guess" if built from the company's email pattern, otherwise "not_found". Up to 4 recent, specific talking points with sources.
+Rules: public business information only. Never invent anything; leave a field "" when not found. Give the web page URL where you found each value in the matching source field. email_status is "found" only if the exact email appears on a web page, "pattern_guess" if built from the company's email pattern, otherwise "not_found". Set role_category by seniority (owner, executive, partner, director, manager, professional, admin, other) so decision makers can be ordered first. Set confidence to "high" when the name, title and a contact detail come from the company's own site or a current registry, "medium" from a third-party listing or older page, "low" when pieced together or possibly out of date. Up to 4 recent, specific talking points with sources.
 Reply with ONLY this JSON and nothing else:
 ${shape}`;
       let res;
@@ -5329,12 +5332,16 @@ ${shape}`;
       const raw = data?.aiRecord?.aiRecordDetail?.resultObject;
       const result = rsParseJson(Array.isArray(raw) ? raw.join("\n") : raw);
       const email = s => ["found", "pattern_guess", "not_found"].includes(s) ? s : "not_found";
+      const conf = c => ["high", "medium", "low"].includes(c) ? c : "";
+      const role = r => ["owner", "executive", "partner", "director", "manager", "professional", "admin", "other"].includes(r) ? r : "other";
       if (isCompany) {
         result.company = result.company || {};
-        result.people = (Array.isArray(result.people) ? result.people : []).map(p => ({ ...p, email_status: email(p.email_status), status: ["current", "left", "unknown"].includes(p.status) ? p.status : "unknown" }));
+        result.people = (Array.isArray(result.people) ? result.people : []).map(p => ({ ...p, email_status: email(p.email_status), status: ["current", "left", "unknown"].includes(p.status) ? p.status : "unknown", role_category: role(p.role_category), confidence: conf(p.confidence) }));
       } else {
         result.person = result.person || {};
         result.person.email_status = email(result.person.email_status);
+        result.person.role_category = role(result.person.role_category);
+        result.person.confidence = conf(result.person.confidence);
       }
       result.talking_points = Array.isArray(result.talking_points) ? result.talking_points : [];
       return { result, stats: { engine: "1min" } };
@@ -6369,6 +6376,16 @@ LINE: <sentence>`;
       return { ...p, email, guess, match, fills, replaces, differs, canEdit, mode, selected: mode === "update", reenable: !!match.disabled };
     }
 
+    // Decision-maker ordering for researched people (matches titleRank's seniority idea).
+    const RS_ROLE_RANK = { owner: 0, executive: 1, partner: 2, director: 3, manager: 4, professional: 5, other: 6, admin: 7 };
+    function roleRank(rc) { const r = RS_ROLE_RANK[rc]; return r == null ? 6 : r; }
+    function rsConfidenceBadge(c) {
+      if (c === "high") return `<span class="rs-tag conf-high" title="Name, title and a contact detail came from the company's own site or a current registry">High confidence</span>`;
+      if (c === "medium") return `<span class="rs-tag conf-med" title="From a third-party listing or an older page">Medium confidence</span>`;
+      if (c === "low") return `<span class="rs-tag conf-low" title="Pieced together or possibly out of date — double-check before using">Low confidence</span>`;
+      return "";
+    }
+
     function renderResearch(result, stats) {
       const isCompany = rsState.mode === "company";
       let rows = [], people = [];
@@ -6384,7 +6401,8 @@ LINE: <sentence>`;
         ], { website: d.website, address: d.extras.address, city: d.extras.city, industry: d.industry, employeeRange: formatDetailValue(d.extras.employeeRange) });
         const companyLeads = rsCompanyLeads(true); // match disabled people too, so they aren't added twice
         people = (result.people || []).filter(p => String(p.name || "").trim())
-          .map(p => rsPlanPerson(p, companyLeads)).filter(Boolean);
+          .map(p => rsPlanPerson(p, companyLeads)).filter(Boolean)
+          .sort((a, b) => roleRank(a.role_category) - roleRank(b.role_category) || String(a.name || "").localeCompare(String(b.name || "")));  // decision-makers first
       } else {
         const l = allLeads[rsState.id];
         if (!l) return;
@@ -6401,6 +6419,7 @@ LINE: <sentence>`;
       rsState.points = (result.talking_points || []).filter(t => String(t.point || "").trim());
       rsState.notes = String(result.notes || "").trim();
       rsState.costUsd = typeof stats.costUsd === "number" ? stats.costUsd : null;
+      const personConf = !isCompany ? (result.person || {}).confidence : "";
 
       const rowsHtml = rows.map((r, i) => `
         <div class="rs-row${r.same ? " same" : ""}">
@@ -6430,7 +6449,7 @@ LINE: <sentence>`;
               (p.reenable && p.mode !== "same" ? `<span class="rs-tag">Disabled · saving enables them again</span>` : "");
             return `<label class="rs-item" style="cursor:${p.mode === "same" ? "default" : "pointer"}">
               ${p.mode === "same" ? "<span>✓</span>" : `<input type="checkbox" data-rs-person="${i}" ${p.selected ? "checked" : ""}>`}
-              <span><b>${esc(p.name)}</b>${p.title ? ` · ${esc(p.title)}` : ""} ${tag} ${left}
+              <span><b>${esc(p.name)}</b>${p.title ? ` · ${esc(p.title)}` : ""} ${tag} ${rsConfidenceBadge(p.confidence)} ${left}
                 <div class="rs-meta">${[p.email ? p.email + (p.guess ? " (guessed)" : "") : "", p.phone].filter(Boolean).map(esc).join(" · ")} ${rsSourceLink(p.source)}</div>
                 ${p.differs?.length ? `<div class="rs-meta">${p.mode === "replace" ? "Tracker now has" : "Kept, the tracker has a different"} ${esc(p.differs.join("; "))}</div>` : ""}</span>
             </label>`;
@@ -6468,7 +6487,7 @@ LINE: <sentence>`;
       document.getElementById("rsBody").innerHTML = `
         ${rsState.notes ? `<div class="rs-note">📝 ${esc(rsState.notes)}</div>` : ""}
         ${nothing ? `<div class="rs-status">Nothing new was found on the public web.</div>` : ""}
-        ${rows.length ? `<div class="rs-h">${isCompany ? "Company details" : "Contact details"}</div><div class="rs-rows">${rowsHtml}</div>` : ""}
+        ${rows.length ? `<div class="rs-h rs-h-row"><span>${isCompany ? "Company details" : "Contact details"}</span>${!isCompany ? rsConfidenceBadge(personConf) : ""}</div><div class="rs-rows">${rowsHtml}</div>` : ""}
         ${foundHtml}
         ${peopleHtml}
         ${pointsHtml}

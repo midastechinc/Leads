@@ -4349,10 +4349,10 @@
     function findingLine(dc, firm) {
       const d = dc.domain;
       return {
-        no_dmarc: `I noticed ${d} doesn't have DMARC protection set up, so anyone can send emails that look like they came from ${firm}.`,
-        dmarc_none: `I noticed the email protection (DMARC) on ${d} is set to monitor only, so emails pretending to be from ${firm} still get delivered.`,
-        no_spf: `I noticed ${d} has no SPF record, which makes it easier for fake emails to look like they came from ${firm}.`,
-        weak_spf: `I noticed the SPF record on ${d} lets any server send emails as ${firm}.`
+        no_dmarc: `I ran a quick check on ${d} and it doesn't have a DMARC policy in place, so anyone can send emails that look like they came from ${firm}.`,
+        dmarc_none: `I ran a quick check on ${d} and its DMARC is set to monitor only, so emails pretending to be from ${firm} still get through.`,
+        no_spf: `I ran a quick check on ${d} and it has no SPF record, which makes it easier for fake emails to look like they came from ${firm}.`,
+        weak_spf: `I ran a quick check on ${d} and its SPF record lets any server send emails as ${firm}.`
       }[dc.finding];
     }
     // How people say the company name: "Midas Tech Inc." -> "Midas Tech" (keeps designations like CPA).
@@ -4386,8 +4386,8 @@
              `Would it be worth a quick look at ${/s$/i.test(firm) ? `${firm}'` : `${firm}'s`} setup?`]
           : dc
           ? [hi, `${findingLine(dc, firm)} ${ind.why}`,
-             "I run Midas Tech, an IT and cybersecurity firm in Richmond Hill, and we've looked after local businesses since 2010. The good news is that it's usually a 15-minute fix.",
-             "Would you like me to send over what I found?"]
+             "I run Midas Tech, an IT and cybersecurity firm in Richmond Hill, and we've looked after local businesses since 2010.",
+             `I put together a short, one-page summary of ${/s$/i.test(firm) ? `${firm}'` : `${firm}'s`} current email setup and how to close the gap. Would you like me to send it over?`]
           : [hi, ind.timing(),
              `I run Midas Tech, an IT and cybersecurity firm in Richmond Hill. Since 2010, we've helped ${ind.people} put simple protections in place for exactly this.`,
              `Would it be worth a quick look at ${/s$/i.test(firm) ? `${firm}'` : `${firm}'s`} setup?`];
@@ -4401,7 +4401,7 @@
                      : " We also usually find a few software licences still being paid for people who've left.")
           : onSuite ? ` Since ${firm} is on ${provider}, most of the fixes are settings you already pay for.` : "";
         const itLine = (CURRENT_IT[lead?.currentIt || ""] || CURRENT_IT[""])[1];
-        const tip = findingInTip ? `One more thing: ${findingLine(dc, firm)} It's usually a 15-minute fix.` : ind.check;
+        const tip = findingInTip ? `One more thing: ${findingLine(dc, firm)} It's a well-understood gap, and I can show you exactly where to start.` : ind.check;
         parts = [hi, tip, EMAIL_ROLE_LINES[role] + providerLine, itLine,
           `If it helps, I'm happy to go through it with you on a 15-minute call. You can pick a time here: {{booking}}`].filter(Boolean);
       } else if (step === 3) {
@@ -5674,7 +5674,7 @@ ${shape}`;
       const prompt = `You are writing a cold email from Ali at Midas Tech, a Richmond Hill IT and cybersecurity company, to ${l.name || "the owner"}${l.title ? `, ${l.title}` : ""} at ${l.company || "their company"}.
 Using ONE of the researched facts below, write two things:
 SUBJECT: a 2 to 4 word subject line so specific it really only makes sense to this person or company (a "+" is fine, e.g. "Aurora clinic + backups"). No generic wording, never "IT services".
-LINE: one friendly, specific opening sentence (max 30 words). No greeting, no pitch, no mention of IT or selling, no exclamation marks, no quotes.
+LINE: one short, specific opening sentence (max 25 words) about that fact. If it's an award, milestone or good news, a brief "Congratulations on …" is perfect. Give just the observation and nothing more — no greeting, no pitch, no bridge to IT, security, communication or support, do not start with "I noticed" or "I saw", no exclamation marks, no quotes.
 Facts:
 ${facts.map(f => `- ${f}`).join("\n")}
 Reply in exactly this format:

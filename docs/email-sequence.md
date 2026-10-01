@@ -37,10 +37,10 @@ When leads are added to outreach, or when you press **🔍 Check email domain** 
 
 | Finding | Badge | What email 1 says |
 |---|---|---|
-| No DMARC | 🔓 no DMARC | "I noticed {domain} doesn't have DMARC protection set up, so anyone can send emails that look like they came from {firm}." |
-| DMARC p=none | 🔓 DMARC monitor-only | "I noticed the email protection (DMARC) on {domain} is set to monitor only, so emails pretending to be from {firm} still get delivered." |
-| No SPF | 🔓 no SPF | "…has no SPF record, which makes it easier for fake emails to look like they came from {firm}." |
-| SPF `+all` / `?all` | 🔓 weak SPF | "I noticed the SPF record on {domain} lets any server send emails as {firm}." |
+| No DMARC | 🔓 no DMARC | "I ran a quick check on {domain} and it doesn't have a DMARC policy in place, so anyone can send emails that look like they came from {firm}." |
+| DMARC p=none | 🔓 DMARC monitor-only | "I ran a quick check on {domain} and its DMARC is set to monitor only, so emails pretending to be from {firm} still get through." |
+| No SPF | 🔓 no SPF | "I ran a quick check on {domain} and it has no SPF record, which makes it easier for fake emails to look like they came from {firm}." |
+| SPF `+all` / `?all` | 🔓 weak SPF | "I ran a quick check on {domain} and its SPF record lets any server send emails as {firm}." |
 | Protected | 🔒 domain protected | No finding; email 1 uses the industry opener instead |
 
 Personal addresses (gmail, rogers, and so on) are skipped. If a DNS lookup times out or can't be read, the result is **"couldn't check"**. It is never reported as "no SPF/DMARC", so an email never claims something that isn't true. That result isn't saved, so the next check tries again.
@@ -72,12 +72,14 @@ Hi {first},
 
 {finding line} {industry "why it matters" line}
 
-I run Midas Tech, an IT and cybersecurity firm in Richmond Hill, and we've looked after local businesses since 2010. The good news is that it's usually a 15-minute fix.
+I run Midas Tech, an IT and cybersecurity firm in Richmond Hill, and we've looked after local businesses since 2010.
 
-Would you like me to send over what I found?
+I put together a short, one-page summary of {firm}'s current email setup and how to close the gap. Would you like me to send it over?
 
 Ali
 ```
+
+The CTA is framed as something already prepared (a one-page summary), and the scope is "how to close the gap" rather than a time estimate — DMARC is often more than a quick toggle once every legitimate sender has to be aligned.
 
 **Without a finding.** The subject depends on the industry:
 - Accounting: `{firm} before tax season`
@@ -110,7 +112,7 @@ The "why now" lines:
 Hi {first},
 
 {industry tip: CRA EFILE MFA / EMR MFA and backup restore / downtime and restore time / MFA on every mailbox and phone-confirmed wires / MFA on every account}
-  (or, when email 1 didn't use it: "One more thing: I noticed {domain} … It's usually a 15-minute fix.")
+  (or, when email 1 didn't use it: "One more thing: I ran a quick check on {domain} … It's a well-understood gap, and I can show you exactly where to start.")
 
 {role line}{ Since {firm} is on Microsoft 365/Google Workspace, most of the fixes are settings you already pay for.}
 

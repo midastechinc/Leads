@@ -318,6 +318,11 @@ export const INTEL_FIELDS: Record<string, { title: string; focus: string; recent
     recentDays: 30,
     focus: "Find recent news, pain points and regulatory items for GTA law firms that relate to IT, client confidentiality, wire fraud, LAWPRO coverage or the Law Society cybersecurity checklist — usable as outreach talking points.",
   },
+  social: {
+    title: "Trending topics for social media",
+    recentDays: 14,
+    focus: "Find timely, postable topics for Midas Tech's social media (LinkedIn, Instagram, Facebook), aimed at GTA small businesses — especially healthcare clinics, accounting firms and warehouses. Look for trending IT and cybersecurity themes, recent Canadian cyber news, seasonal hooks (tax season, cyber-insurance renewals, back-to-school, holidays, Windows end-of-life), tech awareness days coming up, and angles other MSPs are posting about. For each item: the trend or hook as the headline; a one- or two-sentence plain, casual post angle Midas Tech could use (no hashtags, no emojis) as the detail; a source; and a date.",
+  },
 };
 
 const intelRules = (days: number) => `Rules:

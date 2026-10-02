@@ -451,6 +451,7 @@
     .intel-date { font-size: 11px; color: var(--gray-500); font-weight: 600; }
     .intel-empty, .intel-status { font-size: 13px; color: var(--gray-500); font-style: italic; }
     .intel-status { display: flex; align-items: center; gap: 8px; }
+    .intel-foot { margin-top: 10px; }
     .sk-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
     .sk-tabs button { border: 1px solid var(--border); background: rgba(255,255,255,0.8); border-radius: 999px; padding: 9px 16px; font: inherit; font-weight: 700; color: var(--gray-600); cursor: pointer; }
     .sk-tabs button[aria-selected="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
@@ -5476,6 +5477,7 @@ ${shape}`;
       ["healthcare", "🏥", "Healthcare"],
       ["accounting", "📊", "Accounting"],
       ["law", "⚖️", "Law"],
+      ["social", "📣", "Trending topics (social)"],
     ];
     let intelData = null;        // { fields: { key: { findings, summary, at, costUsd } } }
     const intelRunning = new Set();
@@ -5509,6 +5511,7 @@ ${shape}`;
             <span class="intel-card-side">${f?.at ? `<span class="intel-when">${esc(fmtWhen(f.at))}</span>` : ""}${admin ? `<button class="icon-btn" title="Refresh this field" ${busy ? "disabled" : ""} onclick="refreshIntel('${key}')">🔄</button>` : ""}</span>
           </div>
           ${body}
+          ${key === "social" && findings.length ? `<div class="intel-foot"><button class="btn btn-secondary btn-sm" type="button" onclick="switchView('social')">✍️ Turn these into posts →</button></div>` : ""}
         </div>`;
       }).join("");
 

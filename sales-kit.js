@@ -277,6 +277,13 @@ ${COMPANY.phone} · ${COMPANY.web}`;
   // Everyone ticked for the meeting (the deck's "prepared for" list). leadId is the primary one.
   const contacts = () => { const ids = new Set(state.contactIds || []); return (host?.leads() || []).filter(l => ids.has(l.id)); };
   const prospect = () => { const l = lead(); return l?.company || state.company || ""; };
+  // Refresh the "N of M selected" label in the contacts dropdown without a full redraw.
+  function updateContactSummary() {
+    if (!root) return;
+    const total = root.querySelectorAll('.sk-contact-dd input[data-sk="contact"]').length;
+    const el = root.querySelector('.sk-contact-dd .sk-dd-count');
+    if (el) el.textContent = `${(state.contactIds || []).length} of ${total} selected`;
+  }
   function industry() { const l = lead(); return l ? host.industryOf(l) : state.industry; }
 
   function loadFromLead(l) {
@@ -505,8 +512,14 @@ ${COMPANY.phone} · ${COMPANY.web}`;
           <input data-sk="company" value="${esc(picked ? "" : state.company)}" placeholder="…or type a company" class="sk-co-type"${picked ? " hidden" : ""}>
         </label>
         <div class="sk-pick-contacts">
-          <div class="sk-pick-head"><span>Contacts in the meeting</span>${people.length ? `<span class="sk-pick-mini"><button type="button" data-sk="contacts-all">All</button><button type="button" data-sk="contacts-none">None</button></span>` : ""}</div>
-          ${picked ? (people.length ? `<div class="sk-contact-list">${people.map(p => `<label class="sk-contact-chk"><input type="checkbox" data-sk="contact" data-id="${esc(p.id)}" ${(state.contactIds || []).includes(p.id) ? "checked" : ""}><span><b>${esc(p.name || "Unnamed")}</b>${p.title ? `<small>${esc(p.title)}</small>` : ""}</span></label>`).join("")}</div>`
+          <span class="sk-pick-label">Contacts in the meeting</span>
+          ${picked ? (people.length ? `<details class="sk-contact-dd">
+            <summary><span class="sk-dd-count">${(people.filter(p => (state.contactIds || []).includes(p.id)).length)} of ${people.length} selected</span><span class="sk-dd-caret" aria-hidden="true">▾</span></summary>
+            <div class="sk-contact-panel">
+              <div class="sk-pick-mini"><button type="button" data-sk="contacts-all">Select all</button><button type="button" data-sk="contacts-none">None</button></div>
+              <div class="sk-contact-list">${people.map(p => `<label class="sk-contact-chk"><input type="checkbox" data-sk="contact" data-id="${esc(p.id)}" ${(state.contactIds || []).includes(p.id) ? "checked" : ""}><span><b>${esc(p.name || "Unnamed")}</b>${p.title ? `<small>${esc(p.title)}</small>` : ""}</span></label>`).join("")}</div>
+            </div>
+          </details>`
             : `<span class="sk-hint">No contacts saved for this company. The deck still works with just the company name.</span>`)
             : `<span class="sk-hint">Pick a company to choose who's attending, or type a company name.</span>`}
         </div>
@@ -941,6 +954,10 @@ LinkedIn ${esc(COMPANY.linkedin)} · Instagram ${esc(COMPANY.instagram)} · Face
   }
 
   // ── events (delegated, so the panel can be re-drawn freely) ──
+  // Close the open contacts dropdown when clicking outside it.
+  document.addEventListener("click", e => {
+    root?.querySelectorAll(".sk-contact-dd[open]").forEach(d => { if (!d.contains(e.target)) d.removeAttribute("open"); });
+  });
   document.addEventListener("click", e => {
     const t = e.target.closest("[data-sk]");
     if (!t || !root?.contains(t)) return;
@@ -951,7 +968,10 @@ LinkedIn ${esc(COMPANY.linkedin)} · Instagram ${esc(COMPANY.instagram)} · Face
       state.contactIds = a === "contacts-all" ? grp.map(l => l.id) : [];
       state.leadId = state.contactIds[0] || "";
       loadFromLead(lead());
-      remember(); draw();
+      remember();
+      // Update in place so the dropdown stays open (a full redraw would collapse it).
+      root.querySelectorAll('.sk-contact-dd input[data-sk="contact"]').forEach(cb => { cb.checked = state.contactIds.includes(cb.dataset.id); });
+      updateContactSummary();
     }
     else if (a === "present") present(Number(t.dataset.v || 0));
     else if (a === "answer") { const id = t.dataset.id; state.answers[id] = state.answers[id] === t.dataset.v ? undefined : t.dataset.v; if (!state.answers[id]) delete state.answers[id]; draw(); }
@@ -988,7 +1008,8 @@ LinkedIn ${esc(COMPANY.linkedin)} · Instagram ${esc(COMPANY.instagram)} · Face
       state.contactIds = [...set];
       state.leadId = state.contactIds[0] || "";
       loadFromLead(lead());
-      remember(); draw();
+      remember();
+      updateContactSummary();   // update the count without redrawing, so the dropdown stays open
     } else if (a === "industry") { state.industry = t.value; remember(); draw(); }
     else if (a === "company") draw();
     else if (a === "q-pkg") { state.quote.pkg = t.value; remember(); draw(); }

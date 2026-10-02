@@ -3559,7 +3559,7 @@
     ];
     const COST_PAID = [
       { feature: "Research with Claude (cheap)", api: "Anthropic — claude-sonnet-5-5", key: "ANTHROPIC_API_KEY", cost: "~a few cents per person (shows cost after)" },
-      { feature: "🔎 Intel — Refresh research (on demand)", api: "Anthropic — claude-sonnet-5-5 (web search)", key: "ANTHROPIC_API_KEY", cost: "~10–25¢ per field; ~$1–2 all. Only runs when pressed" },
+      { feature: "🔎 Intel — Refresh research (on demand)", api: "Anthropic — claude-sonnet-5-5 (web search, deep)", key: "ANTHROPIC_API_KEY", cost: "~20–40¢ per field; ~$2–3 all. Only runs when pressed" },
       { feature: "Research with 1min.ai", api: "1min.ai", key: "ONEMIN_API_KEY", cost: "1min.ai credits" },
       { feature: "Scan company website (Research panel)", api: "Apify — contact-info-scraper", key: "APIFY_TOKEN", cost: "Free monthly allowance, then paid" },
       { feature: "🗺️ Find new leads (Google Maps)", api: "Apify — Google Places crawler", key: "APIFY_TOKEN", cost: "Paid per results pulled" },
@@ -5522,7 +5522,7 @@ ${shape}`;
         </div>
         <div class="intel-bar">
           ${admin ? `<button class="btn btn-primary" ${busy ? "disabled" : ""} onclick="refreshIntel('all')">${busy ? "Researching…" : "🔄 Refresh all"}</button>` : ""}
-          <span class="or-muted">${last ? `Last refreshed ${esc(fmtWhen(last))}` : "Not refreshed yet"}${admin ? " · about $1–2 for all fields, 10–25¢ for one" : ""}</span>
+          <span class="or-muted">${last ? `Last refreshed ${esc(fmtWhen(last))}` : "Not refreshed yet"}${admin ? " · about $2–3 for all fields, 20–40¢ for one" : ""}</span>
         </div>
         <div class="intel-grid">${cards}</div>`;
     }
@@ -5535,7 +5535,7 @@ ${shape}`;
       const res = await fetch(`${SHOT_READER_URL.replace(/\/+$/, "")}/research/intel`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-firebase-token": token },
-        body: JSON.stringify({ field, depth: "quick" })
+        body: JSON.stringify({ field, depth: "deep" })
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Intel research didn't work. Try again.");

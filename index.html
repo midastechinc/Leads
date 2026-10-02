@@ -436,6 +436,21 @@
     .sk-contact-chk small { font-weight: 500; color: var(--gray-500); font-size: 11px; }
     .sk-pick-ind { align-self: start; }
     @media (max-width: 760px) { .sk-bar-grid { grid-template-columns: 1fr; } }
+    /* Intel view */
+    .intel-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+    .intel-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
+    .intel-card { border: 1px solid var(--border); border-radius: 16px; background: rgba(255,255,255,0.7); padding: 14px 16px; }
+    .intel-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+    .intel-card-title { font-weight: 800; font-size: 14px; }
+    .intel-card-side { display: flex; align-items: center; gap: 8px; }
+    .intel-when { font-size: 11px; color: var(--gray-500); white-space: nowrap; }
+    .intel-list { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+    .intel-list li { font-size: 13px; line-height: 1.4; }
+    .intel-list li > div { color: var(--gray-700); margin-top: 2px; }
+    .intel-list a { color: var(--blue); text-decoration: none; }
+    .intel-date { font-size: 11px; color: var(--gray-500); font-weight: 600; }
+    .intel-empty, .intel-status { font-size: 13px; color: var(--gray-500); font-style: italic; }
+    .intel-status { display: flex; align-items: center; gap: 8px; }
     .sk-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
     .sk-tabs button { border: 1px solid var(--border); background: rgba(255,255,255,0.8); border-radius: 999px; padding: 9px 16px; font: inherit; font-weight: 700; color: var(--gray-600); cursor: pointer; }
     .sk-tabs button[aria-selected="true"] { background: var(--ink); color: #fff; border-color: var(--ink); }
@@ -1942,6 +1957,7 @@
         <button class="view-tab" data-v="saleskit" onclick="switchView('saleskit')"><span class="vt-ico" aria-hidden="true">💼</span><span class="vt-label">Sales Kit</span></button>
         <button class="view-tab" data-v="competitors" onclick="switchView('competitors')"><span class="vt-ico" aria-hidden="true">🥊</span><span class="vt-label">Competitors</span></button>
         <button class="view-tab" data-v="growth" onclick="switchView('growth')"><span class="vt-ico" aria-hidden="true">📈</span><span class="vt-label">Growth</span></button>
+        <button class="view-tab" data-v="intel" onclick="switchView('intel')"><span class="vt-ico" aria-hidden="true">🔎</span><span class="vt-label">Intel</span></button>
       </div>
       <div class="user-badge">
         <strong id="userDisplay">—</strong>
@@ -2293,6 +2309,12 @@
   <div class="view" id="view-growth">
     <div class="workspace" id="growthRoot">
       <div class="empty-workspace"><div class="big">📈</div><strong>Loading growth…</strong></div>
+    </div>
+  </div>
+
+  <div class="view" id="view-intel">
+    <div class="workspace" id="intelRoot">
+      <div class="empty-workspace"><div class="big">🔎</div><strong>Loading intel…</strong></div>
     </div>
   </div>
 
@@ -3482,6 +3504,7 @@
       if (v === "saleskit") window.SalesKit?.render(document.getElementById("salesKitRoot"), salesKitHost);
       if (v === "competitors") window.Competitors?.render(document.getElementById("competitorsRoot"), competitorsHost);
       if (v === "growth") window.Growth?.render(document.getElementById("growthRoot"), growthHost);
+      if (v === "intel") renderIntel();
     };
 
     function refreshLeadViews() {
@@ -3534,7 +3557,8 @@
       ["Competitors · Growth · Sales Kit content · Insurance checklist", "Static content — free"],
     ];
     const COST_PAID = [
-      { feature: "Research with Claude (cheap)", api: "Anthropic — claude-sonnet-5", key: "ANTHROPIC_API_KEY", cost: "~a few cents per person (shows cost after)" },
+      { feature: "Research with Claude (cheap)", api: "Anthropic — claude-sonnet-5-5", key: "ANTHROPIC_API_KEY", cost: "~a few cents per person (shows cost after)" },
+      { feature: "🔎 Intel — Refresh research (on demand)", api: "Anthropic — claude-sonnet-5-5 (web search)", key: "ANTHROPIC_API_KEY", cost: "~10–25¢ per field; ~$1–2 all. Only runs when pressed" },
       { feature: "Research with 1min.ai", api: "1min.ai", key: "ONEMIN_API_KEY", cost: "1min.ai credits" },
       { feature: "Scan company website (Research panel)", api: "Apify — contact-info-scraper", key: "APIFY_TOKEN", cost: "Free monthly allowance, then paid" },
       { feature: "🗺️ Find new leads (Google Maps)", api: "Apify — Google Places crawler", key: "APIFY_TOKEN", cost: "Paid per results pulled" },
@@ -5438,6 +5462,111 @@ ${shape}`;
       saveSettings: patch => saveAppSettings("growth", patch),
       securityScan: async domain => (await outreachCall("securityscan", { domain })).scan,
       toast: (m, t) => showToast(m, t)
+    };
+
+    // ── INTEL (on-demand field research) ───────────────────────────
+    // Press Refresh and Claude researches each field on the web (via the Railway /research/intel
+    // route, which holds ANTHROPIC_API_KEY). Findings are saved in appSettings/intel so the team
+    // sees the latest. Admins refresh (it costs per run); everyone can read.
+    const INTEL_FIELDS_UI = [
+      ["signals", "⚡", "Lead signals"],
+      ["competitors", "🥊", "Competitors"],
+      ["threats", "🔒", "Cybersecurity threats"],
+      ["compliance", "📋", "Compliance & insurance"],
+      ["healthcare", "🏥", "Healthcare"],
+      ["accounting", "📊", "Accounting"],
+      ["law", "⚖️", "Law"],
+    ];
+    let intelData = null;        // { fields: { key: { findings, summary, at, costUsd } } }
+    const intelRunning = new Set();
+
+    async function renderIntel() {
+      const root = document.getElementById("intelRoot");
+      if (!root) return;
+      if (!intelData) {
+        const saved = await loadAppSettings("intel");
+        intelData = saved && typeof saved === "object" ? { fields: saved.fields || {} } : { fields: {} };
+      }
+      const admin = isAdminUser();
+      const fields = intelData.fields || {};
+      const ats = INTEL_FIELDS_UI.map(([k]) => fields[k]?.at).filter(Boolean).map(a => new Date(a).getTime());
+      const last = ats.length ? new Date(Math.max(...ats)) : null;
+      const busy = intelRunning.size > 0;
+      const fmtWhen = a => a ? new Date(a).toLocaleString("en-CA", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "";
+
+      const cards = INTEL_FIELDS_UI.map(([key, icon, title]) => {
+        const f = fields[key];
+        const running = intelRunning.has(key);
+        const findings = f?.findings || [];
+        const body = running
+          ? `<div class="intel-status"><span class="rs-spin"></span> Researching…</div>`
+          : findings.length
+            ? `<ul class="intel-list">${findings.map(x => `<li><b>${esc(x.headline || "")}</b>${x.date ? ` <span class="intel-date">${esc(x.date)}</span>` : ""}<div>${esc(x.detail || "")}${realUrl(x.source) ? ` <a href="#" onclick="openUrl('${esc(realUrl(x.source))}');return false">source</a>` : ""}</div></li>`).join("")}</ul>`
+            : `<div class="intel-empty">${f ? "Nothing found last time." : "Not researched yet."}${admin ? " Press refresh to run it." : ""}</div>`;
+        return `<div class="intel-card">
+          <div class="intel-card-head">
+            <span class="intel-card-title">${icon} ${esc(title)}</span>
+            <span class="intel-card-side">${f?.at ? `<span class="intel-when">${esc(fmtWhen(f.at))}</span>` : ""}${admin ? `<button class="icon-btn" title="Refresh this field" ${busy ? "disabled" : ""} onclick="refreshIntel('${key}')">🔄</button>` : ""}</span>
+          </div>
+          ${body}
+        </div>`;
+      }).join("");
+
+      root.innerHTML = `
+        <div class="workspace-header">
+          <div><div class="workspace-title">🔎 Intel</div>
+            <div class="workspace-sub">On-demand market research. Press Refresh and Claude researches each field on the web, with sources. It only runs — and only costs — when you press it.</div></div>
+        </div>
+        <div class="intel-bar">
+          ${admin ? `<button class="btn btn-primary" ${busy ? "disabled" : ""} onclick="refreshIntel('all')">${busy ? "Researching…" : "🔄 Refresh all"}</button>` : ""}
+          <span class="or-muted">${last ? `Last refreshed ${esc(fmtWhen(last))}` : "Not refreshed yet"}${admin ? " · about $1–2 for all fields, 10–25¢ for one" : ""}</span>
+        </div>
+        <div class="intel-grid">${cards}</div>`;
+    }
+    window.renderIntel = renderIntel;
+
+    async function intelCall(field) {
+      if (!SHOT_READER_URL) throw new Error("Intel needs the Railway service.");
+      if (!auth.currentUser) throw new Error("Sign in again, then retry.");
+      const token = await auth.currentUser.getIdToken();
+      const res = await fetch(`${SHOT_READER_URL.replace(/\/+$/, "")}/research/intel`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-firebase-token": token },
+        body: JSON.stringify({ field, depth: "quick" })
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Intel research didn't work. Try again.");
+      return data;
+    }
+
+    window.refreshIntel = async function (which) {
+      if (!isAdminUser()) return showToast("Only admins can refresh intel", "error");
+      if (intelRunning.size) return;
+      if (!intelData) intelData = { fields: {} };
+      const keys = which === "all" ? INTEL_FIELDS_UI.map(([k]) => k) : [which];
+      keys.forEach(k => intelRunning.add(k));
+      renderIntel();
+      let total = 0, failed = 0;
+      for (const k of keys) {
+        try {
+          const { result = {}, stats = {} } = await intelCall(k);
+          intelData.fields[k] = {
+            findings: Array.isArray(result.findings) ? result.findings : [],
+            summary: String(result.summary || ""),
+            at: new Date().toISOString(),
+            costUsd: typeof stats.costUsd === "number" ? stats.costUsd : 0
+          };
+          total += intelData.fields[k].costUsd || 0;
+        } catch (e) {
+          failed++;
+          console.warn("intel", k, e);
+        }
+        intelRunning.delete(k);
+        renderIntel();  // fill in each card as it finishes
+      }
+      try { await saveAppSettings("intel", { fields: intelData.fields }); } catch {}
+      showToast(failed ? `Done, ${failed} field${failed === 1 ? "" : "s"} failed${total ? ` · about ${formatResearchCost(total)}` : ""}` : `Intel refreshed${total ? ` · about ${formatResearchCost(total)}` : ""}`, failed ? "error" : "success");
+      renderIntel();
     };
 
     // ── EMAIL OUTREACH ─────────────────────────────────────────────

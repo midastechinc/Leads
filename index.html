@@ -4719,7 +4719,7 @@
       // Contact details. Email/phone/website carry a manual verified badge (default: unverified).
       const vb = ok => `<span class="ld-vbadge ${ok ? "v-yes" : "v-no"}">${ok ? "✓ Verified" : "Unverified"}</span>`;
       const rows = [
-        ["Email", email ? `<a href="mailto:${esc(email)}">${esc(email)}</a>${emailNote ? ` <span class="ld-tag">${esc(emailNote)}</span>` : ""} ${vb(!!l.emailVerified)}` : ""],
+        ["Email", email ? `<a href="mailto:${esc(email)}">${esc(email)}</a>${(emailNote && !l.emailVerified) ? ` <span class="ld-tag">${esc(emailNote)}</span>` : ""} ${vb(!!l.emailVerified)}` : ""],
         ["Phone", phone ? `<a href="tel:${esc(phone)}">${esc(phone)}</a> ${vb(!!l.phoneVerified)}` : ""],
         ["Company", esc(l.company || "")],
         ["Title", esc(l.title || l.industry || "")],
@@ -4849,13 +4849,20 @@
       // for a lead someone else already owns (isLeadVisibleToCurrentUser above).
       const assignedToRaw = (document.getElementById("editLeadAssignedTo").value || "").trim();
 
+      // When the human ticks "Verified", the "(unverified)/(guess)" note the research
+      // engine left on the email is no longer true — drop it so the two signals can
+      // never contradict each other (and so Outreach stops treating it as a guess).
+      const emailVerifiedChecked = document.getElementById("editLeadEmailVerified").checked;
+      const rawEmail = cleanEmail(document.getElementById("editLeadEmail").value);
+      const email = emailVerifiedChecked ? (splitEmail(rawEmail).address || rawEmail) : rawEmail;
+
       const updates = {
         name: document.getElementById("editLeadName").value.trim(),
         company: document.getElementById("editLeadCompany").value.trim(),
-        email: cleanEmail(document.getElementById("editLeadEmail").value),
+        email,
         phone: cleanPhone(document.getElementById("editLeadPhone").value),
         website: document.getElementById("editLeadWebsite").value.trim(),
-        emailVerified: document.getElementById("editLeadEmailVerified").checked,
+        emailVerified: emailVerifiedChecked,
         phoneVerified: document.getElementById("editLeadPhoneVerified").checked,
         websiteVerified: document.getElementById("editLeadWebsiteVerified").checked,
         linkedin: document.getElementById("editLeadLinkedin").value.trim(),

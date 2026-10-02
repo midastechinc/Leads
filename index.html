@@ -869,6 +869,7 @@
     .ws-stat .l { font-size: 10px; color: var(--gray-400); text-transform: uppercase; letter-spacing: 0.10em; font-weight: 700; margin-top: 2px; }
     .ws-stat.urgent .n { color: var(--red); }
     .ws-stat.good   .n { color: var(--green); }
+    .ws-stat.new    .n { color: var(--blue); }
 
     /* Lead cards */
     .lead-queue { display: flex; flex-direction: column; gap: 12px; }
@@ -2055,6 +2056,7 @@
           <div class="workspace-sub" id="wsSub">Your assigned leads</div>
         </div>
         <div class="ws-stats">
+          <button type="button" class="ws-stat new" id="wsNewBtn" onclick="toggleWsNew()" title="Show only leads newly assigned to you that you haven't started (no activity logged yet)" aria-pressed="false"><div class="n" id="wsNewCount">0</div><div class="l">New to me</div></button>
           <button type="button" class="ws-stat urgent" id="wsFollowupBtn" onclick="toggleWsFollowup()" title="Show only leads that need a follow-up" aria-pressed="false"><div class="n" id="wsNeedsFollowup">0</div><div class="l">Follow-up</div></button>
           <div class="ws-stat"><div class="n" id="wsTotal">0</div><div class="l">Assigned</div></div>
           <div class="ws-stat good"><div class="n" id="wsContacted">0</div><div class="l">Contacted</div></div>
@@ -3974,6 +3976,7 @@
     // opens stay open across re-renders. A search opens every matching company.
     const wsOpenCompanies = new Set();
     let wsFollowupOnly = false;
+    let wsNewOnly = false;
     const WS_COLORS = ["#2563eb","#0891b2","#16a34a","#d97706","#7c3aed","#db2777","#0072BC","#4d4d4d"];
 
     function wsDaysSinceContact(l) {
@@ -3984,6 +3987,8 @@
     function wsIsDone(l) { return l.status === "Closed" || l.status === "Dead"; }
     // Same rule as the Follow-up counter: open, and never contacted or not in the last 3 days.
     function wsNeedsFollowup(l) { return !wsIsDone(l) && wsDaysSinceContact(l) > 3; }
+    // "New to me": assigned but not started yet — no activity logged, and still open.
+    function wsIsNew(l) { return !wsIsDone(l) && !(l.contactCount > 0); }
     function wsPriority(l) {
       if (wsIsDone(l)) return "done";
       const days = wsDaysSinceContact(l);
@@ -3995,6 +4000,12 @@
 
     window.toggleWsFollowup = function () {
       wsFollowupOnly = !wsFollowupOnly;
+      if (wsFollowupOnly) wsNewOnly = false;   // the two quick filters are either/or
+      renderWorkspace();
+    };
+    window.toggleWsNew = function () {
+      wsNewOnly = !wsNewOnly;
+      if (wsNewOnly) wsFollowupOnly = false;
       renderWorkspace();
     };
     window.setAllWsCompanies = function (open) {
@@ -4021,6 +4032,8 @@
       document.getElementById("wsNeedsFollowup").textContent = allMine.filter(wsNeedsFollowup).length;
       const fuBtn = document.getElementById("wsFollowupBtn");
       if (fuBtn) { fuBtn.classList.toggle("on", wsFollowupOnly); fuBtn.setAttribute("aria-pressed", String(wsFollowupOnly)); }
+      const newBtn = document.getElementById("wsNewBtn");
+      if (newBtn) { document.getElementById("wsNewCount").textContent = allMine.filter(wsIsNew).length; newBtn.classList.toggle("on", wsNewOnly); newBtn.setAttribute("aria-pressed", String(wsNewOnly)); }
       // Disabled / won't-contact toggles (shared with All Leads), always visible here too.
       const wsDis = document.getElementById("wsDisabledToggle");
       if (wsDis) { wsDis.hidden = false; wsDis.querySelector("b").textContent = mineAll.filter(l => l.disabled).length; wsDis.classList.toggle("on", showDisabledOnly); }
@@ -4031,6 +4044,7 @@
         (!hideWontContact || !l.wontContact) &&
         (!status || l.status === status) &&
         (!wsFollowupOnly || wsNeedsFollowup(l)) &&
+        (!wsNewOnly || wsIsNew(l)) &&
         (!search || [l.name, l.company, l.title, l.email].some(v => String(v||"").toLowerCase().includes(search)))
       );
       wsShownLeads = myLeads;
@@ -4071,20 +4085,21 @@
         contacts: (a,b) => (b.contacts - a.contacts) || byName(a,b)
       }[sort] || byName);
 
-      const filtered = search || status || wsFollowupOnly;
+      const filtered = search || status || wsFollowupOnly || wsNewOnly;
       const myCompanyCount = new Set(allMine.map(l => getCompanyGroupKey(l.company||""))).size;
       document.getElementById("wsSub").textContent =
         `${allMine.length} lead${allMine.length!==1?"s":""} at ${myCompanyCount} compan${myCompanyCount!==1?"ies":"y"}`;
       document.getElementById("wsSummaryLine").textContent = !myLeads.length ? "" :
         (filtered ? `Showing ${myLeads.length} lead${myLeads.length!==1?"s":""} at ${companies.length} compan${companies.length!==1?"ies":"y"}` : "") +
         (wsFollowupOnly ? " · needing follow-up" : "") +
+        (wsNewOnly ? " · new to you, not started" : "") +
         (filtered ? "" : "Tap a company to see its people.");
 
       const queue = document.getElementById("leadQueue");
       updateSelectionUi();
       if (!myLeads.length) {
         queue.innerHTML = allMine.length
-          ? `<div class="empty-workspace"><div class="big">🔎</div><strong>Nothing matches</strong><p>${wsFollowupOnly ? "No leads need a follow-up right now. Nice work." : "Try a different search or status."}</p></div>`
+          ? `<div class="empty-workspace"><div class="big">🔎</div><strong>Nothing matches</strong><p>${wsNewOnly ? "Nothing new and untouched — you've started on everything assigned to you. Nice." : wsFollowupOnly ? "No leads need a follow-up right now. Nice work." : "Try a different search or status."}</p></div>`
           : `<div class="empty-workspace"><div class="big">✅</div><strong>${me ? "No leads assigned to you" : "Set your name to see your leads"}</strong><p>${me ? "Leads assigned to you will appear here." : "Click Switch in the top right."}</p></div>`;
         return;
       }

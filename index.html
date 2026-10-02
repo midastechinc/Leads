@@ -1993,7 +1993,7 @@
         <option>Proposal</option><option>Closed</option><option>Dead</option>
         <option value="__followup">Needs follow-up</option>
       </select>
-      <select id="filterRep" onchange="applyFilters()"><option value="">All Reps</option></select>
+      <select id="filterRep" onchange="applyFilters()"><option value="">All Reps</option><option value="__unassigned__" selected>Unassigned</option></select>
       <select id="filterCountry" onchange="applyFilters()"><option value="">All Countries</option></select>
       <select id="filterTitle" onchange="applyFilters()"><option value="">All Titles</option></select>
       </div>
@@ -2075,6 +2075,8 @@
           <option value="name">Company A–Z</option>
           <option value="contacts">Most contacts</option>
         </select>
+        <button type="button" class="disabled-toggle" id="wsDisabledToggle" onclick="toggleShowDisabled()" title="Show contacts you disabled">🚫 Disabled (<b>0</b>)</button>
+        <button type="button" class="disabled-toggle" id="wsWontContactToggle" onclick="toggleHideWontContact()" title="Hide people you've marked 'Won't contact'">🙈 Hide won't-contact (<b>0</b>)</button>
         <div class="ws-expand">
           <label class="sel-all" title="Select every lead shown"><input type="checkbox" class="sel-check" id="wsSelAll" onchange="selectAllShownLeads(this.checked)"> Select all</label>
           <button type="button" onclick="setAllWsCompanies(true)">Expand all</button>
@@ -3521,7 +3523,7 @@
       const leads = getVisibleLeads().filter(l => !l.disabled);
       const disabledCount = getVisibleLeads().length - leads.length;
       const dBtn = document.getElementById("disabledToggle");
-      if (dBtn) { dBtn.hidden = !disabledCount && !showDisabledOnly; dBtn.querySelector("b").textContent = disabledCount; }
+      if (dBtn) { dBtn.hidden = false; dBtn.querySelector("b").textContent = disabledCount; }
       // Leave the disabled-only view once nothing is disabled any more.
       if (showDisabledOnly && !disabledCount) setTimeout(() => { if (showDisabledOnly) toggleShowDisabled(); }, 0);
       const n = s => leads.filter(l => l.status === s).length;
@@ -3559,7 +3561,7 @@
     ];
     const COST_PAID = [
       { feature: "Research with Claude (cheap)", api: "Anthropic — claude-sonnet-5-5", key: "ANTHROPIC_API_KEY", cost: "~a few cents per person (shows cost after)" },
-      { feature: "🔎 Intel — Refresh research (on demand)", api: "Anthropic — claude-sonnet-5-5 (web search)", key: "ANTHROPIC_API_KEY", cost: "~10–25¢ per field; ~$1–2 all. Only runs when pressed" },
+      { feature: "🔎 Intel — Refresh research (on demand)", api: "Anthropic — claude-sonnet-5-5 (web search, deep)", key: "ANTHROPIC_API_KEY", cost: "~20–40¢ per field; ~$2–3 all. Only runs when pressed" },
       { feature: "Research with 1min.ai", api: "1min.ai", key: "ONEMIN_API_KEY", cost: "1min.ai credits" },
       { feature: "Scan company website (Research panel)", api: "Apify — contact-info-scraper", key: "APIFY_TOKEN", cost: "Free monthly allowance, then paid" },
       { feature: "🗺️ Find new leads (Google Maps)", api: "Apify — Google Places crawler", key: "APIFY_TOKEN", cost: "Paid per results pulled" },
@@ -3621,7 +3623,12 @@
         sel.innerHTML = `<option value="">${label}</option>` +
           values.map(v => `<option${v===cur?" selected":""}>${esc(v)}</option>`).join("");
       };
-      setOpts("filterRep",     [...new Set(leads.map(l=>l.assignedTo).filter(Boolean))].sort(), "All Reps");
+      (() => {  // filterRep keeps an "Unassigned" option (the default) alongside the reps
+        const sel = document.getElementById("filterRep"), cur = sel.value;
+        const reps = [...new Set(leads.map(l => l.assignedTo).filter(Boolean))].sort();
+        sel.innerHTML = `<option value="">All Reps</option><option value="__unassigned__"${cur === "__unassigned__" ? " selected" : ""}>Unassigned</option>`
+          + reps.map(v => `<option${v === cur ? " selected" : ""}>${esc(v)}</option>`).join("");
+      })();
       setOpts("filterCountry", [...new Set(leads.map(l=>l.country).filter(Boolean))].sort(),    "All Countries");
       setOpts("filterTitle",   [...new Set(leads.map(l=>l.title||l.industry).filter(Boolean))].sort(), "All Titles");
     }
@@ -3643,7 +3650,7 @@
                        email.toLowerCase().includes(search) ||
                        (l.title||"").toLowerCase().includes(search)) &&
           (!status  || (status === "__followup" ? !!leadFollowUp(l) : l.status === status)) &&
-          (!rep     || l.assignedTo === rep) &&
+          (!rep     || (rep === "__unassigned__" ? !l.assignedTo : l.assignedTo === rep)) &&
           (!country || (l.country||"") === country) &&
           (!title   || (l.title||l.industry||"").includes(title))
         );
@@ -3651,7 +3658,7 @@
       const wcCount = getVisibleLeads().filter(l => !l.disabled && l.wontContact).length;
       const wcBtn = document.getElementById("wontContactToggle");
       if (wcBtn) {
-        wcBtn.hidden = showDisabledOnly || (!wcCount && !hideWontContact);
+        wcBtn.hidden = false;
         wcBtn.querySelector("b").textContent = wcCount;
         wcBtn.classList.toggle("on", hideWontContact);
       }
@@ -3682,9 +3689,11 @@
     window.toggleShowDisabled = function () {
       showDisabledOnly = !showDisabledOnly;
       document.getElementById("disabledToggle")?.classList.toggle("on", showDisabledOnly);
+      document.getElementById("wsDisabledToggle")?.classList.toggle("on", showDisabledOnly);
       selectedLeadIds.clear();
       applyFilters();
       updateMetrics();
+      if (activeView === "workspace") renderWorkspace();
     };
     // ── WON'T-CONTACT CONTACTS ─────────────────────────────────────
     // People you've decided not to reach out to (e.g. reception, assistants). They stay in the
@@ -3694,7 +3703,9 @@
     window.toggleHideWontContact = function () {
       hideWontContact = !hideWontContact;
       document.getElementById("wontContactToggle")?.classList.toggle("on", hideWontContact);
+      document.getElementById("wsWontContactToggle")?.classList.toggle("on", hideWontContact);
       applyFilters();
+      if (activeView === "workspace") renderWorkspace();
     };
     window.setLeadsWontContact = async function (ids, flag) {
       const leads = ids.map(id => allLeads[id]).filter(Boolean);
@@ -3999,7 +4010,8 @@
       const status  = document.getElementById("wsFilterStatus")?.value || "";
       const sort    = document.getElementById("wsSort")?.value || "priority";
 
-      const allMine = getVisibleLeads().filter(l => l.assignedTo === me && !l.disabled);
+      const mineAll = getVisibleLeads().filter(l => l.assignedTo === me);
+      const allMine = mineAll.filter(l => showDisabledOnly ? l.disabled : !l.disabled);
 
       // Stats cover everything assigned to me, whatever the filters.
       document.getElementById("wsTitle").textContent = `${me}'s Workspace`;
@@ -4009,6 +4021,11 @@
       document.getElementById("wsNeedsFollowup").textContent = allMine.filter(wsNeedsFollowup).length;
       const fuBtn = document.getElementById("wsFollowupBtn");
       if (fuBtn) { fuBtn.classList.toggle("on", wsFollowupOnly); fuBtn.setAttribute("aria-pressed", String(wsFollowupOnly)); }
+      // Disabled / won't-contact toggles (shared with All Leads), always visible here too.
+      const wsDis = document.getElementById("wsDisabledToggle");
+      if (wsDis) { wsDis.hidden = false; wsDis.querySelector("b").textContent = mineAll.filter(l => l.disabled).length; wsDis.classList.toggle("on", showDisabledOnly); }
+      const wsWc = document.getElementById("wsWontContactToggle");
+      if (wsWc) { wsWc.hidden = false; wsWc.querySelector("b").textContent = mineAll.filter(l => !l.disabled && l.wontContact).length; wsWc.classList.toggle("on", hideWontContact); }
 
       const myLeads = allMine.filter(l =>
         (!hideWontContact || !l.wontContact) &&
@@ -5522,7 +5539,7 @@ ${shape}`;
         </div>
         <div class="intel-bar">
           ${admin ? `<button class="btn btn-primary" ${busy ? "disabled" : ""} onclick="refreshIntel('all')">${busy ? "Researching…" : "🔄 Refresh all"}</button>` : ""}
-          <span class="or-muted">${last ? `Last refreshed ${esc(fmtWhen(last))}` : "Not refreshed yet"}${admin ? " · about $1–2 for all fields, 10–25¢ for one" : ""}</span>
+          <span class="or-muted">${last ? `Last refreshed ${esc(fmtWhen(last))}` : "Not refreshed yet"}${admin ? " · about $2–3 for all fields, 20–40¢ for one" : ""}</span>
         </div>
         <div class="intel-grid">${cards}</div>`;
     }
@@ -5535,7 +5552,7 @@ ${shape}`;
       const res = await fetch(`${SHOT_READER_URL.replace(/\/+$/, "")}/research/intel`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-firebase-token": token },
-        body: JSON.stringify({ field, depth: "quick" })
+        body: JSON.stringify({ field, depth: "deep" })
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.error || "Intel research didn't work. Try again.");

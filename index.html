@@ -5512,6 +5512,12 @@ ${shape}`;
 
     // ── which leads can be emailed ──
     function outreachEmail(lead) { return splitEmail(cleanEmail(lead?.email)).address; }
+    // Accounting firms are buried in tax season — don't email them Feb 1 through Jun 15 (most personal
+    // returns are due Apr 30, self-employed Jun 15). Their sequence resumes on its own on Jun 16.
+    function inAccountingTaxSeason(d = new Date()) {
+      const m = d.getMonth(), day = d.getDate();   // Jan = 0
+      return m === 1 || m === 2 || m === 3 || m === 4 || (m === 5 && day <= 15);  // Feb 1 – Jun 15
+    }
     // Returns why a lead can't be emailed, or "" when it can.
     function outreachBlocker(lead) {
       if (!lead) return "Lead not found";
@@ -5525,6 +5531,8 @@ ${shape}`;
       // CASL: cold email only goes to addresses the business published. Guessed addresses are skipped.
       if (/unverified|guess|pattern|not found/i.test(note)) return "Email is a guess, not a published address";
       if (lead.outreach?.emailCheck?.status === "invalid") return `Email doesn't work (${lead.outreach.emailCheck.reason || "invalid"})`;
+      // Don't pitch accounting firms during tax season — it resumes after Jun 15.
+      if (detectFirmType(lead) === "accounting" && inAccountingTaxSeason()) return "Paused — accounting tax season (resumes June 16)";
       return "";
     }
     const outreachActive = l => l?.outreach?.status === "active" && !l.doNotContact && !l.disabled && !l.wontContact;

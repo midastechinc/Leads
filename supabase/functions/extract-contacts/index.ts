@@ -16,7 +16,7 @@
 // Microsoft 365 mailbox (POST /outreach/*, plus the public unsubscribe page /u, see outreach.ts).
 import Anthropic from "npm:@anthropic-ai/sdk";
 import { createRemoteJWKSet, jwtVerify } from "npm:jose@5";
-import { type CompanyInput, type LeadInput, ResearchError, researchCompany, researchLead } from "./research.ts";
+import { type CompanyInput, INTEL_FIELDS, type LeadInput, ResearchError, researchCompany, researchField, researchLead } from "./research.ts";
 import { ApifyError, findPlaces, scanWebsite } from "./apify.ts";
 import {
   checkDomains, checkReplies, confirmUnsubscribe, OutreachError, outreachStatus, securityScan, sendOutreach, unsubscribe, verifyEmails,
@@ -204,6 +204,37 @@ async function handleResearch(req: Request): Promise<Response> {
   }
 }
 
+// Body: { field, depth }. Runs one Intel "field agent" (web research on a topic).
+async function handleIntel(req: Request): Promise<Response> {
+  let body: { field?: string; depth?: string };
+  try {
+    body = await req.json();
+  } catch {
+    return json(req, 400, { error: "The request wasn't valid JSON." });
+  }
+  const field = String(body.field ?? "");
+  if (!INTEL_FIELDS[field]) return json(req, 400, { error: "Unknown research field." });
+  const depth = body.depth === "deep" ? "deep" : "quick";
+  try {
+    const { result, stats } = await researchField(client, field, depth);
+    console.log("intel done:", JSON.stringify({ field, ...stats }));
+    return json(req, 200, { result, stats });
+  } catch (err) {
+    if (err instanceof ResearchError) return json(req, err.status, { error: err.message });
+    if (err instanceof Anthropic.RateLimitError) return json(req, 429, { error: "The research service is busy. Wait a minute and try again." });
+    if (err instanceof Anthropic.AuthenticationError || err instanceof Anthropic.PermissionDeniedError) {
+      console.error("Anthropic key problem:", err.message);
+      return json(req, 500, { error: "The research service's API key isn't working. Check ANTHROPIC_API_KEY on the server." });
+    }
+    if (err instanceof Anthropic.APIError) {
+      console.error("Anthropic API error:", err.status, err.message);
+      return json(req, 502, { error: "The research service had a problem. Try again in a moment." });
+    }
+    console.error("intel failed:", err);
+    return json(req, 500, { error: "Something went wrong running this research." });
+  }
+}
+
 // Body for places: { query, location, max }. Body for website: { website }.
 async function handleApify(req: Request, kind: "places" | "website"): Promise<Response> {
   let body: { query?: string; location?: string; max?: number; website?: string };
@@ -308,6 +339,7 @@ Deno.serve(PORT ? { port: Number(PORT) } : {}, async (req) => {
   const oneMin = path.match(/^\/1min\/([a-z-]+)\/?$/);
   if (oneMin) return relayOneMin(req, oneMin[1]);
   if (/^\/llm\/chat\/?$/.test(path)) return relayGateway(req);
+  if (/^\/research\/intel\/?$/.test(path)) return handleIntel(req);
   if (/^\/research\/?$/.test(path)) return handleResearch(req);
   const outreach = path.match(/^\/outreach\/([a-z]+)\/?$/);
   if (outreach) return handleOutreach(req, outreach[1]);

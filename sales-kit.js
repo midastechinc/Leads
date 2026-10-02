@@ -265,15 +265,17 @@ ${COMPANY.phone} · ${COMPANY.web}`;
 
   let host = null;
   let root = null;
-  const state = { tab: "deck", leadId: "", company: "", industry: "generic", packages: null, addons: null, settingsLoaded: false,
+  const state = { tab: "deck", leadId: "", company: "", contactIds: [], industry: "generic", packages: null, addons: null, settingsLoaded: false,
     answers: {}, notes: "", heard: {}, cost: {}, proof: null, extras: false, quote: { pkg: "business", users: 10, addons: {}, waive: true }, slide: 0,
     scanDomain: "", scan: null, scanning: false, scanError: "" };
   try { Object.assign(state, JSON.parse(localStorage.getItem("midas-saleskit-ui") || "{}"), { slide: 0 }); } catch {}
-  const remember = () => { try { localStorage.setItem("midas-saleskit-ui", JSON.stringify({ tab: state.tab, leadId: state.leadId, company: state.company, industry: state.industry, quote: state.quote, extras: state.extras })); } catch {} };
+  const remember = () => { try { localStorage.setItem("midas-saleskit-ui", JSON.stringify({ tab: state.tab, leadId: state.leadId, company: state.company, contactIds: state.contactIds, industry: state.industry, quote: state.quote, extras: state.extras })); } catch {} };
 
   const packages = () => state.packages || DEFAULT_PACKAGES;
   const addons = () => state.addons || DEFAULT_ADDONS;
   const lead = () => (host?.leads() || []).find(l => l.id === state.leadId) || null;
+  // Everyone ticked for the meeting (the deck's "prepared for" list). leadId is the primary one.
+  const contacts = () => { const ids = new Set(state.contactIds || []); return (host?.leads() || []).filter(l => ids.has(l.id)); };
   const prospect = () => { const l = lead(); return l?.company || state.company || ""; };
   function industry() { const l = lead(); return l ? host.industryOf(l) : state.industry; }
 
@@ -340,7 +342,8 @@ ${COMPANY.phone} · ${COMPANY.web}`;
     const res = assessmentScore(state.answers);
     const dc = l?.domainCheck && DOMAIN_RISKS.includes(l.domainCheck.finding) ? l.domainCheck : null;
     const date = new Date().toLocaleDateString("en-CA", { year: "numeric", month: "long", day: "numeric" });
-    const who = l?.name && l.name !== l.company ? l.name : "";
+    const picked = contacts().map(c => c.name).filter(n => n && n !== coName);
+    const who = picked.length ? picked.join(", ") : (l?.name && l.name !== l.company ? l.name : "");
     const list = [];
 
     list.push({ cls: "sk-s-title", html: `<img src="midas-logo.png" alt="Midas Tech" class="sk-logo" onerror="this.remove()">
@@ -481,18 +484,35 @@ ${COMPANY.phone} · ${COMPANY.web}`;
 
   function draw() {
     if (!root) return;
-    const leads = (host.leads() || []).slice().sort((a, b) => String(a.company || a.name).localeCompare(String(b.company || b.name)));
+    // Group the rep's leads by company so the meeting picker shows companies, then their people.
+    const byCompany = new Map();
+    (host.leads() || []).forEach(l => {
+      const key = (l.company || "").trim() || (l.name || "").trim() || "—";
+      if (!byCompany.has(key)) byCompany.set(key, { company: key, people: [] });
+      byCompany.get(key).people.push(l);
+    });
+    const companies = [...byCompany.values()].sort((a, b) => a.company.localeCompare(b.company));
+    const picked = state.company && byCompany.has(state.company) ? byCompany.get(state.company) : null;
+    const people = picked ? picked.people.slice().sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""))) : [];
     root.innerHTML = `
       <div class="workspace-header">
         <div><div class="workspace-title">Sales Kit</div>
           <div class="workspace-sub">Everything for a client meeting: the deck, what to ask, packages and prices, and what other Ontario MSPs offer.</div></div>
       </div>
-      <div class="sk-bar">
-        <label>Meeting with
-          <select data-sk="lead"><option value="">— Pick a lead —</option>${leads.map(l => `<option value="${esc(l.id)}" ${l.id === state.leadId ? "selected" : ""}>${esc(l.company || l.name)}${l.company && l.name && l.name !== l.company ? ` — ${esc(l.name)}` : ""}</option>`).join("")}</select></label>
-        ${state.leadId ? "" : `<label>or type a company<input data-sk="company" value="${esc(state.company)}" placeholder="Company name"></label>
-        <label>Industry<select data-sk="industry">${Object.entries(INDUSTRY_LABEL).map(([k, v]) => `<option value="${k}" ${k === state.industry ? "selected" : ""}>${esc(v)}</option>`).join("")}</select></label>`}
-        ${state.leadId ? `<span class="sk-chip">${esc(INDUSTRY_LABEL[industry()])}</span>` : ""}
+      <div class="sk-bar sk-bar-grid">
+        <label class="sk-pick-co">Company
+          <select data-sk="company-pick"><option value="">— Pick a company —</option>${companies.map(c => `<option value="${esc(c.company)}" ${c.company === state.company ? "selected" : ""}>${esc(c.company)} (${c.people.length})</option>`).join("")}</select>
+          <input data-sk="company" value="${esc(picked ? "" : state.company)}" placeholder="…or type a company" class="sk-co-type"${picked ? " hidden" : ""}>
+        </label>
+        <div class="sk-pick-contacts">
+          <div class="sk-pick-head"><span>Contacts in the meeting</span>${people.length ? `<span class="sk-pick-mini"><button type="button" data-sk="contacts-all">All</button><button type="button" data-sk="contacts-none">None</button></span>` : ""}</div>
+          ${picked ? (people.length ? `<div class="sk-contact-list">${people.map(p => `<label class="sk-contact-chk"><input type="checkbox" data-sk="contact" data-id="${esc(p.id)}" ${(state.contactIds || []).includes(p.id) ? "checked" : ""}><span><b>${esc(p.name || "Unnamed")}</b>${p.title ? `<small>${esc(p.title)}</small>` : ""}</span></label>`).join("")}</div>`
+            : `<span class="sk-hint">No contacts saved for this company. The deck still works with just the company name.</span>`)
+            : `<span class="sk-hint">Pick a company to choose who's attending, or type a company name.</span>`}
+        </div>
+        <label class="sk-pick-ind">Industry
+          ${picked ? `<span class="sk-chip">${esc(INDUSTRY_LABEL[industry()])}</span>` : `<select data-sk="industry">${Object.entries(INDUSTRY_LABEL).map(([k, v]) => `<option value="${k}" ${k === state.industry ? "selected" : ""}>${esc(v)}</option>`).join("")}</select>`}
+        </label>
       </div>
       <div class="sk-tabs" role="tablist">${TABS.map(([k, n]) => `<button type="button" role="tab" data-sk="tab" data-v="${k}" aria-selected="${state.tab === k}">${n}</button>`).join("")}</div>
       <div class="sk-panel">${state.tab === "deck" ? deckHtml() : state.tab === "guide" ? guideHtml() : state.tab === "security" ? securityHtml() : state.tab === "packages" ? packagesHtml() : marketHtml()}</div>`;
@@ -926,6 +946,13 @@ LinkedIn ${esc(COMPANY.linkedin)} · Instagram ${esc(COMPANY.instagram)} · Face
     if (!t || !root?.contains(t)) return;
     const a = t.dataset.sk;
     if (a === "tab") { state.tab = t.dataset.v; remember(); draw(); }
+    else if (a === "contacts-all" || a === "contacts-none") {
+      const grp = (host.leads() || []).filter(l => (((l.company || "").trim()) || ((l.name || "").trim())) === state.company);
+      state.contactIds = a === "contacts-all" ? grp.map(l => l.id) : [];
+      state.leadId = state.contactIds[0] || "";
+      loadFromLead(lead());
+      remember(); draw();
+    }
     else if (a === "present") present(Number(t.dataset.v || 0));
     else if (a === "answer") { const id = t.dataset.id; state.answers[id] = state.answers[id] === t.dataset.v ? undefined : t.dataset.v; if (!state.answers[id]) delete state.answers[id]; draw(); }
     else if (a === "clear-assessment") { if (confirm("Clear the answers and notes?")) { state.answers = {}; state.notes = ""; state.heard = {}; state.cost = {}; draw(); } }
@@ -947,8 +974,19 @@ LinkedIn ${esc(COMPANY.linkedin)} · Instagram ${esc(COMPANY.instagram)} · Face
     const t = e.target.closest("[data-sk]");
     if (!t || !root?.contains(t)) return;
     const a = t.dataset.sk;
-    if (a === "lead") {
-      state.leadId = t.value;
+    if (a === "company-pick") {
+      state.company = t.value;
+      const grp = (host.leads() || []).filter(l => (((l.company || "").trim()) || ((l.name || "").trim())) === t.value);
+      state.contactIds = grp.map(l => l.id);            // default: everyone at the company is in the meeting
+      state.leadId = grp[0]?.id || "";
+      if (grp[0]) state.industry = host.industryOf(grp[0]);
+      loadFromLead(lead());
+      remember(); draw();
+    } else if (a === "contact") {
+      const id = t.dataset.id, set = new Set(state.contactIds || []);
+      if (t.checked) set.add(id); else set.delete(id);
+      state.contactIds = [...set];
+      state.leadId = state.contactIds[0] || "";
       loadFromLead(lead());
       remember(); draw();
     } else if (a === "industry") { state.industry = t.value; remember(); draw(); }

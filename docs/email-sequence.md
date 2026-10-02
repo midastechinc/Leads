@@ -49,6 +49,8 @@ Personal addresses (gmail, rogers, and so on) are skipped. If a DNS lookup times
 
 Timing is roughly **days 1, 4, 9 and 16**: 3, 4 and 5 business days apart. Out-of-office replies push the next email back.
 
+**Accounting tax-season pause.** Leads whose industry is detected as accounting are not emailed between **February 1 and June 15** (most personal returns are due April 30, self-employed June 15). In the Outreach queue they show *"Paused — accounting tax season (resumes June 16)"* and the sequence continues on its own afterward. Law firms and other industries are unaffected.
+
 ### 1. Opener (no pitch)
 
 Email 1 picks its opening in this order: **a trigger** if you set one, then **a domain finding**, then **the industry "why now" line**. When a trigger leads, a domain finding moves to email 2, so it's never lost.

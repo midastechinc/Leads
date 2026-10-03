@@ -12,8 +12,10 @@
 // and /1min/features), so the 1min.ai key (ONEMIN_API_KEY) stays on the server too,
 // researches leads on the web (POST /research, see research.ts), runs Apify scrapers
 // (POST /apify/places and /apify/website, see apify.ts), relays chat requests to the
-// Midas LLM gateway (POST /llm/chat) with LLM_GATEWAY_KEY, and sends outreach email from a
-// Microsoft 365 mailbox (POST /outreach/*, plus the public unsubscribe page /u, see outreach.ts).
+// Midas LLM gateway (POST /llm/chat) with LLM_GATEWAY_KEY, sends outreach email from a
+// Microsoft 365 mailbox (POST /outreach/*, plus the public unsubscribe page /u, see outreach.ts),
+// and reads/writes the app's self-hosted Supabase tables and post images with the service-role
+// key (POST /db and /storage/social-post-image, see db.ts), so the browser needs no Supabase key.
 import Anthropic from "npm:@anthropic-ai/sdk";
 import { createRemoteJWKSet, jwtVerify } from "npm:jose@5";
 import { type CompanyInput, INTEL_FIELDS, type LeadInput, ResearchError, researchCompany, researchField, researchLead } from "./research.ts";
@@ -21,6 +23,7 @@ import { ApifyError, findPlaces, scanWebsite } from "./apify.ts";
 import {
   checkDomains, checkReplies, confirmUnsubscribe, OutreachError, outreachStatus, securityScan, sendOutreach, unsubscribe, verifyEmails,
 } from "./outreach.ts";
+import { DbError, type DbRequest, type ImageUpload, MAX_DB_BODY_CHARS, runDb, uploadSocialPostImage } from "./db.ts";
 
 const FIREBASE_PROJECT_ID = Deno.env.get("FIREBASE_PROJECT_ID") ?? "midas-leads-a8b13";
 const FIREBASE_JWKS = createRemoteJWKSet(new URL(
@@ -303,6 +306,26 @@ async function handleOutreach(req: Request, action: string): Promise<Response> {
   }
 }
 
+// POST /db and POST /storage/social-post-image (see db.ts). Answers { data } or { error }.
+async function handleDb(req: Request, kind: "db" | "image"): Promise<Response> {
+  let body: DbRequest & ImageUpload;
+  try {
+    const raw = await req.text();
+    if (raw.length > (kind === "image" ? 8_500_000 : MAX_DB_BODY_CHARS)) return json(req, 413, { error: "That request is too large." });
+    body = JSON.parse(raw);
+  } catch {
+    return json(req, 400, { error: "The request wasn't valid JSON." });
+  }
+  try {
+    if (kind === "image") return json(req, 200, await uploadSocialPostImage(body));
+    return json(req, 200, { data: await runDb(body) });
+  } catch (err) {
+    if (err instanceof DbError) return json(req, err.status, { error: err.message, notConfigured: err.status === 503 });
+    console.error("db proxy failed:", err);
+    return json(req, 502, { error: "Couldn't reach the database. Try again in a moment." });
+  }
+}
+
 async function signedInUser(req: Request): Promise<string | null> {
   const token = req.headers.get("x-firebase-token");
   if (!token) return null;
@@ -343,6 +366,8 @@ Deno.serve(PORT ? { port: Number(PORT) } : {}, async (req) => {
   if (/^\/research\/?$/.test(path)) return handleResearch(req);
   const outreach = path.match(/^\/outreach\/([a-z]+)\/?$/);
   if (outreach) return handleOutreach(req, outreach[1]);
+  if (/^\/db\/?$/.test(path)) return handleDb(req, "db");
+  if (/^\/storage\/social-post-image\/?$/.test(path)) return handleDb(req, "image");
   if (/^\/apify\/(places|website)\/?$/.test(path)) return handleApify(req, path.includes("places") ? "places" : "website");
 
   let body: { image?: string; mediaType?: string; company?: string; website?: string };

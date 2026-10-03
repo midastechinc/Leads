@@ -758,7 +758,7 @@ body.lt-shell .saved-filters .filter-input,body.lt-shell .saved-filters .filter-
   </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="lead-tracker-db.js"></script>
 <script type="module">
 // Uses the lead tracker's Firebase sign-in (same site, so it's shared) to prove to the
 // AI server that the request comes from a signed-in user.
@@ -774,11 +774,10 @@ const authReady = new Promise(resolve => { const stop = onAuthStateChanged(auth,
 window.getLeadTrackerIdToken = async () => { await authReady; return auth.currentUser ? auth.currentUser.getIdToken() : ""; };
 </script>
 <script>
-// ── LeadTracker Supabase client (must be defined before any startup code below runs) ──
-const LEADTRACKER_SUPABASE = {
-  url: 'https://supabase.midastech.support',
-  key: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzgxNDY5NDA4LCJleHAiOjE5MzkxNDk0MDh9.msVxeoYaYr_Z0D0VqsoKtzSRUshwrZqnfCSMVdeTUAE'
-};
+// ── LeadTracker data client (must be defined before any startup code below runs) ──
+// social_posts / settings and post images go through the Railway service (/db, /storage/...),
+// which checks the Firebase sign-in and holds the database key. No Supabase key in this page.
+const LEADTRACKER_SERVER_URL = 'https://leads-production-2ad0.up.railway.app';
 let leadTrackerSupabase = null;
 // ── Logos ─────────────────────────────────────────────────────────────────\r\nconst LOGO_SRC = './midas-logo.png';\r\nconst logoDark = new Image(); logoDark.src = LOGO_SRC;\r\nconst logoLight = new Image(); logoLight.src = LOGO_SRC;\r\n
 // ── Mode toggle ──────────────────────────────────────────────────────────────
@@ -1016,21 +1015,15 @@ async function buildPersistentFallbackDataUrl(post, isIG) {
 
 async function uploadDataUrlToStorage(dataUrl, path) {
   const db = getLeadTrackerClient();
-  if (!db?.storage) return '';
+  if (!db) return '';
   try {
-    const res = await fetch(dataUrl);
-    const blob = await res.blob();
-    const { error } = await db.storage.from(SOCIAL_POST_IMAGE_BUCKET).upload(path, blob, {
-      contentType: blob.type || 'image/jpeg',
-      cacheControl: '31536000',
-      upsert: true
-    });
+    const contentType = (String(dataUrl).match(/^data:([^;,]+)/) || [])[1] || 'image/jpeg';
+    const { publicUrl, error } = await db.uploadSocialPostImage(path, dataUrl, contentType);
     if (error) {
       console.warn(`Could not upload image to bucket "${SOCIAL_POST_IMAGE_BUCKET}":`, error);
       return '';
     }
-    const { data } = db.storage.from(SOCIAL_POST_IMAGE_BUCKET).getPublicUrl(path);
-    return data?.publicUrl || '';
+    return publicUrl || '';
   } catch (err) {
     console.warn(`Image persistence skipped for bucket "${SOCIAL_POST_IMAGE_BUCKET}":`, err);
     return '';
@@ -1039,7 +1032,7 @@ async function uploadDataUrlToStorage(dataUrl, path) {
 
 async function persistCardImage(card, post, isIG, preferredDataUrl) {
   const dataUrl = preferredDataUrl || await buildPersistentFallbackDataUrl(post, isIG);
-  const path = `${card.dataset.platform || 'post'}/${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}.jpg`;
+  const path = `${String(card.dataset.platform || 'post').toLowerCase().replace(/[^a-z0-9_-]/g, '') || 'post'}/${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}.jpg`;
   return await uploadDataUrlToStorage(dataUrl, path);
 }
 
@@ -1145,8 +1138,12 @@ const PREFERRED_SOURCE_GUIDE = PREFERRED_CYBER_NEWS_SOURCES
   .join('\n');
 
 function getLeadTrackerClient() {
-  if (!leadTrackerSupabase && window.supabase) {
-    leadTrackerSupabase = window.supabase.createClient(LEADTRACKER_SUPABASE.url, LEADTRACKER_SUPABASE.key);
+  if (!leadTrackerSupabase && window.createLeadTrackerDb) {
+    leadTrackerSupabase = window.createLeadTrackerDb(LEADTRACKER_SERVER_URL, async () => {
+      // The Firebase sign-in helper is set up by a module script, which runs after this one.
+      for (let i = 0; i < 100 && !window.getLeadTrackerIdToken; i++) await new Promise(r => setTimeout(r, 100));
+      return window.getLeadTrackerIdToken ? window.getLeadTrackerIdToken() : '';
+    });
   }
   return leadTrackerSupabase;
 }

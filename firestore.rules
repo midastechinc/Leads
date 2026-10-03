@@ -1,0 +1,92 @@
+rules_version = '2';
+
+// Lead Tracker (midas-leads-a8b13) Firestore rules.
+//
+// Only the accounts listed in allowedEmails() can read or write anything.
+// Signing in with any other account (for example one created through open
+// email/password sign-up) gets "permission denied" everywhere.
+//
+// To add or remove a person: edit allowedEmails() below AND the backend's
+// ALLOWED_EMAILS (Railway variable, or the default in
+// supabase/functions/extract-contacts/index.ts), then deploy the rules.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function allowedEmails() {
+      return [
+        'ali@midastech.ca',
+        'ambreen@midastech.ca',
+        'scout@midastech.ca',
+        'hjaffar2014@gmail.com',
+        'hannahjaffar2010@gmail.com'
+      ];
+    }
+
+    // None of the current accounts has a verified email (they were all created
+    // with email/password and never sent a verification link), so requiring
+    // email_verified today would lock everyone out. Exact-address matching is
+    // safe because Firebase allows only one account per email address and all
+    // of these addresses already have accounts. Once everyone has verified,
+    // add:  && request.auth.token.email_verified == true
+    function isAllowed() {
+      return request.auth != null
+        && request.auth.token.email is string
+        && request.auth.token.email.lower() in allowedEmails();
+    }
+
+    function isAdmin() {
+      return isAllowed()
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // ── User profiles ───────────────────────────────────────────────
+    // Everyone allowed can see the team list (used for rep assignment).
+    // A person may create their own profile only as a "rep" (auto-create on
+    // first sign-in) and edit their own profile without changing their role.
+    // Only admins can create other users' profiles, change roles or delete.
+    match /users/{uid} {
+      allow read: if isAllowed();
+      allow create: if isAdmin()
+        || (isAllowed() && request.auth.uid == uid && request.resource.data.role == 'rep');
+      allow update: if isAdmin()
+        || (isAllowed() && request.auth.uid == uid
+            && request.resource.data.role == resource.data.role);
+      allow delete: if isAdmin();
+    }
+
+    // First-admin bootstrap marker. Admins already exist, so only an admin
+    // may touch it (this stops a non-admin from "claiming" admin).
+    match /appMeta/{docId} {
+      allow read: if isAllowed();
+      allow write: if isAdmin();
+    }
+
+    // ── CRM data used by index.html ─────────────────────────────────
+    match /leads/{leadId} {
+      allow read, write: if isAllowed();
+    }
+    match /activities/{activityId} {
+      allow read, write: if isAllowed();
+    }
+    match /importBatches/{batchId} {
+      allow read, write: if isAllowed();
+    }
+    match /archiveOperations/{operationId} {
+      allow read, write: if isAllowed();
+    }
+    match /archivedLeads/{leadId} {
+      allow read, write: if isAllowed();
+    }
+    match /archivedImportBatches/{batchId} {
+      allow read, write: if isAllowed();
+    }
+    match /appSettings/{name} {
+      allow read, write: if isAllowed();
+    }
+
+    // Everything else (any collection the app doesn't use) is denied.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

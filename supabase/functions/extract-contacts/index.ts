@@ -30,6 +30,20 @@ const FIREBASE_JWKS = createRemoteJWKSet(new URL(
   Deno.env.get("FIREBASE_JWKS_URL") ??
     "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com",
 ));
+// Only these Lead Tracker accounts may use the backend. Any other Firebase account
+// (e.g. one made through open email/password sign-up) gets 403. Keep in sync with
+// allowedEmails() in /firestore.rules. Override with a comma-separated ALLOWED_EMAILS.
+const DEFAULT_ALLOWED_EMAILS = [
+  "ali@midastech.ca",
+  "ambreen@midastech.ca",
+  "scout@midastech.ca",
+  "hjaffar2014@gmail.com",
+  "hannahjaffar2010@gmail.com",
+];
+const ALLOWED_EMAILS = new Set(
+  (Deno.env.get("ALLOWED_EMAILS")?.trim() ? Deno.env.get("ALLOWED_EMAILS")!.split(",") : DEFAULT_ALLOWED_EMAILS)
+    .map((e) => e.trim().toLowerCase()).filter(Boolean),
+);
 const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") ?? "https://midastechinc.github.io")
   .split(",").map((o) => o.trim()).filter(Boolean);
 const IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
@@ -326,7 +340,9 @@ async function handleDb(req: Request, kind: "db" | "image"): Promise<Response> {
   }
 }
 
-async function signedInUser(req: Request): Promise<string | null> {
+// Returns the uid for a valid token from an allow-listed account, "forbidden" for a
+// valid token from any other account, and null for a missing or invalid token.
+async function signedInUser(req: Request): Promise<string | "forbidden" | null> {
   const token = req.headers.get("x-firebase-token");
   if (!token) return null;
   try {
@@ -334,7 +350,10 @@ async function signedInUser(req: Request): Promise<string | null> {
       issuer: `https://securetoken.google.com/${FIREBASE_PROJECT_ID}`,
       audience: FIREBASE_PROJECT_ID,
     });
-    return typeof payload.sub === "string" && payload.sub ? payload.sub : null;
+    if (typeof payload.sub !== "string" || !payload.sub) return null;
+    const email = typeof payload.email === "string" ? payload.email.trim().toLowerCase() : "";
+    if (!email || !ALLOWED_EMAILS.has(email)) return "forbidden";
+    return payload.sub;
   } catch {
     return null;
   }
@@ -354,7 +373,11 @@ Deno.serve(PORT ? { port: Number(PORT) } : {}, async (req) => {
   if (req.method === "GET") return json(req, 200, { ok: true, service: "extract-contacts" });
   if (req.method !== "POST") return json(req, 405, { error: "Use POST." });
 
-  if (!(await signedInUser(req))) {
+  const user = await signedInUser(req);
+  if (user === "forbidden") {
+    return json(req, 403, { error: "This account isn't allowed to use the lead tracker. Ask Ali for access." });
+  }
+  if (!user) {
     return json(req, 401, { error: "Sign in to the lead tracker again, then retry." });
   }
 

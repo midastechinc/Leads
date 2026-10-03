@@ -8,7 +8,9 @@
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL    = process.env.SUPABASE_URL;
-const SUPABASE_KEY    = process.env.SUPABASE_ANON_KEY;
+// Server-side key (GitHub Actions secret). The public anon key no longer has access to
+// social_posts once the self-hosted Supabase is locked down.
+const SUPABASE_KEY    = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const ONEMIN_API_KEY  = process.env.ONEMIN_API_KEY;
 // Midas LLM gateway (optional). When both are set, posts are written with the
 // gateway's free models (midas-smart) and news is searched with midas-web;
@@ -20,11 +22,11 @@ const MODEL           = 'gpt-4o';
 const CURRENT_YEAR    = new Date().getFullYear();
 
 if (!SUPABASE_URL || !SUPABASE_KEY || (!ONEMIN_API_KEY && !USE_GATEWAY)) {
-  console.error('❌ Missing required environment variables: SUPABASE_URL, SUPABASE_ANON_KEY, and ONEMIN_API_KEY or LLM_GATEWAY_URL + LLM_GATEWAY_KEY');
+  console.error('❌ Missing required environment variables: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and ONEMIN_API_KEY or LLM_GATEWAY_URL + LLM_GATEWAY_KEY');
   process.exit(1);
 }
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { persistSession: false, autoRefreshToken: false } });
 
 // ── Topic pool — 30 unique topics, rotates to avoid repetition ──────────────
 const TOPICS = [

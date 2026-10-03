@@ -30,6 +30,8 @@ You can run the reader in either of two places. Pick one:
    ```
    Railway sets `PORT` itself, so don't add it.
 
+   For the Social Posts, Topics and LinkedIn tabs and Social Studio's saved posts, also add `SUPABASE_SERVICE_ROLE_KEY=` followed by the self-hosted Supabase **service_role** key (from `/opt/midas-supabase/.env` on the server). The browser no longer has any Supabase key: it sends those reads and writes to this service (`POST /db`, `POST /storage/social-post-image`), which checks the Firebase sign-in, allows only the lead tracker's own tables, and uses this key. Never put this key in `index.html` or any other page.
+
    For Social Studio, also add `ONEMIN_API_KEY=` followed by your 1min.ai key. The same service passes Social Studio's 1min.ai requests on to 1min.ai with this key, so the key never reaches the browser. Only signed-in lead tracker users can use it.
 5. **Give it an address.** Under **Settings → Networking**, click **Generate Domain**. If it asks for a port, use `8080`. Wait for the deploy to show **Active**.
 6. **Check it.** Open the address in your browser. It should show `{"ok":true,"service":"extract-contacts"}`.
@@ -156,6 +158,8 @@ Both use Apify credit. The free plan includes a monthly allowance, and the app s
 | `LLM_GATEWAY_URL` | none | Midas AI Gateway address, `https://ai.midastech.support/v1` (Railway only) |
 | `LLM_GATEWAY_KEY` | none | The gateway key for this app (`leads-app`). It must be allowed to use `midas-smart` and `midas-web` |
 | `MS_TENANT_ID`, `MS_CLIENT_ID`, `MS_CLIENT_SECRET`, `OUTREACH_MAILBOX` | none | Microsoft 365 mailbox for email outreach. See [outreach-setup.md](outreach-setup.md) |
+| `SUPABASE_SERVICE_ROLE_KEY` | none | Self-hosted Supabase service_role key for the app's tables (`social_posts`, `content_topics`, `settings`, `linkedin_*`) and post images (Railway only, never in the browser) |
+| `SUPABASE_URL` | `https://supabase.midastech.support` | Self-hosted Supabase address used with that key |
 | `FIREBASE_PROJECT_ID` | `midas-leads-a8b13` | Which Firebase project's sign-ins are accepted |
 | `ALLOWED_ORIGINS` | `https://midastechinc.github.io` | Comma-separated sites allowed to call the function from a browser |
 

@@ -2695,7 +2695,7 @@
   </script>
 
   <!-- Supabase (LinkedIn Dashboard) -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="lead-tracker-db.js"></script>
 
   <!-- ════════════════════════════════════════════════════════
        FIREBASE + APP LOGIC
@@ -5054,18 +5054,6 @@
       setShotStatus("Ready. Press Read screenshot.");
     }
 
-    async function shotErrorMessage(error) {
-      try {
-        const body = await error.context.json();
-        if (body && body.error) return body.error;
-      } catch {}
-      const status = error?.context?.status;
-      if (status === 404 || error?.name === "FunctionsRelayError" || error?.name === "FunctionsFetchError") {
-        return "The screenshot reader isn't set up on the server yet. See docs/screenshot-reader-setup.md.";
-      }
-      return "Something went wrong reading the screenshot. Try again.";
-    }
-
     async function callScreenshotReader(body, token) {
       if (SHOT_READER_URL) {
         let res;
@@ -5082,11 +5070,7 @@
         if (!res.ok) throw new Error(data.error || "Something went wrong reading the screenshot. Try again.");
         return data;
       }
-      const client = getLiClient();
-      if (!client) throw new Error("The screenshot reader couldn't load. Refresh the page and try again.");
-      const { data, error } = await client.functions.invoke("extract-contacts", { body, headers: { "x-firebase-token": token } });
-      if (error) throw new Error(await shotErrorMessage(error));
-      return data || {};
+      throw new Error("The screenshot reader isn't set up on the server yet. See docs/screenshot-reader-setup.md.");
     }
 
     window.readScreenshot = async function () {
@@ -7563,11 +7547,9 @@ LINE: <sentence>`;
     //  LINKEDIN DASHBOARD — Supabase-powered
     // ════════════════════════════════════════════════════════════
 
-    // ── CONFIG ── Fill these in with your actual keys ──────────
-    const LI_CONFIG = {
-      supabaseUrl:  "https://supabase.midastech.support",
-      supabaseKey:  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoiYW5vbiIsImlzcyI6InN1cGFiYXNlIiwiaWF0IjoxNzgxNDY5NDA4LCJleHAiOjE5MzkxNDk0MDh9.msVxeoYaYr_Z0D0VqsoKtzSRUshwrZqnfCSMVdeTUAE"
-    };
+    // Supabase tables (social_posts, content_topics, linkedin_*) are read and written through the
+    // Railway service (SHOT_READER_URL + /db), which checks the Firebase sign-in and holds the
+    // database key. No Supabase key is shipped in this page. See lead-tracker-db.js.
 
     let liSupabase     = null;
     let liInvitesData  = [];
@@ -7581,8 +7563,8 @@ LINE: <sentence>`;
     let liLoaded       = false;
 
     function getLiClient() {
-      if (!liSupabase && window.supabase) {
-        liSupabase = window.supabase.createClient(LI_CONFIG.supabaseUrl, LI_CONFIG.supabaseKey);
+      if (!liSupabase && window.createLeadTrackerDb && SHOT_READER_URL) {
+        liSupabase = window.createLeadTrackerDb(SHOT_READER_URL, () => auth.currentUser ? auth.currentUser.getIdToken() : "");
       }
       return liSupabase;
     }
@@ -7600,11 +7582,7 @@ LINE: <sentence>`;
 
       const db2 = getLiClient();
       if (!db2) {
-        liSetError("Supabase client not available. Check that the CDN script loaded.");
-        return;
-      }
-      if (LI_CONFIG.supabaseKey === "YOUR_SUPABASE_ANON_KEY") {
-        liSetError("Please add your Supabase anon key to LI_CONFIG.supabaseKey in the script.");
+        liSetError("The data connection couldn't load. Refresh the page and try again.");
         return;
       }
 

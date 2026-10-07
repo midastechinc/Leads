@@ -1996,6 +1996,7 @@
       </select>
       <select id="filterRep" onchange="applyFilters()"><option value="">All Reps</option><option value="__unassigned__" selected>Unassigned</option></select>
       <select id="filterCountry" onchange="applyFilters()"><option value="">All Countries</option></select>
+      <select id="filterIndustry" onchange="applyFilters()"><option value="">All Industries</option></select>
       <select id="filterTitle" onchange="applyFilters()"><option value="">All Titles</option></select>
       </div>
       <div class="spacer"></div>
@@ -3631,8 +3632,9 @@
         sel.innerHTML = `<option value="">All Reps</option><option value="__unassigned__"${cur === "__unassigned__" ? " selected" : ""}>Unassigned</option>`
           + reps.map(v => `<option${v === cur ? " selected" : ""}>${esc(v)}</option>`).join("");
       })();
-      setOpts("filterCountry", [...new Set(leads.map(l=>l.country).filter(Boolean))].sort(),    "All Countries");
-      setOpts("filterTitle",   [...new Set(leads.map(l=>l.title||l.industry).filter(Boolean))].sort(), "All Titles");
+      setOpts("filterCountry",  [...new Set(leads.map(l=>l.country).filter(Boolean))].sort(),    "All Countries");
+      setOpts("filterIndustry", [...new Set(leads.map(l=>l.industry).filter(Boolean))].sort(), "All Industries");
+      setOpts("filterTitle",    [...new Set(leads.map(l=>l.title||l.industry).filter(Boolean))].sort(), "All Titles");
     }
 
     // ── ADMIN TABLE FILTERS ────────────────────────────────────────
@@ -3640,8 +3642,9 @@
       const search  = document.getElementById("searchInput").value.toLowerCase();
       const status  = document.getElementById("filterStatus").value;
       const rep     = document.getElementById("filterRep").value;
-      const country = document.getElementById("filterCountry").value;
-      const title   = document.getElementById("filterTitle").value;
+      const country  = document.getElementById("filterCountry").value;
+      const industry = document.getElementById("filterIndustry").value;
+      const title    = document.getElementById("filterTitle").value;
       const leads   = getVisibleLeads().filter(l => {
         const email = cleanEmail(l.email);
         return (
@@ -3653,8 +3656,9 @@
                        (l.title||"").toLowerCase().includes(search)) &&
           (!status  || (status === "__followup" ? !!leadFollowUp(l) : l.status === status)) &&
           (!rep     || (rep === "__unassigned__" ? !l.assignedTo : l.assignedTo === rep)) &&
-          (!country || (l.country||"") === country) &&
-          (!title   || (l.title||l.industry||"").includes(title))
+          (!country  || (l.country||"") === country) &&
+          (!industry || (l.industry||"") === industry) &&
+          (!title    || (l.title||l.industry||"").includes(title))
         );
       });
       const wcCount = getVisibleLeads().filter(l => !l.disabled && l.wontContact).length;
@@ -3665,7 +3669,7 @@
         wcBtn.classList.toggle("on", hideWontContact);
       }
       document.querySelectorAll(".metric-card").forEach(c => c.classList.toggle("active-filter", c.id === (status ? `mc-${status}` : "mc-total")));
-      const activeFilters = [status, rep, country, title].filter(Boolean).length;
+      const activeFilters = [status, rep, country, industry, title].filter(Boolean).length;
       const fc = document.getElementById("filtersCount");
       if (fc) fc.textContent = activeFilters ? ` (${activeFilters})` : "";
       renderTable(leads);

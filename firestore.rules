@@ -39,10 +39,37 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
 
+    function myProfile() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // The page identifies a rep by the display string `currentUser`, which is
+    // users/{uid}.name, or the sign-in email when the profile has no name
+    // (loadCurrentUserProfile in index.html). A lead belongs to a rep when
+    // lead.assignedTo equals that string; "" (or no field) means unassigned.
+    function myRepName() {
+      return myProfile().get('name', '') != '' ? myProfile().name : request.auth.token.email;
+    }
+
+    // Mirrors isLeadVisibleToCurrentUser / canCurrentUserManageLeadAssignment:
+    // admins see everything; a rep sees unassigned leads and their own.
+    function canAccessLeadData(data) {
+      return isAdmin()
+        || (isAllowed() && data.get('assignedTo', '') in ['', myRepName()]);
+    }
+    function canAccessLeadId(leadId) {
+      return isAdmin()
+        || (isAllowed()
+            && exists(/databases/$(database)/documents/leads/$(leadId))
+            && canAccessLeadData(get(/databases/$(database)/documents/leads/$(leadId)).data));
+    }
+
     // ── User profiles ───────────────────────────────────────────────
     // Everyone allowed can see the team list (used for rep assignment).
     // A person may create their own profile only as a "rep" (auto-create on
-    // first sign-in) and edit their own profile without changing their role.
+    // first sign-in) and edit their own profile without changing their role,
+    // name or email (the name is what leads are assigned to, so letting a rep
+    // rename themselves to a colleague's name would hand them that rep's leads).
     // Only admins can create other users' profiles, change roles or delete.
     match /users/{uid} {
       allow read: if isAllowed();
@@ -50,7 +77,9 @@ service cloud.firestore {
         || (isAllowed() && request.auth.uid == uid && request.resource.data.role == 'rep');
       allow update: if isAdmin()
         || (isAllowed() && request.auth.uid == uid
-            && request.resource.data.role == resource.data.role);
+            && request.resource.data.role == resource.data.role
+            && request.resource.data.get('name', '') == resource.data.get('name', '')
+            && request.resource.data.get('email', '') == resource.data.get('email', ''));
       allow delete: if isAdmin();
     }
 
@@ -62,26 +91,57 @@ service cloud.firestore {
     }
 
     // ── CRM data used by index.html ─────────────────────────────────
+    // Leads: admins do anything. Reps read/update only unassigned leads or
+    // leads assigned to them; they may hand such a lead to another rep (the
+    // page allows this). Reps may create leads (manual add, screenshot reader,
+    // company research). Only admins delete (deleteImportBatch, clearAllLeads,
+    // archiveAndDeleteLeads are admin-only in the page).
     match /leads/{leadId} {
-      allow read, write: if isAllowed();
+      allow get: if canAccessLeadData(resource.data);
+      // Queries: a rep's query must itself filter on assignedTo ('' or their
+      // own name), which is exactly what bindLeadListener() asks for.
+      allow list: if isAdmin()
+        || (isAllowed() && resource.data.assignedTo in ['', myRepName()]);
+      allow create: if isAllowed();
+      allow update: if canAccessLeadData(resource.data);
+      allow delete: if isAdmin();
     }
+    // Activities belong to a lead (activity.leadId). Reps read and add them
+    // only for leads they can access; edits and deletes are admin-only.
     match /activities/{activityId} {
-      allow read, write: if isAllowed();
+      allow read: if isAdmin()
+        || (isAllowed() && resource.data.leadId is string && canAccessLeadId(resource.data.leadId));
+      allow create: if isAdmin()
+        || (isAllowed() && request.resource.data.leadId is string && canAccessLeadId(request.resource.data.leadId));
+      allow update, delete: if isAdmin();
     }
+    // CSV import batches, archive/restore ("Recently cleared"): admin-only
+    // screens and actions in the page.
     match /importBatches/{batchId} {
-      allow read, write: if isAllowed();
+      allow read, write: if isAdmin();
     }
     match /archiveOperations/{operationId} {
-      allow read, write: if isAllowed();
+      allow read, write: if isAdmin();
     }
     match /archivedLeads/{leadId} {
-      allow read, write: if isAllowed();
+      allow read, write: if isAdmin();
     }
     match /archivedImportBatches/{batchId} {
-      allow read, write: if isAllowed();
+      allow read, write: if isAdmin();
     }
     match /appSettings/{name} {
       allow read, write: if isAllowed();
+    }
+    // Global do-not-contact list, keyed by the lowercased email address.
+    // Anyone allowed can read it and add to it (unsubscribes are processed by
+    // whoever checks replies); the doc's email must equal its lowercased id.
+    // Only an admin can take an address off the list.
+    match /doNotContact/{emailKey} {
+      allow read: if isAllowed();
+      allow create, update: if isAllowed()
+        && emailKey == emailKey.lower()
+        && request.resource.data.email == emailKey;
+      allow delete: if isAdmin();
     }
 
     // Everything else (any collection the app doesn't use) is denied.

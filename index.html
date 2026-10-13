@@ -2426,6 +2426,18 @@
         <label>Address</label>
         <textarea id="editLeadAddress" rows="2" style="width:100%;padding:10px 12px;border:1px solid var(--gray-200);border-radius:10px;font:inherit;resize:vertical;"></textarea>
       </div>
+      <div class="extras-heading" style="margin-top:8px;">CASL consent proof</div>
+      <div class="form-row">
+        <div class="form-group"><label>Consent basis</label>
+          <select id="editLeadConsentBasis">
+            <option value="">Not recorded</option>
+            <option value="published">Published (address conspicuously published)</option>
+            <option value="implied">Implied (existing business relationship / inquiry)</option>
+            <option value="express">Express (they opted in)</option>
+          </select></div>
+        <div class="form-group"><label>Consent date</label><input type="date" id="editLeadConsentDate"></div>
+      </div>
+      <div class="form-group"><label>Consent source URL</label><input type="text" id="editLeadConsentSourceUrl" placeholder="https:// page where the email was published / consent was given"></div>
       <div id="editLeadExtraFields"></div>
       <div class="modal-actions">
         <button class="btn btn-secondary" onclick="closeModal('editLeadModal')">Cancel</button>
@@ -2474,6 +2486,17 @@
         <div class="form-group"><label>Industry</label><input type="text" id="newIndustry" placeholder="Accounting, IT…"></div>
       </div>
       <div class="form-group"><label>Assigned To</label><select id="newAssigned"></select></div>
+      <div class="form-row">
+        <div class="form-group"><label>Consent basis (CASL)</label>
+          <select id="newConsentBasis">
+            <option value="">Not recorded</option>
+            <option value="published">Published</option>
+            <option value="implied">Implied</option>
+            <option value="express">Express</option>
+          </select></div>
+        <div class="form-group"><label>Consent date</label><input type="date" id="newConsentDate"></div>
+      </div>
+      <div class="form-group"><label>Consent source URL</label><input type="text" id="newConsentSourceUrl" placeholder="https:// where you found the email"></div>
       <div class="modal-actions">
         <button class="btn btn-secondary" style="margin-right:auto" onclick="openScreenshotReader(null, true)">📷 From screenshot</button>
         <button class="btn btn-secondary" onclick="closeModal('addLeadModal')">Cancel</button>
@@ -2716,7 +2739,7 @@
     import { initializeApp }
       from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import {
-      getFirestore, collection, addDoc, updateDoc, doc, getDoc, getDocs, setDoc,
+      getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, getDoc, getDocs, setDoc,
       onSnapshot, writeBatch, serverTimestamp, increment, query, orderBy, where, limit, runTransaction
     } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
     import {
@@ -2835,7 +2858,7 @@
         "contactCount","lastContacted","createdAt","updatedAt","source","country","city","employeeRange",
         "address","state","importBatchId","importFileName","importedBy","importedAt","adminGrantedAt",
         "adminGrantedBy","createdBy","createdByName","autoCreated","emailVerified","phoneVerified","websiteVerified",
-        "wontContact","wontContactBy"
+        "wontContact","wontContactBy","consentBasis","consentSourceUrl","consentDate","doNotContact","doNotContactAt","doNotContactBy"
       ]);
       return Object.keys(lead).filter(key =>
         !coreKeys.has(key) &&
@@ -3003,11 +3026,18 @@
     }
     function bindLeadListener() {
       if (unsubscribeLeads) unsubscribeLeads();
+      allLeads = {};
+      // Firestore rules only let a rep read leads that are unassigned or assigned to them
+      // (same test as isLeadVisibleToCurrentUser), so a rep must ask for exactly those —
+      // an unfiltered query would be refused as a whole. Admins still get everything.
+      const leadsQuery = isAdminUser()
+        ? query(collection(db,"leads"), orderBy("createdAt","desc"))
+        : query(collection(db,"leads"), where("assignedTo", "in", ["", currentUser]));
       unsubscribeLeads = onSnapshot(
-        query(collection(db,"leads"), orderBy("createdAt","desc")),
+        leadsQuery,
         snapshot => {
           snapshot.docChanges().forEach(ch => {
-            const d = { id: ch.doc.id, ...ch.doc.data() };
+            const d = { ...ch.doc.data(), id: ch.doc.id };
             if (ch.type === "added" || ch.type === "modified") allLeads[d.id] = d;
             if (ch.type === "removed") delete allLeads[d.id];
           });
@@ -3210,7 +3240,7 @@
             <div class="user-row-name">${esc(batch.fileName || "CSV Import")}</div>
             <div class="user-row-sub">${esc(`${addedCount} added, ${updatedCount} updated • ${stamp}`)}</div>
           </div>
-          <button class="btn btn-danger btn-sm" onclick="deleteImportBatch('${esc(batch.id)}')">Delete Batch</button>
+          <button class="btn btn-danger btn-sm" data-call="deleteImportBatch" data-args="${esc(JSON.stringify([(batch.id)]))}">Delete Batch</button>
         </div>`;
       }).join("")}</div>`;
     }
@@ -3305,7 +3335,7 @@
           </div>
           ${restored
             ? `<span class="user-role-badge user-role-rep">Restored</span>`
-            : `<button class="btn btn-secondary btn-sm" onclick="restoreArchiveOperation('${esc(op.id)}')">Restore</button>`}
+            : `<button class="btn btn-secondary btn-sm" data-call="restoreArchiveOperation" data-args="${esc(JSON.stringify([(op.id)]))}">Restore</button>`}
         </div>`;
       }).join("")}</div>`;
     }
@@ -3443,6 +3473,7 @@
         applyUserDisplay();
         hideLoginModal();
         bindLeadListener();
+        bindDoNotContactListener();
         // Every signed-in user (not just admins) needs the users list loaded so every
         // rep shows up as an assignment option — see getKnownReps().
         bindUsersListener();
@@ -3898,8 +3929,8 @@
         const lastC = l.lastContacted?.toDate ? fmtDate(l.lastContacted.toDate()) : "—";
         const statusOpts = ["New","Contacted","Qualified","Proposal","Closed","Dead"]
           .map(s => `<option${l.status===s?" selected":""}>${s}</option>`).join("");
-        const webBtn = l.website  ? `<button class="icon-btn" onclick="openUrl('${esc(l.website)}')"  title="Website">🌐</button>` : "";
-        const liBtn  = l.linkedin ? `<button class="icon-btn" onclick="openUrl('${esc(l.linkedin)}')" title="LinkedIn">in</button>` : "";
+        const webBtn = l.website  ? `<button class="icon-btn" data-call="openUrl" data-args="${esc(JSON.stringify([(l.website)]))}"  title="Website">🌐</button>` : "";
+        const liBtn  = l.linkedin ? `<button class="icon-btn" data-call="openUrl" data-args="${esc(JSON.stringify([(l.linkedin)]))}" title="LinkedIn">in</button>` : "";
         const fu = leadFollowUp(l);
         const touch = l.lastContacted?.toDate
           ? `<div>${l.contactCount||0} contact${(l.contactCount||0)===1?"":"s"} · ${lastC}</div>${fu ? `<div class="touch-flag">Follow up · ${fu.days} day${fu.days===1?"":"s"} ago</div>` : `<div class="td-sub">${relDays(l.lastContacted.toDate())}</div>`}`
@@ -3938,8 +3969,8 @@
         <tr class="group-row${open ? "" : " grp-closed"}">
           <td colspan="6">
             <div class="group-label">
-              <span class="grp-select"><input type="checkbox" class="sel-check grp-check" data-group="${esc(group.groupKey)}" ${group.leads.every(l => selectedLeadIds.has(l.id)) ? "checked" : ""} onchange="toggleGroupSelect('${esc(group.groupKey)}', this.checked)" aria-label="Select everyone at ${esc(group.companyName)}"></span>
-              <button type="button" class="grp-toggle" aria-expanded="${open}" onclick="toggleLeadsCompany('${esc(group.groupKey)}')" title="${open ? "Hide" : "Show"} the people at ${esc(group.companyName)}">
+              <span class="grp-select"><input type="checkbox" class="sel-check grp-check" data-group="${esc(group.groupKey)}" ${group.leads.every(l => selectedLeadIds.has(l.id)) ? "checked" : ""} onchange="toggleGroupSelect(this.dataset.group, this.checked)" aria-label="Select everyone at ${esc(group.companyName)}"></span>
+              <button type="button" class="grp-toggle" aria-expanded="${open}" data-call="toggleLeadsCompany" data-args="${esc(JSON.stringify([(group.groupKey)]))}" title="${open ? "Hide" : "Show"} the people at ${esc(group.companyName)}">
                 <span class="grp-chev" aria-hidden="true">▶</span>
                 <span style="min-width:0">
                   <span class="grp-name">${esc(group.companyName)}</span>
@@ -3951,9 +3982,9 @@
                 </span>
               </button>
               <span class="group-actions">
-                ${hasCompany ? `<button class="add-contact-btn" type="button" onclick="openCompanyResearch('${esc(group.groupKey)}')" title="Research ${esc(group.companyName)} and all its people">🔎 Research</button>` : ""}
-                ${hasCompany ? `<button class="add-contact-btn" type="button" onclick="openAddContact('${esc(group.groupKey)}')" title="Add another person at ${esc(group.companyName)}">+ Add contact</button>` : ""}
-                <span class="rep-badge" onclick="openAssignCompany('${esc(group.groupKey)}')" title="Assign this company">
+                ${hasCompany ? `<button class="add-contact-btn" type="button" data-call="openCompanyResearch" data-args="${esc(JSON.stringify([(group.groupKey)]))}" title="Research ${esc(group.companyName)} and all its people">🔎 Research</button>` : ""}
+                ${hasCompany ? `<button class="add-contact-btn" type="button" data-call="openAddContact" data-args="${esc(JSON.stringify([(group.groupKey)]))}" title="Add another person at ${esc(group.companyName)}">+ Add contact</button>` : ""}
+                <span class="rep-badge" data-call="openAssignCompany" data-args="${esc(JSON.stringify([(group.groupKey)]))}" title="Assign this company">
                   <span class="rep-dot"></span>${esc(getCompanyAssignmentLabel(group.leads))}
                 </span>
               </span>
@@ -4134,7 +4165,7 @@
               <div class="ws-links">
                 ${email ? `<a href="mailto:${esc(email)}" title="${esc(email)}">✉️ ${esc(email)}</a>` : ""}
                 ${phone ? `<a href="tel:${esc(phone)}">📞 ${esc(phone)}</a>` : ""}
-                ${l.linkedin ? `<a href="#" onclick="openUrl('${esc(l.linkedin)}');return false;">🔗 LinkedIn</a>` : ""}
+                ${l.linkedin ? `<a href="#" data-call="openUrl" data-args="${esc(JSON.stringify([(l.linkedin)]))}">🔗 LinkedIn</a>` : ""}
               </div>
             </div>
             <div class="ws-person-side">
@@ -4164,10 +4195,10 @@
           </summary>
           <div class="ws-people">${people}</div>
           ${c.key !== "__no_company__" ? `<div class="ws-add-row">
-            <button type="button" onclick="openAddContact('${esc(c.key)}')">+ Add person</button>
-            <button type="button" onclick="openCompanyResearch('${esc(c.key)}')">🔎 Research company</button>
-            <button type="button" onclick="openScreenshotReader('${esc(c.key)}')">📷 Add from screenshot</button>
-            ${site ? `<button type="button" onclick="openUrl('${esc(site)}')">🌐 Website</button>` : ""}
+            <button type="button" data-call="openAddContact" data-args="${esc(JSON.stringify([(c.key)]))}">+ Add person</button>
+            <button type="button" data-call="openCompanyResearch" data-args="${esc(JSON.stringify([(c.key)]))}">🔎 Research company</button>
+            <button type="button" data-call="openScreenshotReader" data-args="${esc(JSON.stringify([(c.key)]))}">📷 Add from screenshot</button>
+            ${site ? `<button type="button" data-call="openUrl" data-args="${esc(JSON.stringify([(site)]))}">🌐 Website</button>` : ""}
           </div>` : ""}
         </details>`;
       }).join("");
@@ -4209,7 +4240,7 @@
         const initials = r.split(" ").map(w=>w[0]).join("").toUpperCase().slice(0,2);
         const count    = Object.values(allLeads).filter(l=>l.assignedTo===r).length;
         const color    = colors[i % colors.length];
-        return `<div class="rep-option${r===selectedRep?" selected":""}" onclick="selectRep(this,'${esc(r)}')">
+        return `<div class="rep-option${r===selectedRep?" selected":""}" data-call="selectRep" data-pass-el="1" data-args="${esc(JSON.stringify([(r)]))}">
           <div class="rep-avatar" style="background:${color}">${esc(initials)}</div>
           <div><div class="rep-name">${esc(r)}</div><div class="rep-count">${count} lead${count!==1?"s":""}</div></div>
         </div>`;
@@ -4584,7 +4615,7 @@
         <div class="ld-outreach">${lead.domainCheck && lead.domainCheck.domain === leadDomain(lead)
           ? `${domainBadgeHtml(lead)}<span class="or-muted">${esc(lead.domainCheck.summary)}${lead.domainCheck.provider ? ` · ${esc(lead.domainCheck.provider)}` : ""}</span>`
           : `<span class="or-muted">Email domain not checked yet.</span>`}
-          <button class="btn btn-secondary btn-sm" type="button" onclick="checkLeadDomain('${esc(lead.id)}')">🔍 ${lead.domainCheck ? "Check again" : "Check email domain"}</button></div>
+          <button class="btn btn-secondary btn-sm" type="button" data-call="checkLeadDomain" data-args="${esc(JSON.stringify([(lead.id)]))}">🔍 ${lead.domainCheck ? "Check again" : "Check email domain"}</button></div>
         ${emailAngleHtml(lead)}
         <div class="email-draft-btns">
           ${[1,2,3,4].map(step => {
@@ -4592,7 +4623,7 @@
             const badge = sent ? `<span class="email-sent-badge">✓ Sent ${esc(sent.dateLabel)}</span>` : "";
             const subj = buildEmail(lead, step).subject;
             const name = EMAIL_STEP_NAMES[step];
-            return `<button class="btn btn-secondary btn-sm" title="Subject: ${esc(subj)}" onclick="sendEmailDraft('${esc(lead.id)}', ${step})">${step}. ${name}${badge}</button>`;
+            return `<button class="btn btn-secondary btn-sm" title="Subject: ${esc(subj)}" data-call="sendEmailDraft" data-args="${esc(JSON.stringify([(lead.id), (step)]))}">${step}. ${name}${badge}</button>`;
           }).join("")}
         </div>`;
     }
@@ -4713,8 +4744,8 @@
       const act = [];
       if (email) act.push(`<a class="ld-action" href="mailto:${esc(email)}">✉️ Email</a>`);
       if (phone) act.push(`<a class="ld-action" href="tel:${esc(phone)}">📞 Call</a>`);
-      if (site)  act.push(`<a class="ld-action" href="#" onclick="openUrl('${esc(site)}');return false">🌐 Website</a>`);
-      if (li)    act.push(`<a class="ld-action" href="#" onclick="openUrl('${esc(li.url)}');return false">in ${li.search ? "Find on LinkedIn" : "LinkedIn"}</a>`);
+      if (site)  act.push(`<a class="ld-action" href="#" data-call="openUrl" data-args="${esc(JSON.stringify([(site)]))}">🌐 Website</a>`);
+      if (li)    act.push(`<a class="ld-action" href="#" data-call="openUrl" data-args="${esc(JSON.stringify([(li.url)]))}">in ${li.search ? "Find on LinkedIn" : "LinkedIn"}</a>`);
       act.push(`<button class="ld-action" type="button" onclick="openResearch('${l.id}')" title="Research only this person">🔎 ${l.research ? "Research person again" : "Research person"}</button>`);
       if (!l.disabled) act.push(`<button class="ld-action" type="button" onclick="setLeadsWontContact(['${l.id}'], ${l.wontContact ? "false" : "true"})" title="${l.wontContact ? "Include this person in outreach again" : "Keep this person but never email them in outreach"}">${l.wontContact ? "↩️ Contact again" : "🙈 Won't contact"}</button>`);
       if (!l.disabled) act.push(`<button class="ld-action" type="button" onclick="setLeadsDisabled(['${l.id}'], true)" title="Hide this person from lists and follow-ups (you can enable them again)">🚫 Disable (no info found)</button>`);
@@ -4727,10 +4758,11 @@
         ["Phone", phone ? `<a href="tel:${esc(phone)}">${esc(phone)}</a> ${vb(!!l.phoneVerified)}` : ""],
         ["Company", esc(l.company || "")],
         ["Title", esc(l.title || l.industry || "")],
-        ["Website", site ? `<a href="#" onclick="openUrl('${esc(site)}');return false">${esc(site.replace(/^https?:\/\//i, "").replace(/\/$/, ""))}</a> ${vb(!!l.websiteVerified)}` : esc(l.website || "")],
-        ["LinkedIn", li ? `<a href="#" onclick="openUrl('${esc(li.url)}');return false">${esc(li.label)}</a>` : ""],
+        ["Website", site ? `<a href="#" data-call="openUrl" data-args="${esc(JSON.stringify([(site)]))}">${esc(site.replace(/^https?:\/\//i, "").replace(/\/$/, ""))}</a> ${vb(!!l.websiteVerified)}` : esc(l.website || "")],
+        ["LinkedIn", li ? `<a href="#" data-call="openUrl" data-args="${esc(JSON.stringify([(li.url)]))}">${esc(li.label)}</a>` : ""],
         ["Location", esc([l.city, l.state, l.country].filter(Boolean).join(", "))],
         ["Employees", esc(formatDetailValue(l.employeeRange))],
+        ["Consent (CASL)", consentSummaryHtml(l)],
       ].filter(([, v]) => v);
       html += `<div class="ld-section-title">Contact details</div>
         <dl class="ld-list">${rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join("")}</dl>`;
@@ -4747,9 +4779,9 @@
                 <span class="status-badge status-${esc(p.status || "New")}">${esc(p.status || "New")}</span>
               </button>`).join("")}
             <div class="ld-people-actions">
-              <button class="ld-add-person" type="button" onclick="openAddContact('${esc(groupKey)}')">+ Add another person at ${esc(l.company)}</button>
-              <button class="ld-add-person" type="button" onclick="openScreenshotReader('${esc(groupKey)}')">📷 Add people from a screenshot</button>
-              <button class="ld-add-person" type="button" onclick="openCompanyResearch('${esc(groupKey)}')">🔎 Research the whole company</button>
+              <button class="ld-add-person" type="button" data-call="openAddContact" data-args="${esc(JSON.stringify([(groupKey)]))}">+ Add another person at ${esc(l.company)}</button>
+              <button class="ld-add-person" type="button" data-call="openScreenshotReader" data-args="${esc(JSON.stringify([(groupKey)]))}">📷 Add people from a screenshot</button>
+              <button class="ld-add-person" type="button" data-call="openCompanyResearch" data-args="${esc(JSON.stringify([(groupKey)]))}">🔎 Research the whole company</button>
             </div>
           </div>`;
       }
@@ -4764,7 +4796,7 @@
         const when = rs.researchedAt?.toDate ? fmtDate(rs.researchedAt.toDate()) : "";
         html += `<div class="ld-section-title">${title}</div>
           <div class="ld-research">
-            ${rs.talkingPoints?.length ? `<ul>${rs.talkingPoints.map(t => `<li>${esc(t.point)}${realUrl(t.source) ? ` <a href="#" onclick="openUrl('${esc(realUrl(t.source))}');return false">source</a>` : ""}</li>`).join("")}</ul>` : ""}
+            ${rs.talkingPoints?.length ? `<ul>${rs.talkingPoints.map(t => `<li>${esc(t.point)}${realUrl(t.source) ? ` <a href="#" data-call="openUrl" data-args="${esc(JSON.stringify([(realUrl(t.source))]))}">source</a>` : ""}</li>`).join("")}</ul>` : ""}
             ${rs.notes ? `<small>${esc(rs.notes)}</small>` : ""}
             <small>${when ? `Researched ${esc(when)}` : "Researched"}${rs.by ? ` by ${esc(rs.by)}` : ""}${typeof rs.costUsd === "number" ? ` · cost about ${formatResearchCost(rs.costUsd)}` : ""}</small>
           </div>`;
@@ -4776,7 +4808,7 @@
           <div class="ld-note-foot">
             <span class="ld-note-count">${note.length} / ${LINKEDIN_NOTE_LIMIT}</span>
             <button class="btn btn-secondary btn-sm" type="button" onclick="copyLinkedinNote('${l.id}')">Copy note</button>
-            <a class="btn btn-ghost btn-sm" href="#" onclick="openUrl('${esc(liTarget)}');return false" style="text-decoration:none">${li && !li.search ? "Open profile" : "Find on LinkedIn"}</a>
+            <a class="btn btn-ghost btn-sm" href="#" data-call="openUrl" data-args="${esc(JSON.stringify([(liTarget)]))}" style="text-decoration:none">${li && !li.search ? "Open profile" : "Find on LinkedIn"}</a>
           </div>
           <p class="ld-note-hint">On their profile: Connect → Add a note → paste.</p>
         </div>`;
@@ -4793,7 +4825,7 @@
           <dl class="ld-list">${extras.map(([k, v]) => {
             const url = realUrl(v);
             const shown = esc(formatDetailValue(v));
-            return `<div><dt>${esc(formatFieldLabel(k))}</dt><dd>${url ? `<a href="#" onclick="openUrl('${esc(url)}');return false">${shown}</a>` : shown}</dd></div>`;
+            return `<div><dt>${esc(formatFieldLabel(k))}</dt><dd>${url ? `<a href="#" data-call="openUrl" data-args="${esc(JSON.stringify([(url)]))}">${shown}</a>` : shown}</dd></div>`;
           }).join("")}</dl></details>`;
       }
 
@@ -4828,6 +4860,9 @@
       setInputValue("editLeadState", lead.state);
       setInputValue("editLeadEmployeeRange", lead.employeeRange);
       setInputValue("editLeadAddress", lead.address);
+      setInputValue("editLeadConsentBasis", CONSENT_BASES.includes(lead.consentBasis) ? lead.consentBasis : "");
+      setInputValue("editLeadConsentSourceUrl", lead.consentSourceUrl || "");
+      setInputValue("editLeadConsentDate", normalizeConsentDate(lead.consentDate));
 
       const extraKeys = getLeadEditableExtraKeys(lead);
       const extraWrap = document.getElementById("editLeadExtraFields");
@@ -4879,6 +4914,7 @@
         state: document.getElementById("editLeadState").value.trim(),
         employeeRange: document.getElementById("editLeadEmployeeRange").value.trim(),
         address: document.getElementById("editLeadAddress").value.trim(),
+        ...readConsentFields("editLead"),
         updatedAt: serverTimestamp()
       };
       document.querySelectorAll("#editLeadExtraFields [data-extra-key]").forEach(el => {
@@ -4887,6 +4923,7 @@
       });
 
       if (!updates.name) return showToast("Name is required","error");
+      if (updates.consentSourceUrl && !safeHttpUrl(updates.consentSourceUrl)) return showToast("Consent source URL must be an http(s) link","error");
       try {
         await updateDoc(doc(db, "leads", currentLeadId), updates);
         const spread = await cascadeCompanyToRep(getCompanyGroupKey(updates.company), updates.assignedTo, currentLeadId);
@@ -4906,7 +4943,7 @@
       addLeadCompanyExtras = null;
       document.getElementById("addLeadTitle").textContent = "Add Lead";
       document.getElementById("addLeadSub").textContent = "Only name is required.";
-      ["newName","newCompany","newEmail","newPhone","newWebsite","newLinkedin","newTitle","newIndustry"].forEach(id =>
+      ["newName","newCompany","newEmail","newPhone","newWebsite","newLinkedin","newTitle","newIndustry","newConsentBasis","newConsentDate","newConsentSourceUrl"].forEach(id =>
         document.getElementById(id).value = "");
       populateRepSelect(document.getElementById("newAssigned"), "");
       document.getElementById("addLeadModal").classList.add("active");
@@ -4930,10 +4967,16 @@
     window.submitAddLead = async function () {
       const name = document.getElementById("newName").value.trim();
       if (!name) return showToast("Name is required","error");
+      const newEmail = document.getElementById("newEmail").value.trim().toLowerCase();
+      const consent = readConsentFields("new");
+      if (consent.consentSourceUrl && !safeHttpUrl(consent.consentSourceUrl)) return showToast("Consent source URL must be an http(s) link","error");
+      const blocked = isEmailOnDoNotContact(newEmail);
       try {
         await addDoc(collection(db,"leads"), {
           name, company: document.getElementById("newCompany").value.trim(),
-          email:      document.getElementById("newEmail").value.trim().toLowerCase(),
+          email:      newEmail,
+          ...consent,
+          ...(blocked ? { doNotContact: true, doNotContactAt: new Date().toISOString(), doNotContactBy: "do-not-contact list" } : {}),
           phone:      document.getElementById("newPhone").value.trim(),
           website:    document.getElementById("newWebsite").value.trim(),
           linkedin:   document.getElementById("newLinkedin").value.trim(),
@@ -4945,7 +4988,8 @@
           ...(addLeadCompanyExtras || {})
         });
         addLeadCompanyExtras = null;
-        showToast("Lead added","success"); closeModal("addLeadModal");
+        showToast(blocked ? "Lead added — this email is on the do-not-contact list, so it's flagged and can't be added to outreach" : "Lead added", blocked ? "error" : "success");
+        closeModal("addLeadModal");
       } catch(e) { console.error(e); showToast("Failed","error"); }
     };
 
@@ -5273,7 +5317,7 @@
       const url = realUrl(src);
       if (!url) return "";
       const host = rsUrlKey(url).split("/")[0];
-      return `<a href="#" onclick="openUrl('${esc(url)}');return false" title="${esc(url)}">source: ${esc(host)}</a>`;
+      return `<a href="#" data-call="openUrl" data-args="${esc(JSON.stringify([(url)]))}" title="${esc(url)}">source: ${esc(host)}</a>`;
     }
     function rsCompanyLeads(includeDisabled) {
       return rsState.groupKey ? getCompanyLeads(rsState.groupKey).filter(l => isLeadVisibleToCurrentUser(l) && (includeDisabled || !l.disabled)) : [];
@@ -5372,7 +5416,7 @@
         <div class="rs-h">Free quick search</div>
         <p class="rs-hint">Each opens a search in a new tab. Copy what you find into the lead, or use 📷 screenshot on a team page to add everyone at once.</p>
         <div class="rs-links">${rsQuickLinks().map(([icon, label, url]) =>
-          `<a class="rs-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer"><span>${icon}</span>${esc(label)}</a>`).join("")}</div>
+          `<a class="rs-link" href="${esc(safeHttpUrl(url) || "#")}" target="_blank" rel="noopener noreferrer"><span>${icon}</span>${esc(label)}</a>`).join("")}</div>
         <div class="rs-h">AI research</div>
         <p class="rs-hint">The AI searches the web for you and shows what it found, with sources, for you to review before saving.</p>
         <div class="rs-depth" role="group" aria-label="How deep to research">
@@ -5530,7 +5574,7 @@ ${shape}`;
         const body = running
           ? `<div class="intel-status"><span class="rs-spin"></span> Researching…</div>`
           : findings.length
-            ? `<ul class="intel-list">${findings.map(x => `<li><b>${esc(x.headline || "")}</b>${x.date ? ` <span class="intel-date">${esc(x.date)}</span>` : ""}<div>${esc(x.detail || "")}${realUrl(x.source) ? ` <a href="#" onclick="openUrl('${esc(realUrl(x.source))}');return false">source</a>` : ""}</div></li>`).join("")}</ul>`
+            ? `<ul class="intel-list">${findings.map(x => `<li><b>${esc(x.headline || "")}</b>${x.date ? ` <span class="intel-date">${esc(x.date)}</span>` : ""}<div>${esc(x.detail || "")}${realUrl(x.source) ? ` <a href="#" data-call="openUrl" data-args="${esc(JSON.stringify([(realUrl(x.source))]))}">source</a>` : ""}</div></li>`).join("")}</ul>`
             : `<div class="intel-empty">${f ? "Nothing found last time." : "Not researched yet."}${admin ? " Press refresh to run it." : ""}</div>`;
         return `<div class="intel-card">
           <div class="intel-card-head">
@@ -5692,6 +5736,105 @@ ${shape}`;
     }
 
     // ── which leads can be emailed ──
+    // ── CASL consent proof + global do-not-contact list ──
+    // consentBasis: "published" | "implied" | "express"; consentSourceUrl: where the address was
+    // published / consent was given; consentDate: YYYY-MM-DD.
+    // doNotContact/{lowercased email}: one doc per address that must never be emailed again,
+    // whichever lead (or future import) it shows up on.
+    const CONSENT_BASES = ["published", "implied", "express"];
+    function normalizeConsentDate(v) {
+      if (!v) return "";
+      if (typeof v === "string") { const m = v.match(/^\d{4}-\d{2}-\d{2}/); if (m) return m[0]; }
+      const d = typeof v?.toDate === "function" ? v.toDate() : new Date(v);
+      return isNaN(d) ? "" : `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    }
+    function normalizeConsentBasis(v) {
+      const s = String(v || "").trim().toLowerCase();
+      if (CONSENT_BASES.includes(s)) return s;
+      if (/publish|public|website|directory|conspicuous/.test(s)) return "published";
+      if (/express|opt.?in|subscribe/.test(s)) return "express";
+      if (/implied|customer|inquir|relationship/.test(s)) return "implied";
+      return "";
+    }
+    function readConsentFields(prefix) {
+      return {
+        consentBasis: document.getElementById(`${prefix}ConsentBasis`)?.value || "",
+        consentSourceUrl: (document.getElementById(`${prefix}ConsentSourceUrl`)?.value || "").trim(),
+        consentDate: document.getElementById(`${prefix}ConsentDate`)?.value || ""
+      };
+    }
+    function consentSummaryHtml(l) {
+      if (!l?.consentBasis && !l?.consentSourceUrl && !l?.consentDate) return "";
+      const url = safeHttpUrl(l.consentSourceUrl);
+      const bits = [];
+      if (l.consentBasis) bits.push(`<b>${esc(l.consentBasis)}</b>`);
+      if (l.consentDate) bits.push(esc(normalizeConsentDate(l.consentDate)));
+      if (url) bits.push(`<a href="#" data-call="openUrl" data-args="${esc(JSON.stringify([url]))}">source</a>`);
+      else if (l.consentSourceUrl) bits.push(esc(l.consentSourceUrl));
+      return bits.join(" · ");
+    }
+    let doNotContactSet = new Set();
+    let unsubscribeDoNotContact = null;
+    function dncKey(email) {
+      const a = splitEmail(cleanEmail(email || "")).address || String(email || "");
+      const k = a.trim().toLowerCase();
+      return k && k.includes("@") && !k.includes("/") ? k : "";
+    }
+    function isEmailOnDoNotContact(email) { const k = dncKey(email); return !!k && doNotContactSet.has(k); }
+    function bindDoNotContactListener() {
+      if (unsubscribeDoNotContact) unsubscribeDoNotContact();
+      unsubscribeDoNotContact = onSnapshot(collection(db, "doNotContact"), snap => {
+        doNotContactSet = new Set(snap.docs.map(d => d.id));
+      }, err => console.error("Do-not-contact listener error:", err));
+    }
+    async function addToDoNotContact(email, { reason = "", leadId = "" } = {}) {
+      const key = dncKey(email);
+      if (!key) return false;
+      doNotContactSet.add(key);
+      await setDoc(doc(db, "doNotContact", key), {
+        email: key, reason, leadId, addedBy: currentUser || "", addedByUid: currentUserId || "", addedAt: serverTimestamp()
+      }, { merge: true });
+      return true;
+    }
+    // Opt-in, admin-only, run by hand from the browser console: backfillLeadDefaults()
+    // Gives every lead with no assignedTo field an explicit "" so reps can see unassigned
+    // leads under the new rules. Pass { dryRun: false } to write; the default only counts.
+    window.backfillLeadDefaults = async function ({ dryRun = true } = {}) {
+      if (!isAdminUser()) throw new Error("Admin access only");
+      const missing = Object.values(allLeads).filter(l => typeof l.assignedTo !== "string");
+      if (dryRun) { console.log(`${missing.length} lead(s) have no assignedTo field. Run backfillLeadDefaults({ dryRun: false }) to fix.`); return missing.length; }
+      for (let i = 0; i < missing.length; i += 450) {
+        const batch = writeBatch(db);
+        missing.slice(i, i + 450).forEach(l => batch.update(doc(db, "leads", l.id), { assignedTo: "" }));
+        await batch.commit();
+      }
+      console.log(`Backfilled assignedTo on ${missing.length} lead(s).`);
+      return missing.length;
+    };
+    window.setLeadDoNotContact = async function (id, flag) {
+      const l = allLeads[id];
+      if (!l) return;
+      if (!canCurrentUserManageLeadAssignment(l)) return showToast("You can only change your own or unassigned leads", "error");
+      if (!flag && !isAdminUser()) return showToast("Only an admin can take someone off the do-not-contact list", "error");
+      try {
+        if (flag) {
+          await updateDoc(doc(db, "leads", id), {
+            doNotContact: true, doNotContactAt: new Date().toISOString(), doNotContactBy: currentUser || "",
+            ...(l.outreach?.status === "active" ? { "outreach.status": "stopped", "outreach.stopReason": "Do not contact" } : {}),
+            updatedAt: serverTimestamp()
+          });
+          await addToDoNotContact(l.email, { reason: "Marked do-not-contact by hand", leadId: id });
+          delete outreachDrafts[id];
+          showToast("Marked do not contact — this email is now blocked everywhere", "success");
+        } else {
+          await updateDoc(doc(db, "leads", id), { doNotContact: false, updatedAt: serverTimestamp() });
+          const key = dncKey(l.email);
+          if (key) { await deleteDoc(doc(db, "doNotContact", key)); doNotContactSet.delete(key); }
+          showToast("Removed from the do-not-contact list", "success");
+        }
+        if (currentLeadId === id) setTimeout(() => openDetail(id), 300);
+      } catch (e) { showToast("Couldn't update: " + (e.message || e), "error"); }
+    };
     function outreachEmail(lead) { return splitEmail(cleanEmail(lead?.email)).address; }
     // Accounting firms are buried in tax season — don't email them Feb 1 through Jun 15 (most personal
     // returns are due Apr 30, self-employed Jun 15). Their sequence resumes on its own on Jun 16.
@@ -5703,6 +5846,7 @@ ${shape}`;
     function outreachBlocker(lead) {
       if (!lead) return "Lead not found";
       if (lead.doNotContact) return "Unsubscribed / do not contact";
+      if (isEmailOnDoNotContact(lead.email)) return "Email is on the do-not-contact list";
       if (lead.disabled) return "Disabled";
       if (lead.wontContact) return "Marked won't contact";
       const { address, note } = splitEmail(cleanEmail(lead.email));
@@ -5716,7 +5860,7 @@ ${shape}`;
       if (detectFirmType(lead) === "accounting" && inAccountingTaxSeason()) return "Paused — accounting tax season (resumes June 16)";
       return "";
     }
-    const outreachActive = l => l?.outreach?.status === "active" && !l.doNotContact && !l.disabled && !l.wontContact;
+    const outreachActive = l => l?.outreach?.status === "active" && !l.doNotContact && !l.disabled && !l.wontContact && !isEmailOnDoNotContact(l.email);
     const outreachLeads = () => getVisibleLeads().filter(l => l.outreach);
 
     // ── email-domain security check (public DNS: provider, SPF, DMARC) ──
@@ -5812,6 +5956,13 @@ ${shape}`;
       if (added) clearLeadSelection();
     };
     window.addLeadToOutreach = async function (id) {
+      const l = allLeads[id];
+      if (l && isEmailOnDoNotContact(l.email)) {
+        if (!l.doNotContact && canCurrentUserManageLeadAssignment(l)) {
+          try { await updateDoc(doc(db, "leads", id), { doNotContact: true, doNotContactAt: new Date().toISOString(), doNotContactBy: "do-not-contact list", updatedAt: serverTimestamp() }); } catch (e) { console.error(e); }
+        }
+        return showToast("This email is on the do-not-contact list and can't be added to outreach", "error");
+      }
       await startOutreach([id]);
       if (currentLeadId === id) setTimeout(() => renderEmailDraftSection(allLeads[id]), 400);
     };
@@ -6021,7 +6172,7 @@ LINE: <sentence>`;
             } else {
               upd["outreach.status"] = r.kind === "reply" ? "replied" : "stopped";
               upd["outreach.stopReason"] = REPLY_LABELS[r.kind];
-              if (r.kind === "unsubscribe") { upd.doNotContact = true; upd.doNotContactAt = new Date().toISOString(); }
+              if (r.kind === "unsubscribe") { upd.doNotContact = true; upd.doNotContactAt = new Date().toISOString(); upd.doNotContactBy = "unsubscribe"; }
               if (r.kind === "bounce") upd["outreach.emailCheck"] = { status: "invalid", reason: "Bounced", at: new Date().toISOString() };
               if (r.kind === "reply" || r.kind === "not_interested") {
                 upd["outreach.reply"] = { kind: r.kind, subject: r.subject || "", preview: r.preview || "", at: r.receivedAt || "", open: true };
@@ -6030,6 +6181,9 @@ LINE: <sentence>`;
             }
             try {
               await updateDoc(doc(db, "leads", l.id), upd);
+              if (r.kind === "unsubscribe") {
+                try { await addToDoNotContact(r.from || l.email, { reason: "Unsubscribed", leadId: l.id }); } catch (e) { console.error("do-not-contact write failed:", e); }
+              }
               if (r.kind !== "auto_reply") await addDoc(collection(db, "activities"), {
                 leadId: l.id, type: "Email", notes: `${REPLY_LABELS[r.kind]}: ${r.subject || ""}${r.preview ? ` — ${r.preview.slice(0, 300)}` : ""}`,
                 outreach: true, user: currentUser, date: serverTimestamp()
@@ -6199,11 +6353,11 @@ LINE: <sentence>`;
     function outreachLeadHtml(l) {
       const o = l.outreach;
       const why = outreachBlocker(l);
-      if (l.doNotContact) return `<div class="ld-outreach"><span class="or-badge stop">🚫 Do not contact (unsubscribed)</span></div>`;
+      if (l.doNotContact || isEmailOnDoNotContact(l.email)) return `<div class="ld-outreach"><span class="or-badge stop">🚫 Do not contact${l.doNotContactBy === "unsubscribe" ? " (unsubscribed)" : ""}</span>${isAdminUser() ? `<button class="btn btn-secondary btn-sm" type="button" onclick="setLeadDoNotContact('${l.id}', false)">Remove from do-not-contact</button>` : ""}</div>`;
       if (o && outreachActive(l)) return `<div class="ld-outreach"><span class="or-badge valid">✉️ In outreach · ${o.step ? `sent ${o.step} of 4` : "starting"} · next ${esc(fmtDay(o.nextDue))}</span>
         <button class="btn btn-secondary btn-sm" type="button" onclick="stopLeadOutreach('${l.id}')">Stop</button></div>`;
       if (o && o.status !== "active") return `<div class="ld-outreach"><span class="or-badge unknown">✉️ Outreach ${esc(o.status === "done" ? "finished" : (o.stopReason || o.status).toLowerCase())}${o.step ? ` after email ${o.step}` : ""}</span></div>`;
-      return `<div class="ld-outreach">${why ? `<span class="or-muted">Email outreach: ${esc(why)}</span>` : `<button class="btn btn-primary btn-sm" type="button" onclick="addLeadToOutreach('${l.id}')">✉️ Add to email outreach</button><span class="or-muted">Sends the 4 emails below from your outreach mailbox, after you approve each one.</span>`}</div>`;
+      return `<div class="ld-outreach">${why ? `<span class="or-muted">Email outreach: ${esc(why)}</span>` : `<button class="btn btn-primary btn-sm" type="button" onclick="addLeadToOutreach('${l.id}')">✉️ Add to email outreach</button><span class="or-muted">Sends the 4 emails below from your outreach mailbox, after you approve each one.</span>`}${l.email ? ` <button class="btn btn-secondary btn-sm" type="button" onclick="setLeadDoNotContact('${l.id}', true)" title="Never email this address again (adds it to the global do-not-contact list)">⛔ Do not contact</button>` : ""}</div>`;
     }
 
     // ── setup checklist (Ali's manual steps) ──
@@ -6440,7 +6594,7 @@ LINE: <sentence>`;
             <span><b>${esc(p.name)}</b>${p.category ? ` · ${esc(p.category)}` : ""}${p.rating ? ` · ⭐ ${p.rating}${p.reviews ? ` (${p.reviews})` : ""}` : ""}
               ${p.dupe ? `<span class="rs-tag muted">Already in the tracker${p.dupe.company ? ` as ${esc(p.dupe.company)}` : ""}</span>` : ""}
               <div class="rs-meta">${[p.phone, p.website ? domainOf(p.website) : "", p.address].filter(Boolean).map(esc).join(" · ")}
-                ${p.mapsUrl ? `<a href="${esc(p.mapsUrl)}" target="_blank" rel="noopener noreferrer">map</a>` : ""}</div></span>
+                ${p.mapsUrl ? `<a href="${esc(safeHttpUrl(p.mapsUrl) || "#")}" target="_blank" rel="noopener noreferrer">map</a>` : ""}</div></span>
           </label>`).join("")}</div>
         ${typeof costUsd === "number" && costUsd > 0 ? `<div class="rs-cost">🗺️ This search used <b>${formatResearchCost(costUsd)}</b> of Apify credit <span>(your Apify plan includes free monthly credit)</span></div>` : ""}`;
       box.querySelectorAll("[data-pl]").forEach(cb => cb.addEventListener("change", () => { plState.places[cb.dataset.pl].selected = cb.checked; updatePlacesSaveBtn(); }));
@@ -6953,6 +7107,9 @@ LINE: <sentence>`;
       state: ["state","province","region","territory"],
       address: ["address","fulladdress","streetaddress","streetname","street","mailingaddress"],
       employeeRange: ["employee","employees","emprange","headcount","companysize","employeerange","staffsize"],
+      consentSourceUrl: ["sourceurl","source url","sourcelink","consentsourceurl","consentsource","foundat","foundon","emailsource","emailsourceurl","listingurl","directoryurl","proofurl","referenceurl"],
+      consentBasis: ["consentbasis","consent","consenttype","caslbasis","casl"],
+      consentDate: ["consentdate","caslconsentdate","optindate","dateconsented"],
       // NOTE: no auto-alias for assignedTo — an "Owner"/"Agent"/"Rep" column in a CSV should
       // NOT silently assign every lead. Users can still map a column to "Assigned To" by hand.
     };
@@ -6965,6 +7122,9 @@ LINE: <sentence>`;
       { value: "email", label: "Email" },
       { value: "phone", label: "Phone" },
       { value: "website", label: "Website" },
+      { value: "consentSourceUrl", label: "Source URL (CASL proof)" },
+      { value: "consentBasis", label: "Consent Basis (CASL)" },
+      { value: "consentDate", label: "Consent Date (CASL)" },
       { value: "linkedin", label: "LinkedIn" },
       { value: "title", label: "Title" },
       { value: "industry", label: "Industry" },
@@ -7083,6 +7243,10 @@ LINE: <sentence>`;
       if (joined.includes("address")) scores.website -= 8;
       if (joined === "url" && linkedInRatio > 0.5) scores.linkedin += 8;
       if (joined === "url" && websiteRatio > 0.5) scores.website += 8;
+      // "Source URL" / "Found at" style columns are CASL proof, not the company website.
+      if (/source|found|proof|listing|directory|reference/.test(joined)) { scores.website -= 20; scores.linkedin -= 20; }
+      if (/consent|casl/.test(joined) && /date/.test(joined)) { scores.consentBasis -= 20; scores.consentSourceUrl -= 20; }
+      if (/consent|casl/.test(joined) && /url|link|source/.test(joined)) scores.consentBasis -= 20;
 
       const best = candidates.reduce((max, field) => scores[field] > scores[max] ? field : max, candidates[0]);
       const threshold = CONTENT_DRIVEN_FIELDS.has(best) ? 8 : 10;
@@ -7167,6 +7331,9 @@ LINE: <sentence>`;
             case "phone":         if (!lead.phone) lead.phone = cleanPhone(val); break;
             case "website":       if (!lead.website) lead.website = val; break;
             case "linkedin":      if (!lead.linkedin) lead.linkedin = val; break;
+            case "consentSourceUrl": if (!lead.consentSourceUrl && safeHttpUrl(val)) lead.consentSourceUrl = safeHttpUrl(val); break;
+            case "consentBasis":  if (!lead.consentBasis) { const b = normalizeConsentBasis(val); if (b) lead.consentBasis = b; } break;
+            case "consentDate":   if (!lead.consentDate) { const d = normalizeConsentDate(val); if (d) lead.consentDate = d; } break;
             case "title":         if (!lead.title) lead.title = val; break;
             case "industry":      if (!lead.industry) lead.industry = val; break;
             case "address":       if (!lead.address) lead.address = val; break;
@@ -7180,6 +7347,9 @@ LINE: <sentence>`;
         });
         if (!lead.name && (_first || _last)) lead.name = `${_first} ${_last}`.trim();
         if (!lead.company) lead.company = lead.name || "";
+        // A source URL with no stated basis is evidence the address was published there.
+        if (lead.consentSourceUrl && !lead.consentBasis) lead.consentBasis = "published";
+        if ((lead.consentSourceUrl || lead.consentBasis) && !lead.consentDate) lead.consentDate = normalizeConsentDate(new Date());
         return lead;
       }).filter(l => l.name || l.email);
     }
@@ -7191,6 +7361,14 @@ LINE: <sentence>`;
         if (l.name)  nameIdx[norm(l.name)]   = l.id;
       });
 
+      // Global do-not-contact list: flag any imported row whose email is blocked.
+      let dncFlagged = 0;
+      leads.forEach(lead => {
+        if (lead.email && isEmailOnDoNotContact(lead.email)) {
+          lead.doNotContact = true; lead.doNotContactAt = new Date().toISOString(); lead.doNotContactBy = "do-not-contact list";
+          dncFlagged++;
+        }
+      });
       const toAdd = [], toUpdate = [];
       const NEVER_OW = new Set(["status","contactCount","lastContacted","createdAt","assignedTo","source"]);
       leads.forEach(lead => {
@@ -7268,6 +7446,7 @@ LINE: <sentence>`;
       if (toAdd.length)    parts.push(`${toAdd.length} added`);
       if (toUpdate.length) parts.push(`${toUpdate.length} updated`);
       if (!parts.length)   parts.push("No changes — all leads already exist");
+      if (dncFlagged)      parts.push(`${dncFlagged} on the do-not-contact list (flagged, can't be emailed)`);
       showToast(parts.join(", "),"success");
     }
     window.confirmCsvMapping = async function () {
@@ -7375,9 +7554,43 @@ LINE: <sentence>`;
       return rows;
     }
 
+    // ── SAFE CLICK DISPATCH ───────────────────────────────────────
+    // Buttons/links built from lead data use data-call="fnName" data-args="<JSON>"
+    // instead of onclick="fn('${value}')". The value is only ever HTML-escaped
+    // into an attribute and parsed with JSON.parse, never evaluated as JavaScript,
+    // so a crafted website/company/rep name cannot break out into script.
+    const DATA_CALL_ALLOWED = new Set([
+      "openUrl","deleteImportBatch","restoreArchiveOperation","toggleLeadsCompany","openCompanyResearch",
+      "openAddContact","openAssignCompany","openScreenshotReader","selectRep","checkLeadDomain","sendEmailDraft"
+    ]);
+    document.addEventListener("click", (ev) => {
+      const el = ev.target.closest?.("[data-call]");
+      if (!el) return;
+      const fnName = el.dataset.call;
+      if (el.tagName === "A") ev.preventDefault();
+      if (!DATA_CALL_ALLOWED.has(fnName) || typeof window[fnName] !== "function") return;
+      let args = [];
+      try { args = JSON.parse(el.dataset.args || "[]"); } catch { return; }
+      if (!Array.isArray(args)) return;
+      if (el.dataset.passEl) args.unshift(el);
+      window[fnName](...args);
+    });
+
     // ── URL OPEN (copy fallback for local file:// restrictions) ───
-    window.openUrl = function (rawUrl) {
+    // Only http(s) URLs may be opened. Anything else (javascript:, data:, vbscript:,
+    // file:, ...) is refused, so a lead's website/LinkedIn value can never run code.
+    function safeHttpUrl(rawUrl) {
       const url = ensureHttp(rawUrl);
+      if (!url) return "";
+      try {
+        const parsed = new URL(url);
+        return (parsed.protocol === "http:" || parsed.protocol === "https:") ? parsed.href : "";
+      } catch { return ""; }
+    }
+    window.safeHttpUrl = safeHttpUrl;
+    window.openUrl = function (rawUrl) {
+      const url = safeHttpUrl(rawUrl);
+      if (!url) { showToast("That link isn't a normal web address, so it wasn't opened","error"); return; }
       // Open the destination URL directly to avoid blank tabs in local/file-hosted sessions.
       try {
         const w = window.open(url, "_blank", "noopener,noreferrer");
@@ -8348,7 +8561,7 @@ LINE: <sentence>`;
       col.innerHTML = pending.map(r => {
         const note = r.note ? `<div class="li-card-note">"${liEsc(r.note)}"</div>` : "";
         const mutual = r.mutual_connections ? `<span class="li-badge li-badge-gray">${liEsc(r.mutual_connections)} mutual</span>` : "";
-        const link = r.profile_url ? `<a class="li-profile-link" href="${liEsc(r.profile_url)}" target="_blank" rel="noopener">View Profile →</a>` : "";
+        const link = r.profile_url ? `<a class="li-profile-link" href="${liEsc(safeHttpUrl(r.profile_url) || "#")}" target="_blank" rel="noopener">View Profile →</a>` : "";
         const date = r.sent_at ? `<span class="li-date">${liFormatInviteTime(r.sent_at)}</span>` : "";
         return `
           <div class="li-card">
@@ -8399,7 +8612,7 @@ LINE: <sentence>`;
           : `<span class="li-badge li-badge-gray">Outbound</span>`;
         const unreadBadge = isUnread ? `<span class="li-badge li-badge-unread">Unread</span>` : "";
         const preview = r.last_message ? `<div class="li-card-note">${liEsc(r.last_message.slice(0,140))}${r.last_message.length > 140 ? "…" : ""}</div>` : "";
-        const link = r.thread_url ? `<a class="li-profile-link" href="${liEsc(r.thread_url)}" target="_blank" rel="noopener">Open Thread →</a>` : "";
+        const link = r.thread_url ? `<a class="li-profile-link" href="${liEsc(safeHttpUrl(r.thread_url) || "#")}" target="_blank" rel="noopener">Open Thread →</a>` : "";
         const date = r.message_date ? `<span class="li-date">${liRelTime(new Date(r.message_date))}</span>` : "";
         return `
           <div class="li-card ${isUnread ? "unread" : ""}">
@@ -8428,7 +8641,7 @@ LINE: <sentence>`;
       }
 
       col.innerHTML = pending.map(r => {
-        const link = r.profile_url ? `<a class="li-profile-link" href="${liEsc(r.profile_url)}" target="_blank" rel="noopener">View Profile →</a>` : "";
+        const link = r.profile_url ? `<a class="li-profile-link" href="${liEsc(safeHttpUrl(r.profile_url) || "#")}" target="_blank" rel="noopener">View Profile →</a>` : "";
         const date = r.sent_at ? `<span class="li-date">${liFormatInviteTime(r.sent_at)}</span>` : "";
         return `
           <div class="li-card">
@@ -8457,7 +8670,7 @@ LINE: <sentence>`;
       }
 
       col.innerHTML = accepted.map(r => {
-        const link = r.profile_url ? `<a class="li-profile-link" href="${liEsc(r.profile_url)}" target="_blank" rel="noopener">View Profile →</a>` : "";
+        const link = r.profile_url ? `<a class="li-profile-link" href="${liEsc(safeHttpUrl(r.profile_url) || "#")}" target="_blank" rel="noopener">View Profile →</a>` : "";
         return `
           <div class="li-card">
             <div class="li-card-name">${liEsc(r.name||"Unknown")}</div>
@@ -8484,7 +8697,7 @@ LINE: <sentence>`;
       col.innerHTML = liCatchUpData.map(r => {
         const typeBadge = `<span class="li-badge li-badge-blue">${liEsc((r.catch_up_type || "all").replace(/_/g, " "))}</span>`;
         const action = r.action_text ? `<div class="li-card-note">${liEsc(r.action_text)}</div>` : "";
-        const link = r.profile_url ? `<a class="li-profile-link" href="${liEsc(r.profile_url)}" target="_blank" rel="noopener">Open in LinkedIn →</a>` : "";
+        const link = r.profile_url ? `<a class="li-profile-link" href="${liEsc(safeHttpUrl(r.profile_url) || "#")}" target="_blank" rel="noopener">Open in LinkedIn →</a>` : "";
         const meta = [];
         if (r.reaction_count) meta.push(`${r.reaction_count} reactions`);
         if (r.comment_count) meta.push(`${r.comment_count} comments`);

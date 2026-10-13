@@ -289,7 +289,7 @@ function publicBase(req: Request): string {
 
 // POST /outreach/status | verify { emails } | domaincheck { domains } | send { messages, bookingUrl } | replies { since, addresses }
 async function handleOutreach(req: Request, action: string): Promise<Response> {
-  let body: { emails?: unknown[]; domains?: unknown[]; domain?: string; messages?: unknown[]; since?: string; addresses?: unknown[]; bookingUrl?: string } = {};
+  let body: { emails?: unknown[]; domains?: unknown[]; domain?: string; messages?: unknown[]; since?: string; addresses?: unknown[]; conversations?: unknown[]; bookingUrl?: string } = {};
   try {
     const raw = await req.text();
     if (raw.length > 400_000) return json(req, 413, { error: "That request is too large." });
@@ -305,12 +305,15 @@ async function handleOutreach(req: Request, action: string): Promise<Response> {
     if (action === "send") {
       const messages = Array.isArray(body.messages) ? body.messages : [];
       if (!messages.length) return json(req, 400, { error: "Nothing to send." });
-      const result = await sendOutreach(messages as Parameters<typeof sendOutreach>[0], publicBase(req), String(body.bookingUrl ?? ""));
+      const token = req.headers.get("x-firebase-token") ?? "";
+      const result = await sendOutreach(messages as Parameters<typeof sendOutreach>[0], publicBase(req), String(body.bookingUrl ?? ""),
+        (email) => onDoNotContactList(email, token));
       console.log("outreach send:", JSON.stringify({ tried: messages.length, sent: result.results.filter((r) => r.ok).length, sentToday: result.sentToday }));
       return json(req, 200, result);
     }
     if (action === "replies") {
-      return json(req, 200, await checkReplies(String(body.since ?? ""), Array.isArray(body.addresses) ? body.addresses : []));
+      return json(req, 200, await checkReplies(String(body.since ?? ""), Array.isArray(body.addresses) ? body.addresses : [],
+        Array.isArray(body.conversations) ? body.conversations : []));
     }
     return json(req, 404, { error: "Unknown outreach action." });
   } catch (err) {
@@ -318,6 +321,19 @@ async function handleOutreach(req: Request, action: string): Promise<Response> {
     console.error("outreach failed:", err);
     return json(req, 500, { error: "Something went wrong with email outreach." });
   }
+}
+
+// Global do-not-contact list (Firestore doNotContact/{lowercased email}), read with the
+// caller's own Firebase ID token so the Firestore rules (allow-listed users only) apply.
+// 404 = not on the list. Any other failure throws, and the caller then refuses to send.
+async function onDoNotContactList(email: string, idToken: string): Promise<boolean> {
+  const key = email.trim().toLowerCase();
+  if (!key || key.includes("/")) return false;
+  const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/doNotContact/${encodeURIComponent(key)}?mask.fieldPaths=email`;
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${idToken}` } });
+  if (res.status === 404) return false;
+  if (res.ok) return true;
+  throw new Error(`Firestore answered ${res.status}`);
 }
 
 // POST /db and POST /storage/social-post-image (see db.ts). Answers { data } or { error }.

@@ -66,7 +66,9 @@ async function graphToken(): Promise<string> {
 }
 
 async function graph(path: string, init: RequestInit = {}) {
-  const res = await fetch(`${GRAPH}/users/${encodeURIComponent(MAILBOX)}${path}`, {
+  // Paging links (@odata.nextLink) come back as full Graph URLs; use them as they are.
+  const target = path.startsWith(`${GRAPH}/`) ? path : `${GRAPH}/users/${encodeURIComponent(MAILBOX)}${path}`;
+  const res = await fetch(target, {
     ...init,
     headers: {
       Authorization: `Bearer ${await graphToken()}`,
@@ -552,7 +554,10 @@ export interface OutgoingEmail {
   replyToId?: string; // Graph id of the first email; follow-ups go out as replies in the same thread
 }
 
-export async function sendOutreach(messages: OutgoingEmail[], baseUrl: string, bookingUrl = "") {
+// isBlocked(email) answers whether the address is on the global do-not-contact list
+// (Firestore doNotContact/{email}). It throws when the list can't be read, and then the
+// email is NOT sent: we never send when we can't prove the person hasn't opted out.
+export async function sendOutreach(messages: OutgoingEmail[], baseUrl: string, bookingUrl = "", isBlocked?: (email: string) => Promise<boolean>) {
   const booking = safeUrl(bookingUrl);
   if (!outreachConfigured()) throw new OutreachError("Email sending isn't set up yet. Add the Microsoft 365 settings in Railway (see the setup checklist).", 503);
   const batch = messages.slice(0, MAX_BATCH);
@@ -565,6 +570,16 @@ export async function sendOutreach(messages: OutgoingEmail[], baseUrl: string, b
     const base = { leadId: m.leadId ?? "", to };
     if (!EMAIL_RE.test(to)) { results.push({ ...base, ok: false, error: "Not a valid email address" }); continue; }
     if (!text || (!subject && !m.replyToId)) { results.push({ ...base, ok: false, error: "The email needs a subject and a message" }); continue; }
+    if (isBlocked) {
+      let blocked: boolean;
+      try { blocked = await isBlocked(to); }
+      catch (err) {
+        console.error("do-not-contact check failed:", err);
+        results.push({ ...base, ok: false, error: "Couldn't check the do-not-contact list, so this wasn't sent. Try again." });
+        continue;
+      }
+      if (blocked) { results.push({ ...base, ok: false, error: "This address is on the do-not-contact list", doNotContact: true }); continue; }
+    }
     if (sent >= DAILY_MAX) { results.push({ ...base, ok: false, error: `Today's limit of ${DAILY_MAX} emails is reached. The rest can go tomorrow.`, capped: true }); continue; }
     const html = bodyHtml(text, await unsubscribeLink(baseUrl, to), booking);
     const recipient = { emailAddress: { address: to, ...(m.toName ? { name: String(m.toName).slice(0, 120) } : {}) } };
@@ -610,33 +625,70 @@ const AUTO_REPLY = /^(automatic reply|auto(matic)?[- ]?reply|out of (the )?offic
 const BOUNCE_FROM = /^(postmaster|mailer-daemon|microsoftexchange)/i;
 const BOUNCE_SUBJECT = /^(undeliverable|delivery (status notification|has failed)|mail delivery (failed|subsystem)|returned mail)/i;
 
-export async function checkReplies(sinceIso: string, addresses: unknown[]) {
+// The part of a reply the person actually wrote: drops the quoted original (which carries our
+// own footer, 'reply "unsubscribe"', and would otherwise make ordinary replies look like
+// unsubscribes or not-interested).
+export function ownText(preview: string): string {
+  const cut = preview.search(/(^|\s)(From: |-{2,} ?Original Message|On .{3,80} wrote:|Sent from my |________________)/i);
+  return (cut > 0 ? preview.slice(0, cut) : cut === 0 ? "" : preview).trim();
+}
+
+export function classifyReply(subject: string, preview: string): "auto_reply" | "unsubscribe" | "not_interested" | "reply" {
+  const mine = ownText(preview);
+  if (AUTO_REPLY.test(subject)) return "auto_reply";
+  if (UNSUB_WORDS.test(`${subject.replace(/^(re|fw|fwd):\s*/i, "")} ${mine}`)) return "unsubscribe";
+  if (NOT_INTERESTED.test(mine)) return "not_interested";
+  return "reply";
+}
+
+// Reads Inbox and Junk Email (replies to cold email often land in Junk), following
+// @odata.nextLink so a busy mailbox doesn't hide older replies behind the first 200.
+async function receivedSince(from: Date): Promise<{ messages: Record<string, unknown>[]; complete: boolean }> {
+  const filter = encodeURIComponent(`receivedDateTime ge ${from.toISOString()}`);
+  const select = "id,from,subject,bodyPreview,receivedDateTime,conversationId";
+  const messages: Record<string, unknown>[] = [];
+  let complete = true;
+  for (const folder of ["inbox", "junkemail"]) {
+    let path: string | null = `/mailFolders/${folder}/messages?$top=100&$orderby=receivedDateTime desc&$filter=${filter}&$select=${select}`;
+    for (let page = 0; path && page < 20; page++) {
+      const data = await graph(path);
+      messages.push(...(Array.isArray(data?.value) ? data.value : []));
+      const next = typeof data?.["@odata.nextLink"] === "string" ? data["@odata.nextLink"] as string : "";
+      path = next && next.startsWith(`${GRAPH}/`) ? next : null;
+      if (next && !path) complete = false;
+    }
+    if (path) complete = false;
+  }
+  return { messages, complete };
+}
+
+export async function checkReplies(sinceIso: string, addresses: unknown[], conversations: unknown[] = []) {
   if (!outreachConfigured()) throw new OutreachError("Email sending isn't set up yet.", 503);
   const watch = new Set(addresses.map((a) => String(a ?? "").trim().toLowerCase()).filter(Boolean));
+  const threads = new Set(conversations.map((c) => String(c ?? "").trim()).filter(Boolean));
   const since = new Date(sinceIso);
   const from = isNaN(since.getTime()) ? new Date(Date.now() - 14 * 86400_000) : since;
-  const filter = encodeURIComponent(`receivedDateTime ge ${from.toISOString()}`);
-  const data = await graph(`/mailFolders/inbox/messages?$top=200&$orderby=receivedDateTime desc&$filter=${filter}&$select=id,from,subject,bodyPreview,receivedDateTime,conversationId`);
+  const { messages, complete } = await receivedSince(from);
   const found = [];
-  for (const msg of Array.isArray(data?.value) ? data.value : []) {
+  const mailbox = MAILBOX.toLowerCase();
+  for (const msg of messages as any[]) {
     const sender = String(msg.from?.emailAddress?.address ?? "").toLowerCase();
     const subject = String(msg.subject ?? "");
     const preview = String(msg.bodyPreview ?? "").slice(0, 600);
-    const base = { id: msg.id, subject, preview, receivedAt: msg.receivedDateTime, conversationId: msg.conversationId ?? "" };
-    if (sender === MAILBOX && /^Unsubscribe request: /i.test(subject)) {
+    const conversationId = String(msg.conversationId ?? "");
+    const base = { id: msg.id, subject, preview: ownText(preview) || preview.slice(0, 300), receivedAt: msg.receivedDateTime, conversationId };
+    if (/^Unsubscribe request: /i.test(subject) && (sender === mailbox || !sender)) {
       found.push({ ...base, from: subject.replace(/^Unsubscribe request: /i, "").trim().toLowerCase(), kind: "unsubscribe" });
     } else if (BOUNCE_FROM.test(sender) || BOUNCE_SUBJECT.test(subject)) {
       const who = [...watch].find((a) => preview.toLowerCase().includes(a));
       if (who) found.push({ ...base, from: who, kind: "bounce" });
-    } else if (watch.has(sender)) {
-      const kind = AUTO_REPLY.test(subject) ? "auto_reply"
-        : UNSUB_WORDS.test(`${subject} ${preview}`) ? "unsubscribe"
-        : NOT_INTERESTED.test(preview) ? "not_interested"
-        : "reply";
-      found.push({ ...base, from: sender, kind });
+    } else if (sender && sender !== mailbox && (watch.has(sender) || (conversationId && threads.has(conversationId)))) {
+      // A reply from the person we emailed, or from anyone else replying in that thread
+      // (a colleague, an assistant, or the same person from another address).
+      found.push({ ...base, from: sender, kind: classifyReply(subject, preview) });
     }
   }
-  return { replies: found, checkedAt: new Date().toISOString() };
+  return { replies: found, checkedAt: new Date().toISOString(), complete };
 }
 
 // ── Unsubscribe link ────────────────────────────────────────────────────────

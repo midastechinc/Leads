@@ -4287,9 +4287,15 @@
     };
 
     // ── UPDATE STATUS ──────────────────────────────────────────────
+    // Every status change leaves an activity, so a status that "goes back" can be traced.
+    function logStatusChange(id, from, to) {
+      addDoc(collection(db, "activities"), { leadId: id, type: "Status", notes: `Status: ${from || "New"} → ${to}`, statusFrom: from || "New", statusTo: to, user: currentUser, date: serverTimestamp() })
+        .catch(e => console.warn("status activity not saved:", e));
+    }
     window.updateStatus = async function (id, status) {
       if (!canCurrentUserManageLeadAssignment(allLeads[id])) return showToast("This lead is assigned to another rep","error");
-      try { await updateDoc(doc(db,"leads",id), { status, updatedAt: serverTimestamp() }); }
+      const before = allLeads[id]?.status || "New";
+      try { await updateDoc(doc(db,"leads",id), { status, updatedAt: serverTimestamp() }); if (before !== status) logStatusChange(id, before, status); }
       catch(e) { console.error(e); showToast("Failed","error"); }
     };
 
@@ -4316,8 +4322,10 @@
           leadId: currentLeadId, type, notes, user: currentUser, date: serverTimestamp()
         });
         const upd = { contactCount: increment(1), lastContacted: serverTimestamp(), updatedAt: serverTimestamp() };
+        const beforeSt = allLeads[currentLeadId]?.status || "New";
         if (newSt) upd.status = newSt;
         await updateDoc(doc(db,"leads",currentLeadId), upd);
+        if (newSt && newSt !== beforeSt) logStatusChange(currentLeadId, beforeSt, newSt);
         showToast("Activity saved","success");
         closeModal("activityModal");
       } catch(e) { console.error(e); showToast("Failed","error"); }
@@ -4876,18 +4884,18 @@
         `).join("")}
       ` : "";
 
+      editLeadSnapshot = readEditLeadForm();
       closeModal("detailModal");
       document.getElementById("editLeadModal").classList.add("active");
     };
-    window.saveEditedLead = async function () {
-      const lead = allLeads[currentLeadId];
-      if (!lead) return showToast("Lead not found","error");
-      if (!isLeadVisibleToCurrentUser(lead)) return showToast("This lead is assigned to another rep","error");
-
-      // Any rep can hand this lead to any other rep — they just can't reach this point
-      // for a lead someone else already owns (isLeadVisibleToCurrentUser above).
+    // The Edit Lead form used to write every field back, so saving it put back whatever the
+    // lead looked like when the form was OPENED. If the status (or anything else) changed in
+    // the meantime — a rep marking it Contacted, outreach, a reply — an admin who then
+    // reassigned the lead from that form silently reset it. Now only fields the person
+    // actually changed in the form are written.
+    let editLeadSnapshot = null;
+    function readEditLeadForm() {
       const assignedToRaw = (document.getElementById("editLeadAssignedTo").value || "").trim();
-
       // When the human ticks "Verified", the "(unverified)/(guess)" note the research
       // engine left on the email is no longer true — drop it so the two signals can
       // never contradict each other (and so Outreach stops treating it as a guess).
@@ -4914,21 +4922,39 @@
         state: document.getElementById("editLeadState").value.trim(),
         employeeRange: document.getElementById("editLeadEmployeeRange").value.trim(),
         address: document.getElementById("editLeadAddress").value.trim(),
-        ...readConsentFields("editLead"),
-        updatedAt: serverTimestamp()
+        ...readConsentFields("editLead")
       };
       document.querySelectorAll("#editLeadExtraFields [data-extra-key]").forEach(el => {
         const key = el.getAttribute("data-extra-key");
         if (key) updates[key] = el.value.trim();
       });
+      return updates;
+    }
+    window.saveEditedLead = async function () {
+      const lead = allLeads[currentLeadId];
+      if (!lead) return showToast("Lead not found","error");
+      if (!isLeadVisibleToCurrentUser(lead)) return showToast("This lead is assigned to another rep","error");
 
-      if (!updates.name) return showToast("Name is required","error");
+      // Any rep can hand this lead to any other rep — they just can't reach this point
+      // for a lead someone else already owns (isLeadVisibleToCurrentUser above).
+
+      const formNow = readEditLeadForm();
+      const updates = {};
+      Object.entries(formNow).forEach(([k, v]) => {
+        if (!editLeadSnapshot || JSON.stringify(editLeadSnapshot[k]) !== JSON.stringify(v)) updates[k] = v;
+      });
+      if (!Object.keys(updates).length) { closeModal("editLeadModal"); return showToast("No changes","success"); }
+      if (!formNow.name) return showToast("Name is required","error");
+      updates.updatedAt = serverTimestamp();
       if (updates.consentSourceUrl && !safeHttpUrl(updates.consentSourceUrl)) return showToast("Consent source URL must be an http(s) link","error");
       try {
         await updateDoc(doc(db, "leads", currentLeadId), updates);
-        const spread = await cascadeCompanyToRep(getCompanyGroupKey(updates.company), updates.assignedTo, currentLeadId);
+        if ("status" in updates && updates.status !== (lead.status || "New")) logStatusChange(currentLeadId, lead.status, updates.status);
+        const spread = ("assignedTo" in updates || "company" in updates)
+          ? await cascadeCompanyToRep(getCompanyGroupKey(formNow.company), formNow.assignedTo, currentLeadId) : 0;
+        editLeadSnapshot = null;
         closeModal("editLeadModal");
-        showToast(spread ? `Lead updated · ${spread} colleague${spread === 1 ? "" : "s"} set to ${updates.assignedTo || "Unassigned"}` : "Lead updated","success");
+        showToast(spread ? `Lead updated · ${spread} colleague${spread === 1 ? "" : "s"} set to ${formNow.assignedTo || "Unassigned"}` : "Lead updated","success");
         openDetail(currentLeadId);
       } catch (e) {
         console.error("saveEditedLead error:", e);
@@ -6112,7 +6138,13 @@ LINE: <sentence>`;
         const today = todayKey();
         for (const r of res.results || []) {
           const l = allLeads[r.leadId]; if (!l) continue;
-          if (!r.ok) { failed.push(`${l.name || l.company}: ${r.error}`); continue; }
+          if (!r.ok) {
+            failed.push(`${l.name || l.company}: ${r.error}`);
+            if (r.doNotContact && !l.doNotContact) {
+              try { await updateDoc(doc(db, "leads", l.id), { doNotContact: true, doNotContactAt: new Date().toISOString(), doNotContactBy: "do-not-contact list", "outreach.status": "stopped", "outreach.stopReason": "Do not contact", updatedAt: serverTimestamp() }); } catch (e) { console.error(e); }
+            }
+            continue;
+          }
           const d = outreachDraft(l);
           const upd = {
             "outreach.step": d.step,
@@ -6122,6 +6154,7 @@ LINE: <sentence>`;
             contactCount: increment(1), lastContacted: serverTimestamp(), updatedAt: serverTimestamp()
           };
           if (d.step === 1) { upd["outreach.firstMsgId"] = r.id || ""; upd["outreach.subject1"] = d.subject; }
+          if (r.conversationId && !l.outreach?.conversationId) upd["outreach.conversationId"] = r.conversationId;
           if (!l.status || l.status === "New") upd.status = "Contacted";
           try {
             await updateDoc(doc(db, "leads", l.id), upd);
@@ -6146,59 +6179,135 @@ LINE: <sentence>`;
 
     // ── replies, bounces, unsubscribes ──
     const REPLY_LABELS = { reply: "Replied", not_interested: "Not interested", unsubscribe: "Unsubscribed", bounce: "Bounced", auto_reply: "Auto-reply" };
+    // Each person keeps their own reply-check cursor. The old single shared cursor was moved
+    // forward by whoever checked, even though a rep's browser can only see (and match replies
+    // to) their own and unassigned leads — so replies to everyone else's leads were skipped
+    // and never looked at again.
+    function replyCursorKey() { return `lastReplyCheck_${currentUserId || "anon"}`; }
+    // Falls back to the old shared cursor the first time, so going live doesn't silently re-read
+    // (and back-fill) weeks of mail — that's what recoverOutreachReplies() is for.
+    function myLastReplyCheck() { return outreachSettings[replyCursorKey()] || outreachSettings.lastReplyCheck || ""; }
+    function outreachConversationId(l) { return l?.outreach?.conversationId || ""; }
+
+    // Matches replies from the mailbox to leads and records them. Used by the normal check
+    // and by the admin-only recovery tool (dryRun = report only, write nothing).
+    async function processOutreachReplies(replies, { dryRun = false } = {}) {
+      const visible = getVisibleLeads();
+      const byEmail = {}, byConv = {};
+      visible.forEach(l => {
+        const e = outreachEmail(l); if (e) (byEmail[e] = byEmail[e] || []).push(l);
+        const c = outreachConversationId(l); if (c) (byConv[c] = byConv[c] || []).push(l);
+      });
+      const report = { matched: [], unmatched: [], unsubscribed: [], failed: 0, found: 0 };
+      for (const r of replies) {
+        const from = String(r.from || "").trim().toLowerCase();
+        // Everyone with that address (any outreach state, not just active ones), plus whoever
+        // the thread belongs to when the reply came from a different address.
+        const set = new Map();
+        (byEmail[from] || []).forEach(l => set.set(l.id, l));
+        if (r.kind !== "unsubscribe" || !set.size) (byConv[r.conversationId] || []).forEach(l => set.set(l.id, l));
+        const leads = [...set.values()];
+        if (r.kind === "unsubscribe") {
+          report.unsubscribed.push({ email: from, leads: leads.map(l => l.id), onList: isEmailOnDoNotContact(from) });
+          if (!dryRun && from) {
+            try { await addToDoNotContact(from, { reason: "Unsubscribed", leadId: leads[0]?.id || "" }); }
+            catch (e) { console.error("do-not-contact write failed:", e); report.failed++; }
+          }
+        }
+        if (!leads.length) { report.unmatched.push({ from, kind: r.kind, subject: r.subject || "", at: r.receivedAt || "" }); continue; }
+        for (const l of leads) {
+          const already = (l.outreach?.handledIds || []).includes(r.id);
+          const needsDnc = r.kind === "unsubscribe" && !l.doNotContact;
+          if (already && !needsDnc) continue;
+          report.matched.push({ leadId: l.id, name: l.name || l.company || "", email: outreachEmail(l), kind: r.kind, subject: r.subject || "", at: r.receivedAt || "" });
+          if (dryRun) continue;
+          const handled = [...(l.outreach?.handledIds || []).filter(x => x !== r.id), r.id].slice(-50);
+          const upd = { "outreach.handledIds": handled, updatedAt: serverTimestamp() };
+          if (r.kind === "auto_reply") {
+            if (outreachActive(l)) upd["outreach.nextDue"] = addBusinessDays(todayKey(), 3);
+          } else {
+            if (l.outreach) {
+              upd["outreach.status"] = r.kind === "reply" ? "replied" : "stopped";
+              upd["outreach.stopReason"] = REPLY_LABELS[r.kind];
+            }
+            if (r.kind === "unsubscribe") { upd.doNotContact = true; upd.doNotContactAt = new Date().toISOString(); upd.doNotContactBy = "unsubscribe"; }
+            if (r.kind === "bounce") upd["outreach.emailCheck"] = { status: "invalid", reason: "Bounced", at: new Date().toISOString() };
+            if (r.kind === "reply" || r.kind === "not_interested") {
+              upd["outreach.reply"] = { kind: r.kind, subject: r.subject || "", preview: r.preview || "", at: r.receivedAt || "", open: true, from };
+              report.found++;
+            }
+          }
+          try {
+            await updateDoc(doc(db, "leads", l.id), upd);
+            delete outreachDrafts[l.id];
+            if (r.kind !== "auto_reply" && !already) await addDoc(collection(db, "activities"), {
+              leadId: l.id, type: "Email", notes: `${REPLY_LABELS[r.kind]}: ${r.subject || ""}${r.preview ? ` — ${r.preview.slice(0, 300)}` : ""}`,
+              outreach: true, user: currentUser, date: serverTimestamp()
+            });
+          } catch (e) { console.error(e); report.failed++; }
+        }
+      }
+      return report;
+    }
+    function replyCheckPayload(since) {
+      const leads = getVisibleLeads().filter(l => l.outreach?.lastSentAt || l.outreach?.firstMsgId);
+      return {
+        since,
+        addresses: [...new Set(leads.map(outreachEmail).filter(Boolean))],
+        conversations: [...new Set(leads.map(outreachConversationId).filter(Boolean))]
+      };
+    }
     window.checkOutreachReplies = async function (byHand) {
       if (!outreachServer?.configured) { if (byHand) showToast(outreachServerError || "Email sending isn't set up yet.", "error"); return; }
       const btn = document.getElementById("orCheckBtn");
       if (btn) { btn.disabled = true; btn.textContent = "Checking…"; }
       try {
-        const watched = outreachLeads().filter(l => ["active", "done", "replied"].includes(l.outreach.status) && l.outreach.lastSentAt);
-        const byEmail = {};
-        watched.forEach(l => { const e = outreachEmail(l); if (e) (byEmail[e] = byEmail[e] || []).push(l); });
-        const since = outreachSettings.lastReplyCheck
-          ? new Date(new Date(outreachSettings.lastReplyCheck).getTime() - 2 * 3600000).toISOString()
-          : new Date(Date.now() - 30 * 86400000).toISOString();
-        const { replies = [], checkedAt } = await outreachCall("replies", { since, addresses: Object.keys(byEmail) });
-        let found = 0;
-        for (const r of replies) {
-          // Unsubscribes from the link can come from anyone emailed before, so match every lead with that email.
-          const leads = byEmail[r.from] || (r.kind === "unsubscribe" ? getVisibleLeads().filter(l => outreachEmail(l) === r.from) : []);
-          for (const l of leads) {
-            if ((l.outreach?.handledIds || []).includes(r.id)) continue;
-            const handled = [...(l.outreach?.handledIds || []), r.id].slice(-50);
-            const upd = { "outreach.handledIds": handled, updatedAt: serverTimestamp() };
-            if (r.kind === "auto_reply") {
-              // Out of office: push the next email back a few days.
-              if (outreachActive(l)) upd["outreach.nextDue"] = addBusinessDays(todayKey(), 3);
-            } else {
-              upd["outreach.status"] = r.kind === "reply" ? "replied" : "stopped";
-              upd["outreach.stopReason"] = REPLY_LABELS[r.kind];
-              if (r.kind === "unsubscribe") { upd.doNotContact = true; upd.doNotContactAt = new Date().toISOString(); upd.doNotContactBy = "unsubscribe"; }
-              if (r.kind === "bounce") upd["outreach.emailCheck"] = { status: "invalid", reason: "Bounced", at: new Date().toISOString() };
-              if (r.kind === "reply" || r.kind === "not_interested") {
-                upd["outreach.reply"] = { kind: r.kind, subject: r.subject || "", preview: r.preview || "", at: r.receivedAt || "", open: true };
-                found++;
-              }
-            }
-            try {
-              await updateDoc(doc(db, "leads", l.id), upd);
-              if (r.kind === "unsubscribe") {
-                try { await addToDoNotContact(r.from || l.email, { reason: "Unsubscribed", leadId: l.id }); } catch (e) { console.error("do-not-contact write failed:", e); }
-              }
-              if (r.kind !== "auto_reply") await addDoc(collection(db, "activities"), {
-                leadId: l.id, type: "Email", notes: `${REPLY_LABELS[r.kind]}: ${r.subject || ""}${r.preview ? ` — ${r.preview.slice(0, 300)}` : ""}`,
-                outreach: true, user: currentUser, date: serverTimestamp()
-              });
-            } catch (e) { console.error(e); }
-          }
-        }
-        await saveOutreachSettings({ lastReplyCheck: checkedAt || new Date().toISOString() });
-        if (byHand || found) showToast(found ? `${found} new repl${found === 1 ? "y" : "ies"} to answer` : "No new replies", found ? "success" : "");
+        const mine = myLastReplyCheck();
+        const fallbackStart = outreachSettings.warmupStart ? `${outreachSettings.warmupStart}T00:00:00` : "";
+        const since = mine
+          ? new Date(new Date(mine).getTime() - 6 * 3600000).toISOString()
+          : new Date(fallbackStart ? new Date(fallbackStart).getTime() : Date.now() - 30 * 86400000).toISOString();
+        const { replies = [], checkedAt, complete = true } = await outreachCall("replies", replyCheckPayload(since));
+        const report = await processOutreachReplies(replies);
+        // Only move the cursor when every reply was recorded and the server read everything,
+        // so nothing that failed this time is skipped next time.
+        if (!report.failed && complete !== false) await saveOutreachSettings({ [replyCursorKey()]: checkedAt || new Date().toISOString(), lastReplyCheck: checkedAt || new Date().toISOString() });
+        const found = report.found;
+        if (report.failed) showToast(`${report.failed} repl${report.failed === 1 ? "y" : "ies"} couldn't be saved — they'll be retried next check`, "error");
+        else if (byHand || found) showToast(found ? `${found} new repl${found === 1 ? "y" : "ies"} to answer` : "No new replies", found ? "success" : "");
       } catch (e) {
         if (byHand) showToast(e.message, "error");
       } finally {
         if (btn) { btn.disabled = false; btn.textContent = "↻ Check replies"; }
         setTimeout(renderOutreach, 300);
       }
+    };
+    // Opt-in, admin-only recovery, run by hand from the browser console:
+    //   await recoverOutreachReplies()                    → dry run: lists what it WOULD record
+    //   await recoverOutreachReplies({ dryRun: false })   → records the missed replies/unsubscribes
+    // Re-reads the mailbox from `since` (default: the outreach warm-up start), matches every
+    // reply against all leads, and also puts every lead already flagged doNotContact on the
+    // global do-not-contact list.
+    window.recoverOutreachReplies = async function ({ since = "", dryRun = true } = {}) {
+      if (!isAdminUser()) throw new Error("Admin access only");
+      if (!outreachServer) await refreshOutreachServer();
+      const start = since || (outreachSettings.warmupStart ? `${outreachSettings.warmupStart}T00:00:00Z` : new Date(Date.now() - 60 * 86400000).toISOString());
+      const { replies = [], complete = true } = await outreachCall("replies", replyCheckPayload(new Date(start).toISOString()));
+      const report = await processOutreachReplies(replies, { dryRun });
+      const dncMissing = getVisibleLeads().filter(l => l.doNotContact && dncKey(l.email) && !isEmailOnDoNotContact(l.email));
+      const dncSameEmail = getVisibleLeads().filter(l => !l.doNotContact && (isEmailOnDoNotContact(l.email) ||
+        dncMissing.some(m => dncKey(m.email) === dncKey(l.email))));
+      if (!dryRun) {
+        for (const l of dncMissing) { try { await addToDoNotContact(l.email, { reason: "Backfill: lead was marked do not contact", leadId: l.id }); } catch (e) { console.error(e); } }
+        for (const l of dncSameEmail) { try { await updateDoc(doc(db, "leads", l.id), { doNotContact: true, doNotContactAt: new Date().toISOString(), doNotContactBy: "do-not-contact list", ...(l.outreach?.status === "active" ? { "outreach.status": "stopped", "outreach.stopReason": "Do not contact" } : {}), updatedAt: serverTimestamp() }); } catch (e) { console.error(e); } }
+      }
+      const out = { dryRun, since: start, mailboxReadComplete: complete !== false, repliesInMailbox: replies.length,
+        wouldRecord: report.matched, unmatchedReplies: report.unmatched, unsubscribes: report.unsubscribed,
+        addToDoNotContactList: dncMissing.map(l => ({ leadId: l.id, email: dncKey(l.email) })),
+        flagSameEmailLeads: dncSameEmail.map(l => ({ leadId: l.id, name: l.name, email: dncKey(l.email), outreach: l.outreach?.status || "" })),
+        failed: report.failed };
+      console.log(dryRun ? "DRY RUN — nothing written. Re-run with { dryRun: false } to apply." : "Applied.", out);
+      return out;
     };
     window.resolveOutreachReply = async function (id, action) {
       const l = allLeads[id]; if (!l) return;
@@ -6229,7 +6338,8 @@ LINE: <sentence>`;
       renderOutreach();
       await refreshOutreachServer();
       renderOutreach();
-      const last = outreachSettings.lastReplyCheck ? new Date(outreachSettings.lastReplyCheck).getTime() : 0;
+      const mineLast = myLastReplyCheck();
+      const last = mineLast ? new Date(mineLast).getTime() : 0;
       if (outreachServer?.configured && Date.now() - last > 30 * 60000) checkOutreachReplies(false);
     };
     function renderOutreach() {

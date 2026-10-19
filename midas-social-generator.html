@@ -576,7 +576,7 @@ body.lt-shell .saved-filters .filter-input,body.lt-shell .saved-filters .filter-
           </button>
           <div class="topic-dropdown-panel" id="topicDropdownPanel" hidden>
             <div class="topic-search-row">
-              <input id="topicSearch" class="topic-search" type="search" placeholder="Search topics, like MFA, ransomware or law firms">
+              <input type="search" name="q-topic-search" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" id="topicSearch" class="topic-search" placeholder="Search topics, like MFA, ransomware or law firms">
             </div>
             <div id="topicPills"></div>
           </div>
@@ -700,7 +700,7 @@ body.lt-shell .saved-filters .filter-input,body.lt-shell .saved-filters .filter-
   <summary><span class="ss-h2">Saved posts</span> <span class="note">Also listed in Social Posts → Drafts</span></summary>
   <div class="psec" id="savedPostsSec">
     <div class="saved-filters">
-      <input id="savedPostsSearch" class="filter-input" type="search" placeholder="Search headline, notes, caption, hashtags...">
+      <input type="search" name="q-saved-posts-search" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" id="savedPostsSearch" class="filter-input" placeholder="Search headline, notes, caption, hashtags...">
       <select id="savedPostsPlatformFilter" class="filter-select">
         <option value="all" selected>All platforms</option>
         <option value="instagram">Instagram</option>

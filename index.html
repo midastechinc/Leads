@@ -2604,13 +2604,13 @@
         </div>
         <div class="form-group">
           <label>Email</label>
-          <input type="email" id="adminNewUserEmail" placeholder="name@company.com">
+          <input type="email" id="adminNewUserEmail" autocomplete="off" placeholder="name@company.com">
         </div>
       </div>
       <div class="form-row">
         <div class="form-group">
           <label>Password</label>
-          <input type="password" id="adminNewUserPassword" placeholder="Minimum 6 characters">
+          <input type="password" id="adminNewUserPassword" autocomplete="new-password" placeholder="Minimum 6 characters">
         </div>
         <div class="form-group">
           <label>Role</label>
@@ -2672,18 +2672,22 @@
     <div class="modal">
       <h2>Welcome to Lead Tracker</h2>
       <p class="modal-sub">Sign in with your email and password to access the live lead database.</p>
+      <!-- A real <form> scopes the saved login to these two fields; without it Chrome
+           treats every input on the page as one sign-in form and fills the email into search boxes. -->
+      <form id="userLoginForm" method="post" action="#" onsubmit="event.preventDefault();loginUser()">
       <div class="form-group">
         <label>Email</label>
-        <input type="email" id="userEmailInput" placeholder="name@company.com" onkeydown="if(event.key==='Enter')loginUser()">
+        <input type="email" id="userEmailInput" name="email" autocomplete="username" placeholder="name@company.com">
       </div>
       <div class="form-group">
         <label>Password</label>
-        <input type="password" id="userPasswordInput" placeholder="Enter your password" onkeydown="if(event.key==='Enter')loginUser()">
+        <input type="password" id="userPasswordInput" name="password" autocomplete="current-password" placeholder="Enter your password">
       </div>
       <p class="modal-sub" id="userModalError" style="display:none; margin-bottom:0; color:var(--red);"></p>
       <div class="modal-actions">
-        <button class="btn btn-primary" id="loginBtn" type="button" onclick="loginUser()">Sign In</button>
+        <button class="btn btn-primary" id="loginBtn" type="submit">Sign In</button>
       </div>
+      </form>
     </div>
   </div>
 
@@ -8938,5 +8942,6 @@ LINE: <sentence>`;
   <script src="sales-kit.js" defer></script>
   <script src="competitors.js" defer></script>
   <script src="growth.js" defer></script>
+<script src="search-autofill-guard.js"></script>
 </body>
 </html>

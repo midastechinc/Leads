@@ -549,7 +549,7 @@
   function listHtml() {
     const list = filtered();
     return `<div class="sk-bar cp-filters">
-        <label>Search<input data-cp="q" value="${esc(state.q)}" placeholder="Name, town, service…"></label>
+        <label>Search<input type="search" name="q-competitor-search" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" data-cp="q" value="${esc(state.q)}" placeholder="Name, town, service…"></label>
         <label>Type<select data-cp="type"><option value="">All</option><option value="msp" ${state.type === "msp" ? "selected" : ""}>General MSPs</option><option value="specialist" ${state.type === "specialist" ? "selected" : ""}>Industry specialists</option></select></label>
         <label>Competes for<select data-cp="ind"><option value="">Any industry</option>${Object.entries(IND).map(([k, v]) => `<option value="${k}" ${state.ind === k ? "selected" : ""}>${v}</option>`).join("")}</select></label>
         <label>Threat<select data-cp="threat"><option value="">Any</option>${Object.entries(THREAT).map(([k, [v]]) => `<option value="${k}" ${state.threat === k ? "selected" : ""}>${v}</option>`).join("")}</select></label>

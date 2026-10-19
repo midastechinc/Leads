@@ -176,7 +176,7 @@
       backdrop-filter: blur(10px);
       flex-wrap: wrap;
     }
-    .toolbar input[type="text"] {
+    .toolbar input[type="text"], .toolbar input[type="search"] {
       flex: 1;
       min-width: 180px;
       max-width: 280px;
@@ -189,7 +189,7 @@
       background: var(--surface);
       color: var(--gray-800);
     }
-    .toolbar input[type="text"]:focus {
+    .toolbar input[type="text"]:focus, .toolbar input[type="search"]:focus {
       border-color: rgba(29,78,216,0.42);
       box-shadow: 0 0 0 4px rgba(29,78,216,0.10);
     }
@@ -915,9 +915,9 @@
     button.ws-stat:hover { border-color: rgba(220,38,38,0.35); }
     button.ws-stat.on { border-color: var(--red); box-shadow: 0 0 0 3px rgba(220,38,38,0.12); }
     .ws-toolbar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; padding: 12px; margin-bottom: 14px; background: rgba(255,255,255,0.7); border: 1px solid var(--border); border-radius: 18px; }
-    .ws-toolbar input[type="text"] { flex: 1 1 240px; min-width: 0; padding: 10px 14px; border: 1px solid var(--border); border-radius: 12px; font: 13px inherit; font-family: inherit; background: var(--surface); outline: none; }
+    .ws-toolbar input[type="text"], .ws-toolbar input[type="search"] { flex: 1 1 240px; min-width: 0; padding: 10px 14px; border: 1px solid var(--border); border-radius: 12px; font: 13px inherit; font-family: inherit; background: var(--surface); outline: none; }
     .ws-toolbar select { padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; font: 13px inherit; font-family: inherit; background: var(--surface); }
-    .ws-toolbar input[type="text"]:focus, .ws-toolbar select:focus { border-color: rgba(29,78,216,0.42); box-shadow: 0 0 0 3px rgba(29,78,216,0.10); }
+    .ws-toolbar input[type="text"]:focus, .ws-toolbar input[type="search"]:focus, .ws-toolbar select:focus { border-color: rgba(29,78,216,0.42); box-shadow: 0 0 0 3px rgba(29,78,216,0.10); }
     .ws-expand { display: flex; gap: 4px; margin-left: auto; }
     .ws-expand button { border: none; background: none; color: var(--blue); font: 600 13px inherit; font-family: inherit; cursor: pointer; padding: 6px 8px; border-radius: 8px; }
     .ws-expand button:hover { background: var(--blue-light); }
@@ -1306,7 +1306,7 @@
       .metric-card {
         min-width: 132px;
       }
-      .toolbar input[type="text"],
+      .toolbar input[type="text"], .toolbar input[type="search"],
       .toolbar select,
       .toolbar .btn {
         width: 100%;
@@ -1696,7 +1696,7 @@
       .metric-card.active-filter .label::after { content: ""; }
       .metric-followup { grid-column: 1 / -1; }
       .toolbar { gap: 8px; }
-      .toolbar input[type="text"] { flex: 1 1 60%; width: auto; min-width: 0; max-width: none; }
+      .toolbar input[type="text"], .toolbar input[type="search"] { flex: 1 1 60%; width: auto; min-width: 0; max-width: none; }
       .toolbar .filters-toggle { display: inline-flex; width: auto; }
       .filters-extra { display: none; width: 100%; }
       .filters-extra.open { display: grid; gap: 8px; }
@@ -1985,7 +1985,7 @@
   ══════════════════════════════ -->
   <div class="view active" id="view-admin">
     <div class="toolbar">
-      <input type="text" id="searchInput" placeholder="Search name, company, email…" autocomplete="off" oninput="applyFilters()">
+      <input type="search" name="q-searchInput" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" id="searchInput" placeholder="Search name, company, email…" oninput="applyFilters()">
       <button class="btn btn-secondary filters-toggle" type="button" aria-expanded="false" aria-controls="leadFilters" onclick="toggleLeadFilters(this)">Filters<span id="filtersCount"></span></button>
       <div class="filters-extra" id="leadFilters">
       <select id="filterStatus" onchange="applyFilters()">
@@ -2066,7 +2066,7 @@
       </div>
 
       <div class="ws-toolbar">
-        <input type="text" id="wsSearch" placeholder="Search my companies or people…" oninput="renderWorkspace()">
+        <input type="search" name="q-wsSearch" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" id="wsSearch" placeholder="Search my companies or people…" oninput="renderWorkspace()">
         <select id="wsFilterStatus" onchange="renderWorkspace()">
           <option value="">All Statuses</option>
           <option>New</option><option>Contacted</option><option>Qualified</option>
@@ -2527,8 +2527,8 @@
         <button type="button" onclick="pickPlacesPreset('warehouse')">📦 Warehouses</button>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Type of business</label><input type="text" id="plQuery" value="accounting firm" onkeydown="if(event.key==='Enter')searchPlaces()"></div>
-        <div class="form-group"><label>Where</label><input type="text" id="plLocation" value="Richmond Hill, Ontario" onkeydown="if(event.key==='Enter')searchPlaces()"></div>
+        <div class="form-group"><label>Type of business</label><input type="search" name="q-plQuery" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" id="plQuery" value="accounting firm" onkeydown="if(event.key==='Enter')searchPlaces()"></div>
+        <div class="form-group"><label>Where</label><input type="search" name="q-plLocation" autocomplete="off" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-form-type="other" id="plLocation" value="Richmond Hill, Ontario" onkeydown="if(event.key==='Enter')searchPlaces()"></div>
       </div>
       <div class="form-group"><label>How many businesses</label>
         <select id="plMax"><option value="20">Up to 20</option><option value="40" selected>Up to 40</option><option value="100">Up to 100</option></select></div>
